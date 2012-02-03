@@ -2,7 +2,7 @@
  *	File:		rbamtools.c
  *
  * 	Created on:	17.06.2011
- *  Author: 	Wolfgang Kaisers
+ *  	Author: 	Wolfgang Kaisers
  *	Content:	C Header File for R package rbamtools
  */
 
@@ -77,6 +77,7 @@ static void finalize_bam_align(SEXP pAlign);
 SEXP bam_align_get_name(SEXP pAlign);
 SEXP bam_align_get_refid(SEXP pAlign);
 SEXP bam_align_get_position(SEXP pAlign);
+SEXP bam_align_get_cigar_size(SEXP pAlign);
 SEXP bam_align_get_cigar_df(SEXP pAlign);
 SEXP bam_align_get_mate_refid(SEXP pAlign);
 SEXP bam_align_get_mate_position(SEXP pAlign);
