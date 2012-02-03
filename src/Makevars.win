@@ -1,0 +1,7 @@
+PKG_LIBS=-lz -lws2_32
+BAMTOOLS_OBJECTS = bam.o bam_aux.o bam_import.o bam_index.o bam_sort.o bgzf.o faidx.o kstring.o razf.o sam.o sam_header.o
+PKG_OBJECTS = rbamtools.o
+OBJECTS = $(BAMTOOLS_OBJECTS:%=samtools/%) $(PKG_OBJECTS)
+all: $(SHLIB)
+clean: 
+	rm -f $(OBJECTS)
