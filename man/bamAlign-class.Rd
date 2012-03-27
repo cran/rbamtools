@@ -2,6 +2,7 @@
 \Rdversion{1.1}
 \docType{class}
 \alias{bamAlign-class}
+\alias{cigarSize,bamAlign-method}
 \alias{cigarData,bamAlign-method}
 \alias{failedQC<-,bamAlign-method}
 \alias{failedQC,bamAlign-method}
@@ -47,11 +48,12 @@ Objects can be created by calls of the form \code{new("bamAlign", alignment)}.
 }
 \section{Slots}{
   \describe{
-    \item{\code{align}:}{Object of class \code{"externalptr"} ~~ }
+    \item{\code{align}:}{Object of class \code{"externalptr"}}
   }
 }
 \section{Methods}{
   \describe{
+    \item{cigarSize}{\code{signature(object = "bamAlign")}: ... }
     \item{cigarData}{\code{signature(object = "bamAlign")}: ... }
     \item{failedQC<-}{\code{signature(object = "bamAlign")}: ... }
     \item{failedQC}{\code{signature(object = "bamAlign")}: ... }
@@ -97,6 +99,8 @@ reader<-bamReader(bam_file)
 align<-getNextAlign(reader)
 name(align)
 position(align)
+cigarSize(align)
+cigarData(align)
 bamClose(reader)
 }
 \keyword{bamAlign}

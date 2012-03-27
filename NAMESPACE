@@ -44,6 +44,7 @@ exportMethods(
     name,
     refID,
     position,
+    cigarSize,
     cigarData,
     mateRefID,
     matePosition,

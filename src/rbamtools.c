@@ -702,6 +702,8 @@ SEXP is_nil_externalptr(SEXP ptr)
 		while(align!=NULL)
 		{
 			bytes_written+=samwrite(writer,align);
+			free(align->data);
+			free(align);
 			align=get_next_align(l);
 		}
 		SEXP ans;
@@ -917,6 +919,19 @@ SEXP is_nil_externalptr(SEXP ptr)
 		SEXP ans;
 		PROTECT(ans=Rf_allocVector(INTSXP,1));
 		INTEGER(ans)[0]=align->core.pos;
+		UNPROTECT(1);
+		return ans;
+	}
+
+	SEXP bam_align_get_cigar_size(SEXP pAlign)
+	{
+		if(TYPEOF(pAlign)!=EXTPTRSXP)
+			error("[bam_align_get_position] No external pointer!");
+		bam1_t *align= (bam1_t*) (R_ExternalPtrAddr(pAlign));
+
+		SEXP ans;
+		PROTECT(ans=Rf_allocVector(INTSXP,1));
+		INTEGER(ans)[0]=align->core.n_cigar;
 		UNPROTECT(1);
 		return ans;
 	}
