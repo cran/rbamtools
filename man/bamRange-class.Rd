@@ -2,8 +2,9 @@
 \Rdversion{1.1}
 \docType{class}
 \alias{bamRange-class}
-\alias{as.data.frame,bamRange-method}
+\alias{as.data.frame.bamRange}
 \alias{getNextAlign,bamRange-method}
+\alias{coerce,bamRange,data.frame-method}
 \alias{getPrevAlign}
 \alias{getPrevAlign-methods}
 \alias{getPrevAlign,bamRange-method}
@@ -61,6 +62,7 @@ Objects can be created by calls of the form \code{range<-bamRange(reader, coords
 \section{Methods}{
   \describe{
     \item{as.data.frame}{\code{signature(x = "bamRange")}: Returns data.frame representation of aligns. }
+    \item{coerce}{\code{signature(from = "bamRange", to = "data.frame")}: Coercion of bamRange to data.frame.}
     \item{bamSave}{\code{signature(object = "bamRange")}: Saves aligns stored in this list to BAM-file via a bamWriter object. }
     \item{getNextAlign}{\code{signature(object = "bamRange")}: Returns next align from current position and shifts current position to next one. }
     \item{getPrevAlign}{\code{signature(object = "bamRange")}: Returns previous align from current position and shifts current position to previous one. }
@@ -107,6 +109,7 @@ coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
 size(range)
 range<-bamRange(reader,coords,complex=TRUE)
+dfr<-as.data.frame(range)
 size(range)
 align<-getNextAlign(range)
 cigarData(align)

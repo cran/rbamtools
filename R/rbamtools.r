@@ -3,9 +3,19 @@
 #  File   : rbamtools.r                                                         #
 #  Date   : 21.Sep.2012                                                         #
 #  Content: R-Source for package rbamtools                                      #
-#  Version: 2.1.0                                                               #
+#  Version: 2.1.5                                                               #
 #  Author : W. Kaisers                                                          #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+#  Changelog
+#  30.Okt.12  [initialize.gapList] Made printout message optional (verbose)
+#  31.Okt.12  [bamRange] Included test for initialized index
+#  31.Okt.12  Check for open reader in getHeader, getHeaderText, getRefCount
+#  01.Nov.12  [get_const_next_align] added to correct memory leak.
+#  08.Nov.12  Reading and writing big bamRanges (pure C, no R) valgrind checked.
+#  09.Nov.12  [bamCopy.bamReader] Added which allows refwise copying. 
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
 .Last.lib<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
 
@@ -18,8 +28,6 @@ setGeneric("bamClose", function(object) standardGeneric("bamClose"))
 setGeneric("getNextAlign",function(object) standardGeneric("getNextAlign")) 
 # generic for bamWriter and bamRange
 setGeneric("bamSave",function(object,...) standardGeneric("bamSave"))
-# generic for bamRange, gapList and refSeqDict
-setGeneric("as.data.frame",function(x,row.names=NULL,optional=FALSE,...) standardGeneric("as.data.frame"))
 # Generic for conversion into list
 setGeneric("as.list",function(x,...) standardGeneric("as.list"))
 # Generic for retrieving RefData string from Objects
@@ -30,7 +38,10 @@ setGeneric("getVal",function(object,member)standardGeneric("getVal"))
 setGeneric("setVal",function(object,members,values)standardGeneric("setVal"))
 # Generic for retrieving of list size
 setGeneric("size",function(object) standardGeneric("size"))
-
+# Generic for retrieving Nr of aligns in BAM region from gapList
+setGeneric("nAligns",   function(object)standardGeneric("nAligns"))
+# Generic for retrieving Nr of gapped-aligns in BAM region from gapList
+setGeneric("nGapAligns",function(object)standardGeneric("nGapAligns"))
 
 ###################################################################################################
 #                                                                                                 #
@@ -38,7 +49,8 @@ setGeneric("size",function(object) standardGeneric("size"))
 #                                                                                                 #
 ###################################################################################################
 
-setClass("bamReader",representation(filename="character",reader="externalptr",index="externalptr"),
+setClass("bamReader",representation(filename="character",reader="externalptr",
+				index="externalptr",startpos="numeric"),
          validity=function(object){return(ifelse(is.null(object@reader),FALSE,TRUE))})
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
@@ -47,7 +59,8 @@ setClass("bamReader",representation(filename="character",reader="externalptr",in
 setMethod(f="initialize", signature="bamReader",
           definition=function(.Object,filename){
             .Object@filename<-filename
-            .Object@reader=.Call("bam_reader_open",path.expand(filename))
+            .Object@reader=.Call("bam_reader_open",path.expand(filename),PACKAGE="rbamtools")
+            .Object@startpos=.Call("bam_reader_tell",.Object@reader,PACKAGE="rbamtools")
             return(.Object)
           }
 )
@@ -75,21 +88,32 @@ setMethod(f="bamClose",signature="bamReader",definition=function(object) {
 #  instance of bamWriter                                                        #
 setGeneric("getHeader",function(object)standardGeneric("getHeader"))
 setMethod(f="getHeader",signature="bamReader",definition=function(object){
-  return(new("bamHeader",.Call("bam_reader_get_header",reader@reader))) })
+  if(!isOpen(object))
+    stop("[getHeader.bamReader] reader must be opened! Check with 'isOpen(reader)'!")
+  return(new("bamHeader",.Call("bam_reader_get_header",object@reader))) })
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
 setMethod(f="getHeaderText",signature="bamReader",definition=function(object){
+  if(!isOpen(object))
+    stop("[getHeaderText.bamReader] reader must be opened! Check with 'isOpen(reader)'!")
   return(new("bamHeaderText",
              .Call("bam_reader_get_header_text",object@reader,PACKAGE="rbamtools")))
 })
+
 # getRefCount
 setGeneric("getRefCount",function(object) standardGeneric("getRefCount"))
 setMethod(f="getRefCount",signature="bamReader",definition=function(object) {
+  if(!isOpen(object))
+    stop("[getRefCount.bamReader] reader must be opened! Check with 'isOpen(reader)'!")
   return(.Call("bam_reader_get_ref_count",object@reader,PACKAGE="rbamtools"))})
+
 # getRefData
 setGeneric("getRefData",function(object) standardGeneric("getRefData"))
 setMethod(f="getRefData",signature="bamReader",definition=function(object) {
+  if(!isOpen(object))
+    stop("[getRefData.bamReader] reader must be opened! Check with 'isOpen(reader)'!")
   return(.Call("bam_reader_get_ref_data",object@reader,PACKAGE="rbamtools"))})
+
 #  End Header related functions
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
@@ -153,8 +177,74 @@ setMethod(f="getNextAlign",signature="bamReader",definition=function(object)
 })
 
 setGeneric("gapList",function(object,coords)standardGeneric("gapList"))
-setMethod("gapList","bamReader",function(object,coords) {return(new("gapList",reader,coords))})
+setMethod("gapList","bamReader",function(object,coords) {return(new("gapList",object,coords))})
 
+setGeneric("rewind",function(object)standardGeneric("rewind"))
+setMethod("rewind","bamReader",function(object) {return(invisible(.Call("bam_reader_seek",object@reader,object@startpos,PACKAGE="rbamtools")))})
+
+setMethod("bamSave","bamReader",function(object,writer){
+  if(!is(writer,"bamWriter"))
+    stop("[bamSave.bamReader] writer must be 'bamWriter'!")
+  if(!isOpen(object))
+    stop("[bamSave.bamReader] reader is not open! Check 'isOpen'!")
+  if(!isOpen(writer))
+    stop("[bamSave.bamReader] writer is not open! Check 'isOpen'!")
+  
+  # Saving old reading position
+  oldpos<-.Call("bam_reader_tell",object@reader,PACKAGE="rbamtools")
+  # Reset reader to start position
+  .Call("bam_reader_seek",object@reader,object@startpos,PACKAGE="rbamtools")
+  
+  nAligns<-.Call("bam_reader_save_aligns",object@reader,writer@writer,PACKAGE="rbamtools")
+  bm<-Sys.localeconv()[7]
+  cat("[bamSave.bamReader] Saving ",format(nAligns,big.mark=bm)," to file '",basename(writer@filename),"' finished.\n",sep="")
+  .Call("bam_reader_seek",object@reader,oldpos,PACKAGE="rbamtools")
+  return(invisible(nAligns))
+})
+
+setGeneric("bamCopy",function(object,writer,refids,verbose=FALSE)standardGeneric("bamCopy"))
+setMethod("bamCopy","bamReader",function(object,writer,refids,verbose=FALSE)
+{
+  if(!is(writer,"bamWriter"))
+    stop("[bamCopy.bamReader] writer must be 'bamWriter'!")
+  if(!isOpen(object))
+    stop("[bamCopy.bamReader] reader is not open! Check 'isOpen'!")
+  if(!isOpen(writer))
+    stop("[bamCopy.bamReader] writer is not open! Check 'isOpen'!")
+  if(!index.initialized(object))
+    stop("[bamCopy.bamReader] reader must have initialized index! Check 'index.initialized'!")
+  
+  # Check refids argument: When missing copy all ref's
+  ref<-getRefData(object)
+  if(missing(refids))
+  {
+    refids<-ref$ID
+    n<-length(refids)
+    mtc<-1:n
+  }
+  else
+  {
+    mtc<-match(refids,ref$ID)
+    if(any(is.na(mtc)))
+      stop("[bamCopy.bamReader] refids must be subset of Reference-ID's! Check 'getRefData'!")
+    n<-length(refids)    
+  }
+
+  # Copy aligns with bamRanges as intermediate buffer
+  bm<-Sys.localeconv()[7]
+  nAligns<-0
+  for(i in 1:n)
+  {
+    range<-bamRange(object,c(ref$ID[mtc[i]],0,ref$LN[mtc[i]]),complex=FALSE)
+    nAligns<-nAligns+size(range)
+    if(verbose)
+      cat("[bamCopy.bamReader] i: ",i,"\tCopying ",format(size(range),big.mark=bm,width=10)," aligns for Reference '",ref$SN[mtc[i]],"'.\n",sep="")
+    bamSave(writer,range)
+    rm(range)
+    gc()    
+  }
+  cat("[bamCopy.bamReader] Copying ",format(nAligns,big.mark=bm,width=10)," aligns finished.\n",sep="")
+})
 
 ###################################################################################################
 #                                                                                                 #
@@ -396,12 +486,6 @@ setMethod(f= "[",signature="refSeqDict",definition=function(x,i){
 })
 
 setMethod(f="dim",signature="refSeqDict",definition=function(x){return(c(length(x@SN),6))})
-setMethod("as.data.frame",signature="refSeqDict",definition=function(x,row.names=NULL,optional=FALSE,...)
-{
-  if(is.null(row.names))
-    row.names<-1:(length(x@SN))
-  return(data.frame(SN=x@SN,LN=x@LN,AS=x@AS,M5=x@M5,SP=x@SP,UR=x@UR,row.names=row.names))
-})
 
 setGeneric("removeSeqs",function(x,rows)standardGeneric("removeSeqs"))
 setMethod("removeSeqs",signature="refSeqDict",definition=function(x,rows){
@@ -962,28 +1046,36 @@ setMethod(f="bamSave",signature="bamWriter",definition=function(object,value)
 setClass("gapList",representation(list="externalptr"),
          validity=function(object){ return(ifelse(is.null(object@list),FALSE,TRUE))})
 
-setMethod(f="initialize","gapList",definition=function(.Object,reader,coords){
+setMethod(f="initialize","gapList",definition=function(.Object,reader,coords,verbose=FALSE){
+  
   if(!is(reader,"bamReader"))
-    stop("[gapList.initialize] reader must be an instance of bamReader!\n")
+  {
+    cat("[initialize.gapList] Class of reader: ",class(reader),".\n")
+    stop("[initialize.gapList] reader must be an instance of bamReader!\n")
+  }
   if(length(coords)!=3)
-    stop("[gapList.initialize] coords must be 3-dim numeric (ref,start,stop)!\n")  
+    stop("[initialize.gapList] coords must be 3-dim numeric (ref,start,stop)!\n")  
   if(is.null(reader@index))
-    stop("[gapList.initialize] bamReader must have initialized index!\n")
+    stop("[initialize.gapList] bamReader must have initialized index!\n")
   .Object@list<-.Call("gap_list_fetch",reader@reader,reader@index,trunc(coords),PACKAGE="rbamtools")
+  glsize<-.Call("gap_list_get_size",.Object@list,PACKAGE="rbamtools")
+  if(verbose)
+    message("[initialize.gapList] Fetched list of size ",format(glsize,big.mark=Sys.localeconv()[7])," for refid ",coords[1],".")
   return(.Object)
 })
 
-
 setMethod("size",signature="gapList",definition=function(object)
-{.Call("gap_list_get_size",object@range,PACKAGE="rbamtools")})
+{.Call("gap_list_get_size",object@list,PACKAGE="rbamtools")})
 
-setMethod("as.data.frame",signature="gapList",definition=function(x,row.names=NULL,optional=FALSE,...) {
-  df<-.Call("get_gap_list_df",x@list,PACKAGE="rbamtools")
-  as.data.frame(df,row.names=row.names(df),optional=optional,...)
-})
+setMethod("nAligns",signature="gapList",definition=function(object)
+{.Call("gap_list_get_nAligns",object@list,PACKAGE="rbamtools")})
+
+setMethod("nGapAligns",signature="gapList",definition=function(object)
+{.Call("gap_list_get_nGapAligns",object@list,PACKAGE="rbamtools")})
 
 setMethod("show","gapList",function(object){
   cat("An object of class '",class(object),"'. size: ",size(object),"\n",sep="")
+  cat("nAligns:",nAligns(object),"\tnGapAligns:",nGapAligns(object),"\n")
   return(invisible())
 })
 
@@ -1002,7 +1094,14 @@ setMethod("show","gapList",function(object){
 # BAM-file via an Instance of bamWriter.                                                          #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
-bamRange<-function(reader=NULL,coords=NULL,complex=FALSE) { return(new("bamRange",reader,coords,complex))}
+bamRange<-function(reader=NULL,coords=NULL,complex=FALSE) {
+  if(!is.null(reader))
+  {
+    if(!index.initialized(reader))
+      stop("[bamRange] reader must have initialized index! Use 'loadIndex'!")
+  }
+  return(new("bamRange",reader,coords,complex))
+}
 
 setClass("bamRange",representation(range="externalptr"),
          validity=function(object) { return(ifelse(is.null(object@range),FALSE,TRUE)) })
@@ -1021,23 +1120,26 @@ setMethod(f="initialize",signature="bamRange",
             # +++++++++++++++++++++++++++++++++++++++++++
             #  Create range from bam-file
             if(!is(reader,"bamReader"))
-              stop("[bamRange.initialize] reader must be an instance of bamReader!\n")
+              stop("[bamRange.initialize] reader must be an instance of bamReader!")
             if(length(coords)!=3)
-              stop("[bamRange.initialize] coords must be 3-dim numeric (ref,start,stop)!\n")  
+              stop("[bamRange.initialize] coords must be 3-dim numeric (ref,start,stop)!")  
             if(is.null(reader@index))
-              stop("[bamRange.initialize] bamReader must have initialized index!\n")
+              stop("[bamRange.initialize] bamReader must have initialized index!")
             if(!is(complex,"logical"))
-              stop("[bamRange.initialize] complex must be logical!\n")
+              stop("[bamRange.initialize] complex must be logical!")
             if(length(complex)>1)
-              stop("[bamRange.initialize] complex must have length 1!\n")
+              stop("[bamRange.initialize] complex must have length 1!")
+            if(!index.initialized(reader))
+              stop("[bamRange.initialize] reader must have initialized index! Use 'loadIndex'!")
             .Object@range<-.Call("bam_range_fetch",reader@reader,reader@index,trunc(coords),complex,PACKAGE="rbamtools")
             return(.Object)
           })
 
-setMethod("as.data.frame",signature="bamRange",definition=function(x,row.names=NULL,optional=FALSE,...) {
-  df<-.Call("bam_range_get_align_df",x@range,PACKAGE="rbamtools")
-  return(as.data.frame(df,row.names=row.names(df),optional=optional,...))
-})
+# setMethod("as.data.frame",signature="bamRange",definition=function(x,row.names=NULL,optional=FALSE,...) {
+#   return(.Call("bam_range_get_align_df",x@range,PACKAGE="rbamtools"))
+# })
+
+
 
 setMethod("size",signature="bamRange",definition=function(object)
 {.Call("bam_range_get_size",object@range,PACKAGE="rbamtools")})
@@ -1198,12 +1300,12 @@ setGeneric("mapQuality",function(object) standardGeneric("mapQuality"))
 setMethod(f="mapQuality",signature="bamAlign",definition=function(object)
 { .Call("bam_align_get_map_quality",object@align,PACKAGE="rbamtools")})
 
-setGeneric("sequence",function(object) standardGeneric("sequence"))
-setMethod(f="sequence",signature="bamAlign",definition=function(object)
+setGeneric("alignSeq",function(object) standardGeneric("alignSeq"))
+setMethod(f="alignSeq",signature="bamAlign",definition=function(object)
 {return(.Call("bam_align_get_segment_sequence",object@align,PACKAGE="rbamtools"))})
 
-setGeneric("qualities",function(object) standardGeneric("qualities"))
-setMethod(f="qualities",signature="bamAlign",definition=function(object)
+setGeneric("alignQual",function(object) standardGeneric("alignQual"))
+setMethod(f="alignQual",signature="bamAlign",definition=function(object)
 {return(.Call("bam_align_get_qualities",object@align,PACKAGE="rbamtools"))})
 
 setMethod("show","bamAlign",function(object){
@@ -1377,3 +1479,28 @@ setReplaceMethod(f="flag", signature="bamAlign",
 
 #  End: bamAlign
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+#  coercing
+
+as.data.frame.bamRange<-function(x,row.names=NULL,optional=FALSE,...)
+  {return(.Call("bam_range_get_align_df",x@range,PACKAGE="rbamtools"))}
+as.data.frame.gapList<-function(x,row.names=NULL,optional=FALSE,...)
+  {return(.Call("gap_list_get_df",x@list,PACKAGE="rbamtools"))}
+as.data.frame.refSeqDict<-function(x,row.names=NULL,optional=FALSE,...)
+{
+  if(is.null(row.names))
+    row.names<-1:(length(x@SN))
+  else if(length(row.names)!=length(x@SN))
+    stop("[as.data.frame.refSeqDict] length(row.names)!=length(x@SN)!")
+  return(data.frame(SN=x@SN,LN=x@LN,AS=x@AS,M5=x@M5,SP=x@SP,UR=x@UR,row.names=row.names))  
+}
+
+
+setAs("bamRange","data.frame",function(from)
+  {return(.Call("bam_range_get_align_df",from@range,PACKAGE="rbamtools"))})
+setAs("gapList","data.frame",function(from)
+  {return(.Call("gap_list_get_df",from@list,PACKAGE="rbamtools"))})
+setAs("refSeqDict","data.frame",function(from)
+  {return(data.frame(SN=from@SN,LN=from@LN,AS=from@AS,M5=from@M5,SP=from@SP,UR=from@UR,row.names=1:length(from@SN)))})

@@ -1,9 +1,14 @@
 /*
- *	File:		rbamtools.c
+ *  File      : rbamtools.c
  *
- *  Created on:	17.06.2011
- *  Author: 	W. Kaisers
- *	Content:	Function definitions in C for R package rbamtools
+ *  Created on: 17.06.2011
+ *  Author    : W. Kaisers
+ *  Content   : Function definitions in C for R package rbamtools
+ *
+ *  Change log: 
+ *              29.Okt12  (nemesis) Changed gap_list_get_df cigar_type output to 'factor'
+ *              30.Okt.12 (phoibe)  Removed gap_list_fetch message
+ *              31.Okt.12 (phoibe)  [bam_reader_save_aligns] function & SAM_TYPE_READ added
  */
 
 #ifndef rbamtools_c
@@ -327,6 +332,54 @@ SEXP bam_reader_get_next_align(SEXP pReader)
 	return ptr;
 }
 
+SEXP bam_reader_save_aligns(SEXP pReader,SEXP pWriter)
+{
+	if(TYPEOF(pReader)!=EXTPTRSXP)
+	{
+		error("[bam_reader_save_aligns] pReader: No external pointer!\n");
+		return R_NilValue;
+	}
+	if(TYPEOF(pWriter)!=EXTPTRSXP)
+	{
+		error("[bam_reader_save_aligns] pWriter: No external pointer!\n");
+		return R_NilValue;
+	}
+
+	// reader
+	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	if (reader == 0 || !(reader->type & SAM_TYPE_READ))
+		error("[bam_reader_save_aligns] Reader not open for reading!");
+
+	// writer
+	samfile_t *writer=(samfile_t*)R_ExternalPtrAddr(pWriter);
+	if (writer == 0 || (writer->type & SAM_TYPE_READ))
+		error("[bam_reader_save_aligns] Writer not open for writing!");
+
+
+	bam1_t *align=bam_init1();
+	unsigned long nAligns=0;
+	int res=samread(reader,align);
+	while(res>0)
+	{
+		samwrite(writer,align);
+		++nAligns;
+		if(nAligns % 1000000 ==0)
+			Rprintf("[bam_reader_save_aligns] %u aligns written.\n",nAligns);
+		res=samread(reader,align);
+	}
+
+	if(res==-2)
+	{
+		error("[bam_reader_save_aligns] samread found truncated BAM-file.\n");
+		return R_NilValue;
+	}
+
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=nAligns;
+	UNPROTECT(1);
+	return ans;
+}
 
 SEXP bam_reader_sort_file(SEXP pFilename,SEXP pPrefix,SEXP pMaxMem,SEXP pByName)
 {
@@ -380,6 +433,42 @@ SEXP bam_reader_get_header(SEXP pReader)
 	R_RegisterCFinalizer(ptr,finalize_bam_header);
 	UNPROTECT(1);
 	return ptr;
+}
+
+SEXP bam_reader_tell(SEXP pReader)
+{
+	if(TYPEOF(pReader)!=EXTPTRSXP)
+	{
+		error("[bam_reader_tell] No external pointer!\n");
+		return R_NilValue;
+	}
+	return Rf_ScalarReal(bam_tell(((samfile_t*)(R_ExternalPtrAddr(pReader)))->x.bam));
+}
+
+SEXP bam_reader_seek(SEXP pReader, SEXP pPos)
+{
+	if(TYPEOF(pReader)!=EXTPTRSXP)
+	{
+		error("[bam_reader_seek] No external pointer!\n");
+		return R_NilValue;
+	}
+	if(TYPEOF(pPos)!=REALSXP)
+	{
+		error("[bam_reader_seek] Position must be numeric!\n");
+		return R_NilValue;
+	}
+	if(LENGTH(pPos)>1)
+	{
+		error("[bam_reader_seek] Length of position must be 1!\n");
+		return R_NilValue;
+	}
+
+	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	double *pos=REAL(pPos);
+    int64_t res=bam_seek(reader->x.bam,(int64_t)*pos,SEEK_SET);
+    if(res<0)
+    	Rprintf("[bam_reader_seek] bam_seek fails!\n");
+	return R_NilValue;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -474,24 +563,11 @@ SEXP gap_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 	PROTECT(list=R_MakeExternalPtr( (void*)(l),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(list,finalize_gap_list);
 	UNPROTECT(1);
-	Rprintf("[gap_list_fetch] Fetched list of size %i.\n",l->size);
+	//Rprintf("[gap_list_fetch] Fetched list of size %i.\n",l->size);
 	return list;
 }
 
-SEXP gap_list_get_size(SEXP pGapList)
-{
-	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[gap_list_get_size] no external pointer!");
-
-	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
-	SEXP ans;
-	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->size);
-	UNPROTECT(1);
-	return ans;
-}
-
-SEXP get_gap_list_df(SEXP pGapList)
+SEXP gap_list_get_df(SEXP pGapList)
 {
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
 		error("[get_gap_list_df] no external pointer!");
@@ -500,7 +576,7 @@ SEXP get_gap_list_df(SEXP pGapList)
 
 	// create data.frame
 	int nProtected=0;
-	int nCols=8;
+	int nCols=9;
 	SEXP dflist;
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
@@ -533,17 +609,22 @@ SEXP get_gap_list_df(SEXP pGapList)
 	PROTECT(left_stop_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 5: right_start
+	// Column 5: gap_len
+	SEXP gap_len_vector;
+	PROTECT(gap_len_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	// Column 6: right_start
 	SEXP right_start_vector;
 	PROTECT(right_start_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 6: right_cigar_len
+	// Column 7: right_cigar_len
 	SEXP right_cigar_len_vector;
 	PROTECT(right_cigar_len_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 7: right_cigar_type
+	// Column 8: right_cigar_type
 	SEXP right_cigar_type_vector;
 	PROTECT(right_cigar_type_vector=allocVector(INTSXP,nRows));
 	++nProtected;
@@ -559,21 +640,71 @@ SEXP get_gap_list_df(SEXP pGapList)
 		INTEGER(left_cigar_len_vector)	[i]=pos_data[2];
 		INTEGER(left_cigar_type_vector)	[i]=pos_data[3];
 		INTEGER(left_stop_vector)  		[i]=pos_data[4];
-		INTEGER(right_start_vector)		[i]=pos_data[5]+1;
-		INTEGER(right_cigar_len_vector)	[i]=pos_data[6];
-		INTEGER(right_cigar_type_vector)[i]=pos_data[7];
+		INTEGER(gap_len_vector)			[i]=pos_data[5];
+		INTEGER(right_start_vector)		[i]=pos_data[6];
+		INTEGER(right_cigar_len_vector)	[i]=pos_data[7];
+		INTEGER(right_cigar_type_vector)[i]=pos_data[8];
 		l->curr_el=l->curr_el->next_el;
 	}
+
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Convert left_cigar_type to vector
+
+	SEXP levs;
+	int nLevels=9;
+	PROTECT(levs=allocVector(STRSXP,nLevels));
+	++nProtected;
+
+	SET_STRING_ELT(levs,0,mkChar("M"));
+	SET_STRING_ELT(levs,1,mkChar("I"));
+	SET_STRING_ELT(levs,2,mkChar("D"));
+	SET_STRING_ELT(levs,3,mkChar("N"));
+	SET_STRING_ELT(levs,4,mkChar("S"));
+	SET_STRING_ELT(levs,5,mkChar("H"));
+	SET_STRING_ELT(levs,6,mkChar("P"));
+	SET_STRING_ELT(levs,7,mkChar("="));
+	SET_STRING_ELT(levs,8,mkChar("X"));
+	setAttrib(left_cigar_type_vector,R_LevelsSymbol,levs);
+
+	SEXP csymb;
+	PROTECT(csymb=mkString("factor"));
+	++nProtected;
+	setAttrib(left_cigar_type_vector,R_ClassSymbol,csymb);
+
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Convert right_cigar_type_vector to vector
+
+	nLevels=9;
+	PROTECT(levs=allocVector(STRSXP,nLevels));
+	++nProtected;
+
+	SET_STRING_ELT(levs,0,mkChar("M"));
+	SET_STRING_ELT(levs,1,mkChar("I"));
+	SET_STRING_ELT(levs,2,mkChar("D"));
+	SET_STRING_ELT(levs,3,mkChar("N"));
+	SET_STRING_ELT(levs,4,mkChar("S"));
+	SET_STRING_ELT(levs,5,mkChar("H"));
+	SET_STRING_ELT(levs,6,mkChar("P"));
+	SET_STRING_ELT(levs,7,mkChar("="));
+	SET_STRING_ELT(levs,8,mkChar("X"));
+	setAttrib(right_cigar_type_vector,R_LevelsSymbol,levs);
+
+	PROTECT(csymb=mkString("factor"));
+	++nProtected;
+	setAttrib(right_cigar_type_vector,R_ClassSymbol,csymb);
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 	SET_VECTOR_ELT(dflist,0,ref_vector);
 	SET_VECTOR_ELT(dflist,1,pos_vector);
 	SET_VECTOR_ELT(dflist,2,left_cigar_len_vector);
 	SET_VECTOR_ELT(dflist,3,left_cigar_type_vector);
 	SET_VECTOR_ELT(dflist,4,left_stop_vector);
-	SET_VECTOR_ELT(dflist,5,right_start_vector);
-	SET_VECTOR_ELT(dflist,6,right_cigar_len_vector);
-	SET_VECTOR_ELT(dflist,7,right_cigar_type_vector);
+	SET_VECTOR_ELT(dflist,5,gap_len_vector);
+	SET_VECTOR_ELT(dflist,6,right_start_vector);
+	SET_VECTOR_ELT(dflist,7,right_cigar_len_vector);
+	SET_VECTOR_ELT(dflist,8,right_cigar_type_vector);
 
+	///////////////////////////////////////////////////////////////////////////
 	// Column Names
 	SEXP col_names;
 	PROTECT(col_names=allocVector(STRSXP,nCols));
@@ -584,9 +715,10 @@ SEXP get_gap_list_df(SEXP pGapList)
 	SET_STRING_ELT(col_names,2,mkChar("left_cigar_len"));
 	SET_STRING_ELT(col_names,3,mkChar("left_cigar_type"));
 	SET_STRING_ELT(col_names,4,mkChar("left_stop"));
-	SET_STRING_ELT(col_names,5,mkChar("right_start"));
-	SET_STRING_ELT(col_names,6,mkChar("right_cigar_len"));
-	SET_STRING_ELT(col_names,7,mkChar("right_cigar_type"));
+	SET_STRING_ELT(col_names,5,mkChar("gap_len"));
+	SET_STRING_ELT(col_names,6,mkChar("right_start"));
+	SET_STRING_ELT(col_names,7,mkChar("right_cigar_len"));
+	SET_STRING_ELT(col_names,8,mkChar("right_cigar_type"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
 	// Row Names
@@ -606,6 +738,44 @@ SEXP get_gap_list_df(SEXP pGapList)
 	setAttrib(dflist,R_ClassSymbol,mkString("data.frame"));
 	UNPROTECT(nProtected);
 	return dflist;
+}
+
+SEXP gap_list_get_size(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_list_get_size] no external pointer!");
+
+	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->size);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_list_get_nAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_list_get_size] no external pointer!");
+
+	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->nAlings);
+	UNPROTECT(1);
+	return ans;
+}
+SEXP gap_list_get_nGapAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_list_get_size] no external pointer!");
+
+	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->nGapAlings);
+	UNPROTECT(1);
+	return ans;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1007,18 +1177,16 @@ SEXP bam_range_write(SEXP pWriter,SEXP pRange)
 
 	samfile_t *writer=(samfile_t*) R_ExternalPtrAddr(pWriter);
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
-	bam1_t *align;
 
 	range_size=l->size;
 	// For restoration
 	align_element *e=l->curr_el;
 	wind_back(l);
 
+	// Retrieve const pointer (i.e. no copy)
 	for(i=0;i<range_size;++i)
-	{
-		align=get_next_align(l);
-		bytes_written+=samwrite(writer,align);
-	}
+		bytes_written+=samwrite(writer,get_const_next_align(l));
+
 	// restore curr_el
 	l->curr_el=e;
 

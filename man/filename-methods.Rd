@@ -8,12 +8,8 @@
 }
 \section{Methods}{
 \describe{
-\item{\code{signature(object = "bamReader")}}{
-An instance of class bamReader
-}
-\item{\code{signature(object = "bamWriter")}}{
-An instance of bamWriter
-}
+\item{\code{signature(object = "bamReader")}}{An instance of class bamReader.}
+\item{\code{signature(object = "bamWriter")}}{An instance of bamWriter.}
 }}
 \keyword{methods}
 \keyword{filename}

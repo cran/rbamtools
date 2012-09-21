@@ -2,8 +2,14 @@
  *	File:		rbamtools.c
  *
  * 	Created on:	17.06.2011
- *  Author: 	Wolfgang Kaisers
+ * 	Author: 	Wolfgang Kaisers
  *	Content:	C Header File for R package rbamtools
+ *
+ *	Change log:
+ *              29.Okt12  (nemesis) [gap_list_get_df] Changed cigar_type output to 'factor'.
+ *              30.Okt.12 (phoibe)  [gap_list_fetch] Removed gap_list_fetch message.
+ *              31.Okt.12 (phoibe)  [bam_reader_save_aligns] function & SAM_TYPE_READ added.
+ *		01.Nov.12 (nemesis) [get_const_next_align] added to correct memory leak.
  */
 
 #ifndef rbamtools_h
@@ -21,6 +27,8 @@
 #include "gap_list.h"
 
 const char * const CIGAR_TYPES="MIDNSHP=X";
+#define SAM_TYPE_READ 2
+
 
 inline int cigar2str(char *c,const bam1_t *align);
 bam_header_t* clone_bam_header(bam_header_t *h);
@@ -57,8 +65,12 @@ SEXP bam_reader_create_index(SEXP bam_file,SEXP idx_file);
 SEXP bam_reader_load_index(SEXP idx_file);
 SEXP bam_reader_unload_index(SEXP pIdx);
 SEXP bam_reader_get_next_align(SEXP pReader);
+SEXP bam_reader_save_aligns(SEXP pReader,SEXP pWriter);
 SEXP bam_reader_sort_file(SEXP pFilename,SEXP pPrefix,SEXP pMaxMem,SEXP pByName);
 SEXP bam_reader_get_header(SEXP pReader);
+SEXP bam_reader_tell(SEXP pReader);
+SEXP bam_reader_seek(SEXP pReader, SEXP pPos);
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // GapList
@@ -68,8 +80,10 @@ static void finalize_gap_list(SEXP ptr);
 SEXP create_gap_list();
 static int gap_fetch_func(const bam1_t *b, void *data);
 SEXP gap_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords);
+SEXP gap_list_get_df(SEXP pGapList);
 SEXP gap_list_get_size(SEXP pGapList);
-SEXP get_gap_list_df(SEXP pGapList);
+SEXP gap_list_get_nAligns(SEXP pGapList);
+SEXP gap_list_get_nGapAligns(SEXP pGapList);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // BamRange

@@ -29,7 +29,7 @@ gapList   \tab (Linked-) List container for alignment gaps.\cr
 }
 \author{
 Wolfgang Kaisers
-Maintainer: Wolfgang Kaisers <Wolfgang.Kaisers@uni-duesseldorf.de>
+Maintainer: Wolfgang Kaisers <kaisers@med.uni-duesseldorf.de>
 }
 \references{
 \verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}

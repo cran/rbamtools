@@ -1,12 +1,22 @@
 useDynLib(rbamtools)
-exportPattern("^bam.*")
 importFrom(utils,head)
 importFrom(utils,tail)
+export(
+        as.data.frame.bamRange,
+        as.data.frame.gapList,
+        as.data.frame.refSeqDict,
+	bamHeaderText,
+	bamReader,
+	bamRange
+)
 exportMethods(
+        coerce,
 	addSeq,
-	as.data.frame,
+	alignQual,
+	alignSeq,
 	as.list,
 	bamClose,
+        bamCopy,
 	bamHeader,
 	bamSave,
 	bamSort,
@@ -51,7 +61,9 @@ exportMethods(
 	"mateUnmapped<-",
 	moveCurrentAlign,
 	name,
+        nAligns,
 	nCigar,
+        nGapAligns,
 	paired,
 	"paired<-",
 	pcrORopt_duplicate,
@@ -63,18 +75,17 @@ exportMethods(
 	"properPair<-",
 	push_back,
 	push_front,
-	qualities,
 	refID,
 	refSeqDict,
 	"refSeqDict<-",
 	removeSeqs,
 	reverseStrand,
 	"reverseStrand<-",
+        rewind,
 	secondaryAlign,
 	"secondaryAlign<-",
 	secondInPair,
 	"secondInPair<-",
-	sequence,
 	setVal,
 	size,
 	stepNextAlign,
