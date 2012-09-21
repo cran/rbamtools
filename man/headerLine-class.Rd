@@ -13,7 +13,8 @@
 Objects can be created by calls of the form \code{hl<-new("headerLine")}.}
 \section{Slots}{
   \describe{
-    \item{\code{l}:}{List}
+    \item{\code{SO}:}{character}
+    \item{\code{VN}:}{character}
   }
 }
 \section{Methods}{
@@ -26,11 +27,11 @@ Objects can be created by calls of the form \code{hl<-new("headerLine")}.}
 }
 \author{Wolfgang Kaisers}
 \examples{
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-reader<-bamReader(bam_file)
-isOpen(reader)
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+reader<-bamReader(bam)
 header<-getHeader(reader)
-headLine<-getHeaderLine(header)
+htxt<-getHeaderText(header)
+headLine<-headerLine(htxt)
 getVal(headLine,"VN")
 getVal(headLine,"SO")
 setVal(headLine,"SO","unsorted")

@@ -1,52 +1,48 @@
 \name{bamHeader-class}
 \Rdversion{1.1}
 \docType{class}
+\alias{as.character,bamHeader-method}
+\alias{as.character}
 \alias{bamHeader-class}
-\alias{initialize,bamHeader-method}
-\alias{getHeader,bamHeader-method}
-\alias{getHeaderLine,bamHeader-method}
-\alias{getHeaderProgram,bamHeader-method}
-\alias{getHeaderReadGroup,bamHeader-method}
-\alias{getRefSeqDict,bamHeader-method}
+\alias{bamHeader}
+\alias{bamWriter,bamHeader-method}
 \alias{getHeaderText,bamHeader-method}
-\alias{getHeader}
-\alias{getHeaderLine}
-\alias{getHeaderProgram}
-\alias{getHeaderReadGroup}
-\alias{getRefSeqDict}
+\alias{initialize,bamHeader-method}
 \title{Class \code{"bamHeader"}}
 \description{bamHeader represents Data contained in the header Section of BAM-files.}
 \section{Objects from the Class}{
-Objects can be created by calls of the form \code{hl<-new("bamHeader")}.}
+Objects can be created by calls of the form \code{header<-new("bamHeader")}.}
 \section{Slots}{
   \describe{
-    \item{\code{com}:}{character}
-    \item{\code{head}:}{headerLine}
-    \item{\code{dict}:}{refSeqDict}
-    \item{\code{group}:}{headerReadGroup}
-    \item{\code{prog}:}{headerProgram}
+    \item{\code{header}:}{Object of class \code{"externalptr"}. Points to samtools bam_header_t struct.}
   }
 }
 \section{Methods}{
   \describe{
-    \item{getHeaderLine}{\code{signature(x = "bamHeader")}: ... }
-    \item{getRefSeqDict}{\code{signature(object = "bamHeader")}: ... }
-    \item{getHeaderReadGroup}{\code{signature(object = "bamHeader")}: ... }
-    \item{getHeaderProgram}{\code{signature(.Object = "bamHeader")}: ... }
-    \item{getHeaderText}{\code{signature(.Object = "bamHeader")}: ... }
+    \item{getHeaderText}{\code{signature(x = "bamHeader")}: Returns textual representation of data stored in this class as desrcribed in SAM Format Specification.}
 	 }
+}
+\references{
+\verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}
+\url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \author{Wolfgang Kaisers}
 \examples{
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-reader<-bamReader(bam_file)
-isOpen(reader)
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+# Open bam file
+reader<-bamReader(bam)
+# Extract binary header structure
 header<-getHeader(reader)
-headLine<-getHeaderLine(header)
-readGroup<-getHeaderReadGroup(header)
-headProg<-getHeaderProgram(header)
-headTxt<-getHeaderText(header)
+# Extract textual representation
+htxt<-getHeaderText(header)
+# Extract header line segment
+hl<-headerLine(htxt)
+# Re-create binary header structure
+header2<-bamHeader(htxt)
+# Use created structure for new BAM-file
+writer<-bamWriter(header2,"test.bam")
 bamClose(reader)
+bamClose(writer)
 }
 \keyword{classes}
 \keyword{bamReader}

@@ -18,19 +18,24 @@ Objects can be created by calls of the form \code{hl<-new("headerProgram")}.}
 }
 \section{Methods}{
   \describe{
-    \item{as.list}{\code{signature(x = "headerProgram")}: ... }
-    \item{getVal}{\code{signature(object = "headerProgram")}: ... }
-    \item{setVal}{\code{signature(object = "headerProgram")}: ... }
-    \item{getHeaderText}{\code{signature(.Object = "headerProgram")}: ... }
+    \item{as.list}{\code{signature(x = "headerProgram")}: Converts data in object into list. }
+    \item{getVal}{\code{signature(object = "headerProgram")}: Returns value of given Segment. }
+    \item{setVal}{\code{signature(object = "headerProgram")}: Sets value of given segment. }
+    \item{getHeaderText}{\code{signature(.Object = "headerProgram")}: Returns textual representation of data as specified in SAM File Format.}
 	 }
+}
+\references{
+\verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}
+\url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \author{Wolfgang Kaisers}
 \examples{
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-reader<-bamReader(bam_file)
+bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+reader<-bamReader(bam)
 isOpen(reader)
 header<-getHeader(reader)
-headProg<-getHeaderProgram(header)
+htxt<-getHeaderText(header)
+headProg<-headerProgram(htxt)
 getVal(headProg,"PN")
 setVal(headProg,"PN","bwa")
 l<-as.list(headProg)

@@ -46,10 +46,11 @@ Data members for refSeqDict can be accessed via data.frame generic functions (he
 \author{Wolfgang Kaisers}
 \examples{
 library(rbamtools)
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-reader<-bamReader(bam_file)
+bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+reader<-bamReader(bam)
 header<-getHeader(reader)
-hl<-getHeaderLine(header)
+htxt<-getHeaderText(header)
+hl<-headerLine(htxt)
 setVal(hl,"SO","coordinate")
 bamClose(reader)
 }

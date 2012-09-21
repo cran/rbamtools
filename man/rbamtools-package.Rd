@@ -22,8 +22,9 @@ The package is organized in S4 classes. Four classes represent the data and orga
 \tabular{ll}{
 bamReader \tab Reading aligns from a BAM-file\cr
 bamAlign  \tab Single BAM alignment (including Data accessor functions)\cr
-bamRange  \tab (Linked-) List container of BAM alignments\cr
+bamRange  \tab (Linked-) List container for BAM alignments\cr
 bamWriter \tab Writing alings to a BAM-file\cr
+gapList   \tab (Linked-) List container for alignment gaps.\cr
 }
 }
 \author{
@@ -44,14 +45,14 @@ Bioinformatics, 25, 2078-9.
 \keyword{package}
 \examples{
 library(rbamtools)
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-idx_file <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
-reader<-bamReader(bam_file)
+bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+idx <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
+reader<-bamReader(bam)
 isOpen(reader)
 align<-getNextAlign(reader)
-loadIndex(reader,idx_file)
+loadIndex(reader,idx)
 index.initialized(reader)
-coords<-as.integer(c(0,0,1874))
+coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
 align<-getNextAlign(range)
 bamClose(reader)
