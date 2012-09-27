@@ -2,40 +2,58 @@
 \Rdversion{1.1}
 \docType{class}
 \alias{bamReader-class}
+\alias{bamClose,bamReader-method}
+\alias{bamSort}
+\alias{createIndex}
+\alias{createIndex-methods}
 \alias{createIndex,bamReader-method}
 \alias{getHeader,bamReader-method}
 \alias{getHeaderText,bamReader-method}
 \alias{getNextAlign,bamReader-method}
+\alias{getRefCount}
+\alias{getRefCount-methods}
 \alias{getRefCount,bamReader-method}
+\alias{getRefData}
+\alias{getRefData-methods}
 \alias{getRefData,bamReader-method}
+\alias{filename,bamReader-method}
 \alias{bamSort,bamReader-method}
+\alias{loadIndex}
 \alias{loadIndex,bamReader-method}
 \alias{initialize,bamReader-method}
+\alias{index.initialized}
+\alias{index.initialized-methods}
 \alias{index.initialized,bamReader-method}
+\alias{isOpen,bamReader-method}
 
 \title{Class \code{"bamReader"}}
-\description{bamReader encapulates functionality for reading of bamAligns from a BAM-file.}
+\description{A bamReader object encapulates functionality for reading of bamAligns from a BAM-file. It optionally contains a pointer to a bam-index structure which allows fast access to aligns that overlap a specified region (random access). The index is loaded via the loadIndex function.}
 \section{Objects from the Class}{Objects can be created by calls of the form \code{reader<-bamReader(filename)}.}
 \section{Slots}{
   \describe{
     \item{\code{filename}:}{Character denoting name of BAM-file.}
     \item{\code{reader}:}{External pointer to opened BAM-file.}
     \item{\code{index}:}{External pointer to BAM index (used for retrieving bamRange objects from BAM-file.}
-    \item{\code{indexName}:}{Name of opened index file.}
   }
 }
 \section{Methods}{
   \describe{
-    \item{bamClose}{\code{signature(object = "bamReader")}: ... }
-    \item{createIndex}{\code{signature(object = "bamReader")}: ... }
-    \item{filename}{\code{signature(object = "bamReader")}: ... }
-    \item{getHeaderText}{\code{signature(object = "bamReader")}: ... }
-    \item{getNextAlign}{\code{signature(object = "bamReader")}: ... }
-    \item{getRefCount}{\code{signature(object = "bamReader")}: ... }
-    \item{getRefData}{\code{signature(object = "bamReader")}: ... }
-    \item{bamSort}{\code{signature(object = "bamReader")}: ... }
-    \item{index<-}{\code{signature(.Object = "bamReader")}: ... }
-    \item{initialize}{\code{signature(.Object = "bamReader")}: ... }
+    \item{bamClose}{\code{signature(object = "bamReader")}: Closes connection to BAM-file. }
+    \item{createIndex}{\code{signature(object = "bamReader", filename="character")}: Creates an index file for opened BAM-file. Therfore the BAM-file must be position-sorted. filename determines the name of the new BAM-Index-file (usually bam_filename.bam.idx) }
+    \item{filename}{\code{signature(object = "bamReader")}: Returns filename of opened BAM-file. }
+    \item{getHeader}{\code{signature(object = "bamReader")}: Returns object of class bamHeader which contains binary representation of bam-header data. }
+    \item{getHeaderText}{\code{signature(object = "bamReader")}: Returns object of class bamHeaderText which contains textual representation of bam-header data. }
+    \item{getNextAlign}{\code{signature(object = "bamReader")}: Returns object of class bamAlign which contains data of next Align from file. When EOF is reached the function returns NULL. }
+    \item{getRefCount}{\code{signature(object = "bamReader")}: Returns number of reference sequences. }
+    \item{getRefData}{\code{signature(object = "bamReader")}: Returns data frame which contains three columns: For each reference sequence, the corresponding row contains the Reference-ID (1st column, refID), the Reference name (2nd column, refName) and the length of the Reference sequence (3rd column, refLength).
+}
+    \item{isOpen}{\code{signature(object = "bamReader")}: Returns TRUE when file connection is open. }
+    \item{bamSort}{\code{signature(object = "bamReader")}: BAM-files must be sorted before an index can be created.
+During this routine, some content of the source file is copied into the working memory, sorted and written into temporary files. Finally, the sorted files are merged into a single target. The name of the target is [prefix].bam.
+Number and size of temporary files depend on source file size and used working memory (maxmem). Small
+maxmem values result in large numbers of temporary files. The minimum maxmem value is 100000000. Smaller maxmem
+values cause an error. }
+    \item{initialize}{\code{signature(.Object = "bamReader")}: Initializes object and opens BAM-file for reading. }
 	 }
 }
 \references{
@@ -45,14 +63,22 @@
 \author{Wolfgang Kaisers}
 \examples{
 library(rbamtools)
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-idx_file <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
-reader<-bamReader(bam_file)
+bam<- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+idx<- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
+# Open BAM-file for reading
+reader<-bamReader(bam)
 isOpen(reader)
-align<-getNextAlign(reader)
-loadIndex(reader,idx_file)
+# Create and load new index
+idx<-"index.bam.bai"
+createIndex(reader,idx)
+loadIndex(reader,idx)
 index.initialized(reader)
-coords<-as.integer(c(0,0,1874))
+# Load package provided index
+loadIndex(reader,idx)
+index.initialized(reader)
+# Read align
+align<-getNextAlign(reader)
+coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
 align<-getNextAlign(range)
 bamClose(reader)

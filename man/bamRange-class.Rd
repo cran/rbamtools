@@ -4,20 +4,53 @@
 \alias{bamRange-class}
 \alias{as.data.frame,bamRange-method}
 \alias{getNextAlign,bamRange-method}
+\alias{getPrevAlign}
+\alias{getPrevAlign-methods}
 \alias{getPrevAlign,bamRange-method}
 \alias{initialize,bamRange-method}
+\alias{insertPastCurrent}
+\alias{insertPastCurrent-methods}
 \alias{insertPastCurrent,bamRange-method}
+\alias{insertPreCurrent}
+\alias{insertPreCurrent-methods}
 \alias{insertPreCurrent,bamRange-method}
+\alias{moveCurrentAlign}
+\alias{moveCurrentAlign-methods}
+\alias{moveCurrentAlign,bamRange-method}
+\alias{pop_back}
+\alias{pop_back-methods}
 \alias{pop_back,bamRange-method}
+\alias{pop_front}
+\alias{pop_front-methods}
 \alias{pop_front,bamRange-method}
+\alias{push_back}
+\alias{push_back-methods}
 \alias{push_back,bamRange-method}
+\alias{push_front}
+\alias{push_front-methods}
 \alias{push_front,bamRange-method}
+\alias{size}
+\alias{size-methods}
 \alias{size,bamRange-method}
-\alias{writeCurrentAlign,bamRange-method}
+\alias{stepNextAlign}
+\alias{stepNextAlign-methods}
+\alias{stepNextAlign,bamRange-method}
+\alias{stepPrevAlign}
+\alias{stepPrevAlign-methods}
+\alias{stepPrevAlign,bamRange-method}
+\alias{windBack}
+\alias{windBack-methods}
 \alias{windBack,bamRange-method}
-
+\alias{writeCurrentAlign}
+\alias{writeCurrentAlign-methods}
+\alias{writeCurrentAlign,bamRange-method}
 \title{Class \code{"bamRange"}}
-\description{bamRange represents a list of bamAlign objects which overlap with a defined region in a BAM-file.}
+\description{bamRange represents a double linked list of bamAlign objects which overlap with a defined region in a BAM-file. The bamRange-function retrieves all alignments in the depicted Range from BAM-File into a bamRange object. A bamRange object maintains a double-linked list of aligns and a pointer to a current align.
+
+windBack shifts the current align before the first align (=past the last align). When there is no align, nothing happens. The functions writeCurrentAlign, insertPreCurrent, insertPastCurrent can be used to write bamAlign data to bamRange object. The function writeCurrentAlign overwrites the data of the current bamRange align. When no current align is set (i.e. ==NULL), nothing is written. The functions insertPreCurrent and insertPastCurrent insert an bamAlign object into the bamRange list. When no current align is set, insertPreCurrent inserts the object as the last object and insertPastCurrent inserts the object as the first align object in the bamRange list.
+
+push_back (push_front) appends a bamAlign before the first (or behind the last) element of bamRange. pop_front (pop_back) removes the first (last) bamAlign from bamRange.
+}
 \section{Objects from the Class}{
 Objects can be created by calls of the form \code{range<-bamRange(reader, coords)}.}
 \section{Slots}{
@@ -27,32 +60,61 @@ Objects can be created by calls of the form \code{range<-bamRange(reader, coords
 }
 \section{Methods}{
   \describe{
-    \item{as.data.frame}{\code{signature(x = "bamRange")}: ... }
-    \item{bamSave}{\code{signature(object = "bamRange")}: ... }
-    \item{getNextAlign}{\code{signature(object = "bamRange")}: ... }
-    \item{initialize}{\code{signature(.Object = "bamRange")}: ... }
-    \item{insertPastCurrent}{\code{signature(object = "bamRange")}: ... }
-    \item{insertPreCurrent}{\code{signature(object = "bamRange")}: ... }
-    \item{pop_back}{\code{signature(object = "bamRange")}: ... }
-    \item{pop_front}{\code{signature(object = "bamRange")}: ... }
-    \item{push_back}{\code{signature(object = "bamRange")}: ... }
-    \item{push_front}{\code{signature(object = "bamRange")}: ... }
-    \item{size}{\code{signature(object = "bamRange")}: ... }
-    \item{writeCurrentAlign}{\code{signature(object = "bamRange")}: ... }
+    \item{as.data.frame}{\code{signature(x = "bamRange")}: Returns data.frame representation of aligns. }
+    \item{bamSave}{\code{signature(object = "bamRange")}: Saves aligns stored in this list to BAM-file via a bamWriter object. }
+    \item{getNextAlign}{\code{signature(object = "bamRange")}: Returns next align from current position and shifts current position to next one. }
+    \item{getPrevAlign}{\code{signature(object = "bamRange")}: Returns previous align from current position and shifts current position to previous one. }
+    \item{initialize}{\code{signature(.Object = "bamRange")}: Initializes bamRange object. }
+    \item{insertPastCurrent}{\code{signature(object = "bamRange")}: Inserts align past current position into list. }
+    \item{insertPreCurrent}{\code{signature(object = "bamRange")}: Insert align before current position into list. }
+    \item{pop_back}{\code{signature(object = "bamRange")}: Removes last align from list. }
+    \item{pop_front}{\code{signature(object = "bamRange")}: Removes first align from list. }
+    \item{push_back}{\code{signature(object = "bamRange")}: Adds align at the end of the list. }
+    \item{push_front}{\code{signature(object = "bamRange")}: Adds align at the front of the list. }
+    \item{size}{\code{signature(object = "bamRange")}: Returns number of aligns in list. }
+    \item{writeCurrentAlign}{\code{signature(object = "bamRange")}: Overwrites current align with given align. }
 	 }
 }
 \author{Wolfgang Kaisers}
 \examples{
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-idx_file <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
-reader<-bamReader(bam_file)
-isOpen(reader)
-align<-getNextAlign(reader)
-loadIndex(reader,idx_file)
-index.initialized(reader)
-coords<-as.integer(c(0,0,1874))
+library(rbamtools)
+bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+idx<-paste(bam,"bai",sep=".")
+# Open BAM file
+reader<-bamReader(bam)
+# createIndex(reader,idx)
+# Load BAM index file
+loadIndex(reader,idx)
+index.initialized(reader)   # Should return 'TRUE'
+
+# +++++++++++++++++++++++++++++++++++++++++++++++
+#  Find appropriate refid (=ID)
+#  Returns a data.frame with three columns:
+#  ID=refid, SN=Sequence Name, LN=Sequence length
+
+rdf<-getRefData(reader)
+head(rdf)
+
+# +++++++++++++++++++++++++++++++++++++++++++++++
+# The sequence length (LN) also determines valid
+# range for start and stop coordinates
+# Invalid refid-, start- or stop-coordinates will
+# release an error.
+# coords: refid=0, start=0, stop=249250621
+# +++++++++++++++++++++++++++++++++++++++++++++++
+
+coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
+size(range)
+range<-bamRange(reader,coords,complex=TRUE)
+size(range)
 align<-getNextAlign(range)
+cigarData(align)
+# while(!is.null(align))
+# {
+#   print(position(align))
+#   align<-getNextAlign(range)
+# }
 bamClose(reader)
 }
 \keyword{classes}

@@ -18,8 +18,8 @@
 KSTREAM_INIT(gzFile, gzread, 16384)
 KHASH_MAP_INIT_STR(ref, uint64_t)
 
-void bam_init_header_hash(bam_header_t *header);
-void bam_destroy_header_hash(bam_header_t *header);
+//void bam_init_header_hash(bam_header_t *header);
+//void bam_destroy_header_hash(bam_header_t *header);
 int32_t bam_get_tid(const bam_header_t *header, const char *seq_name);
 
 unsigned char bam_nt16_table[256] = {

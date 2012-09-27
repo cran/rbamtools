@@ -93,6 +93,10 @@ typedef struct {
 	char *text;
 } bam_header_t;
 
+// Moved from bam_import.c to here (wk)
+void bam_init_header_hash(bam_header_t *header);
+void bam_destroy_header_hash(bam_header_t *header);
+
 /*! @abstract the read is paired in sequencing, no matter whether it is mapped in a pair */
 #define BAM_FPAIRED        1
 /*! @abstract the read is mapped in a proper pair */

@@ -28,7 +28,7 @@ typedef struct {
 } align_list;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// basic definitions
+// basic functions
 
 inline align_list * init_align_list()
 {
@@ -58,7 +58,7 @@ inline bam1_t *duplicate_align(const bam1_t *src)
 	return b;
 }
 
-inline align_element* init_elem(const bam1_t *align)
+inline align_element* align_list_init_elem(const bam1_t *align)
 {
 	align_element *e=calloc(1,sizeof(align_element));
 	e->align=duplicate_align(align);
@@ -69,9 +69,9 @@ inline align_element* init_elem(const bam1_t *align)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // list generic accessor functions
 
-inline void push_back(align_list *l, const bam1_t *align)
+inline void align_list_push_back(align_list *l, const bam1_t *align)
 {
-	align_element *e=init_elem(align);
+	align_element *e=align_list_init_elem(align);
 	if(l->size==0)	// list is empty
 	{
 		l->first_el=e;
@@ -88,9 +88,9 @@ inline void push_back(align_list *l, const bam1_t *align)
 	//printf("push_back pos: %i\n",align->core.pos);
 }
 
-inline void push_front(align_list *l,const bam1_t *align)
+inline void align_list_push_front(align_list *l,const bam1_t *align)
 {
-	align_element *e=init_elem(align);
+	align_element *e=align_list_init_elem(align);
 	if(l->first_el==0)	// list is empty
 	{
 		l->first_el=e;
@@ -106,21 +106,23 @@ inline void push_front(align_list *l,const bam1_t *align)
 	}
 }
 
-inline void pop_back(align_list *l)
+inline void align_list_pop_back(align_list *l)
 {
 	if(l->first_el!=l->last_el)
 	{
 		align_element *e=l->last_el;
 		e->last_el->next_el=0;
 		l->last_el=e->last_el;
-		bam_destroy1(e->align);
+		free((e->align)->data);
+		free(e->align);
 		free(e);
 		--(l->size);
 	}
 	else if(l->last_el>0)
 	{
 		//printf("pop_back pos: %i\n",l->first_el->align->core.pos);
-		bam_destroy1(l->first_el->align);
+		free(l->first_el->align->data);
+		free(l->first_el->align);
 		free(l->first_el);
 		l->first_el=0;
 		l->last_el=0;
@@ -129,21 +131,25 @@ inline void pop_back(align_list *l)
 
 }
 
-inline void pop_front(align_list *l)
+inline void align_list_pop_front(align_list *l)
 {
-	//printf("pop_front pos %i\n",l->first_el->align->core.pos);
+	//printf("[pop_front] size %lu\tpos %i\n",l->size,l->first_el->align->core.pos);
+	align_element *e;
 	if(l->first_el!=l->last_el)
 	{
-		align_element *e=l->first_el;
+		e=l->first_el;
+		//printf("[pop_front] free element %lu\n",(unsigned long)e);
 		e->next_el->last_el=0;
 		l->first_el=e->next_el;
-		bam_destroy1(e->align);
+		free((e->align)->data);
+		free(e->align);
 		free(e);
 		--(l->size);
 	}
 	else if(l->first_el>0)
 	{
-		bam_destroy1(l->first_el->align);
+		free(l->first_el->align->data);
+		free(l->first_el->align);
 		free(l->first_el);
 		l->first_el=0;
 		l->last_el=0;
@@ -158,27 +164,72 @@ inline void wind_back(align_list *l)
 }
 
 
+inline void align_list_mv_curr_elem(align_list *src,align_list *target)
+{
+	// Moves current element from src to end of target list
+	// and moves curr_el pointer to next align
+
+	// Nothing to do
+	if(src->curr_el==NULL)
+		return;
+
+	align_element *e=src->curr_el;
+	src->curr_el=e->next_el;
+
+	///////////////////////////////////
+	// Remove e from src list
+	if(e->next_el!=NULL)
+		e->next_el->last_el=e->last_el;
+	if(e->last_el!=NULL)
+		e->last_el->next_el=e->next_el;
+
+	///////////////////////////////////
+	// Insert e into end of target list
+	if(target->size==0)
+	{
+		target->first_el=e;
+		target->last_el=e;
+		target->size=1;
+	}
+	else
+	{
+		target->last_el->next_el=e;
+		e->last_el=target->last_el;
+		target->last_el=e;
+		++(target->size);
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // higher level convenience functions
 
-inline void al_destroy(align_list *l)
+inline void destroy_align_list(align_list *l)
 {
 	while(l->size>0)
-		pop_front(l);
+		align_list_pop_front(l);
 	free(l);
 }
 inline bam1_t * get_next_align(align_list *l)		// Returns A COPY of current align
 {
+
 	if(l->first_el==NULL)
+	{
+		//printf("[get_next_align] l->first_el==NULL\n");
 		return (bam1_t*) NULL;
+	}
 
 	if(l->curr_el==NULL)
 	{
+		//printf("[get_next_align] curr_el==NULL!\n");
 		l->curr_el=l->first_el;
 		return duplicate_align(l->curr_el->align);	// Copy!
 	}
 	if(l->curr_el->next_el==NULL)
+	{
+		//printf("[get_next_align] l->curr_el->next_el==NULL\n");
+		l->curr_el=NULL;
 		return (bam1_t*) NULL;
+	}
 
 	l->curr_el=l->curr_el->next_el;
 	return duplicate_align(l->curr_el->align);		// Copy!
@@ -194,7 +245,10 @@ inline bam1_t * get_prev_align(align_list *l)
 		return duplicate_align(l->curr_el->align);	// Copy!
 	}
 	if((l->curr_el->last_el)==NULL)
+	{
+		l->curr_el=NULL;
 		return (bam1_t*) NULL;
+	}
 	l->curr_el=l->curr_el->last_el;
 	return duplicate_align(l->curr_el->align);
 }
@@ -228,18 +282,18 @@ inline void mm_curr_align(align_list *l)
 
 inline void insert_past_curr_align(align_list *l,bam1_t *align)
 {
-	align_element *e=init_elem(align);
+	align_element *e=align_list_init_elem(align);
 	if(l->first_el==NULL)
 	{
 		l->first_el=e;
 		l->last_el=e;
-		l->size=1;
+		(l->size)=1;
 		return;
 	}
 	if(l->curr_el==NULL)
 	{
 		l->first_el->last_el=e;
-		e->next_el=e;
+		e->next_el=l->first_el;
 		l->first_el=e;
 		++(l->size);
 		return;
@@ -262,7 +316,7 @@ inline void insert_past_curr_align(align_list *l,bam1_t *align)
 
 inline void insert_pre_curr_align(align_list *l,bam1_t *align)
 {
-	align_element *e=init_elem(align);
+	align_element *e=align_list_init_elem(align);
 	if(l->first_el==NULL)
 	{
 		l->first_el=e;

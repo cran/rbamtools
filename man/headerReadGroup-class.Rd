@@ -18,19 +18,24 @@ Objects can be created by calls of the form \code{hl<-new("headerReadGroup")}.}
 }
 \section{Methods}{
   \describe{
-    \item{as.list}{\code{signature(x = "headerReadGroup")}: ... }
-    \item{getVal}{\code{signature(object = "headerReadGroup")}: ... }
-    \item{setVal}{\code{signature(object = "headerReadGroup")}: ... }
-    \item{getHeaderText}{\code{signature(.Object = "headerReadGroup")}: ... }
+    \item{as.list}{\code{signature(x = "headerReadGroup")}: Returns data stored in this object as list. }
+    \item{getVal}{\code{signature(object = "headerReadGroup")}: Returns value of given segment. }
+    \item{setVal}{\code{signature(object = "headerReadGroup")}: Sets value of given segment. }
+    \item{getHeaderText}{\code{signature(.Object = "headerReadGroup")}: Returns textual representation of data as specified in SAM Format.}
 	 }
+}
+\references{
+\verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}
+\url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \author{Wolfgang Kaisers}
 \examples{
-bam_file <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-reader<-bamReader(bam_file)
+bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+reader<-bamReader(bam)
 isOpen(reader)
 header<-getHeader(reader)
-readGroup<-getHeaderProgram(header)
+htxt<-getHeaderText(header)
+readGroup<-headerProgram(htxt)
 getVal(readGroup,"ID")
 setVal(readGroup,"ID","newID")
 l<-as.list(readGroup)
