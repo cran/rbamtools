@@ -1,6 +1,8 @@
 \name{refSeqDict-class}
 \Rdversion{1.1}
 \docType{class}
+\alias{as.data.frame.refSeqDict}
+\alias{coerce,refSeqDict,data.frame-method}
 \alias{[,refSeqDict-method}
 \alias{[<-,refSeqDict-method}
 \alias{addSeq,refSeqDict-method}
@@ -34,6 +36,7 @@ Objects can be created by calls of the form \code{hl<-new("refSeqDict")}.}
   \describe{
     \item{dim}{\code{signature(x = "refSeqDict")}: Returns dimension of data: number of rows and 6 columns. }
     \item{as.data.frame}{\code{signature(object = "refSeqDict")}: Combines data of Slots to data.frame. }
+    \item{coerce}{\code{signature(from = "bamRange", to = "data.frame")}: Coercion of refSeqDice to data.frame.}
     \item{removeSeqs}{\code{signature(object = "refSeqDict",rows="numeric")}: Removes reference sequence (i.e. one row from data.frame) entry. }
     \item{addSeq}{\code{signature(.Object = "refSeqDict",SN,LN,AS,M5,SP,UR)}: Adds reference sequence (i.e. one row in data.frame) entry. }
     \item{head}{\code{signature(.Object = "refSeqDict",n)}: Returns head of data.frame representation. }

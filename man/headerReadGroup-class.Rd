@@ -22,8 +22,7 @@ Objects can be created by calls of the form \code{hl<-new("headerReadGroup")}.}
     \item{getVal}{\code{signature(object = "headerReadGroup")}: Returns value of given segment. }
     \item{setVal}{\code{signature(object = "headerReadGroup")}: Sets value of given segment. }
     \item{getHeaderText}{\code{signature(.Object = "headerReadGroup")}: Returns textual representation of data as specified in SAM Format.}
-	 }
-}
+}}
 \references{
 \verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}
 \url{http://www.samtools.sourceforge.net/SAM1.pdf}

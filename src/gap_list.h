@@ -1,8 +1,12 @@
 /*
- * gap_list.h
+ *  File      :  gap_list.h
  *
- *  Created on: 12.09.2012
- *      Author: wolfgang
+ *  Created on:  12.09.2012
+ *  Author    :  Wolfgang Kaisers
+ *
+ *  Change log:
+ *
+ *  29.Okt.12 : Corrected Error in list_gaps: Multiple gapped Aligns are now correct handled
  */
 
 #ifndef GAP_LIST_H_
@@ -11,10 +15,12 @@
 #include "samtools/sam.h"
 #include "samtools/bam.h"
 
-const unsigned data_size=8;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // basic definitions
+
+
+// Number of unsigned int's in gap_data
+const unsigned data_size=9;
 
 typedef struct gap_data
 {
@@ -23,6 +29,7 @@ typedef struct gap_data
 	unsigned left_cigar_len;
 	unsigned left_cigar_type;
 	unsigned left_stop;
+	unsigned gap_len;
 	unsigned right_start;
 	unsigned right_cigar_len;
 	unsigned right_cigar_type;
@@ -59,9 +66,10 @@ inline gap_element* init_gap_elem(const gap_data data)
 	(e->pos_data)[2]=data.left_cigar_len;
 	(e->pos_data)[3]=data.left_cigar_type;
 	(e->pos_data)[4]=data.left_stop;
-	(e->pos_data)[5]=data.right_start;
-	(e->pos_data)[6]=data.right_cigar_len;
-	(e->pos_data)[7]=data.right_cigar_type;
+	(e->pos_data)[5]=data.gap_len;
+	(e->pos_data)[6]=data.right_start;
+	(e->pos_data)[7]=data.right_cigar_len;
+	(e->pos_data)[8]=data.right_cigar_type;
 	return e;
 }
 
@@ -184,12 +192,22 @@ inline void list_gaps(gap_list *l,const bam1_t* align)
 	if(n_cigar>2)
 	{
 		// Assumes that first and last cigar type cannot be N!
-		// So in this loop there's always a valid left and right cigar
+		// In this loop there's always a valid left and right cigar
+
+		// Add size of first cigar to position to get *1-based* left stop
+		// BAM is *0-based*
+		position+= (cigar[0] >> BAM_CIGAR_SHIFT);
+
 		for(i=1;i<(n_cigar-1);++i)
 		{
 			// BAM_CMATCH		= 0 = M match or mismatch
 			// BAM_CREF_SKIP	= 3 = N skip on the reference (e.g. spliced alignment) *
-			// BAM_CINS			= 1 = S clip on the read with clipped sequence
+			// BAM_CINS		= 1 = S clip on the read with clipped sequence
+
+			// ERROR: First CIGAR item cannot be I or D or N.
+			op = cigar[0] & BAM_CIGAR_MASK;
+			if((op!= BAM_CMATCH) && (op!=BAM_CINS))
+				return;
 
 			op = cigar[i] & BAM_CIGAR_MASK;
 			//printf("op %i\t",op);
@@ -199,23 +217,26 @@ inline void list_gaps(gap_list *l,const bam1_t* align)
 				++(l->nGapAlings);
 				// N -> Add gap to list
 				g.left_stop=position;
-				position += cigar[i] >> BAM_CIGAR_SHIFT;
-				g.right_start=position;
+				g.gap_len=cigar[i] >> BAM_CIGAR_SHIFT;
+				position += g.gap_len;
+				g.right_start=position+1;
 
 				// Add left cigar data
 				g.left_cigar_len=cigar[i-1]>>BAM_CIGAR_SHIFT;
-				g.left_cigar_type=cigar[i-1] & BAM_CIGAR_MASK;
+				// Adding one -> always positive values -> output as factor
+				g.left_cigar_type=(cigar[i-1] & BAM_CIGAR_MASK)+1;
 
 				// Add right cigar data
 				g.right_cigar_len=cigar[i+1]>>BAM_CIGAR_SHIFT;
-				g.right_cigar_type=cigar[i+1] & BAM_CIGAR_MASK;
+				// Adding one -> always positive values -> output as factor
+				g.right_cigar_type=(cigar[i+1] & BAM_CIGAR_MASK)+1;
 
 				gap_list_push_back(l,g);
 			}
 			else if(op == BAM_CMATCH || op == BAM_CINS)
 			{
 				// shift position
-				position += cigar[i] >> BAM_CIGAR_SHIFT;
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
 			}
 		}
 		//printf("\n");

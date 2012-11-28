@@ -1,8 +1,12 @@
 /*
- * align_list.h
+ *	File		: align_list.h
+ *	Content		: Double linked list which contains bam1_t align structs
  *
- *  Created on: 25.01.2012
- *      Author: wolfgang
+ * 	Created on	: 25.01.2012
+ *      Author		: Wolfgang Kaisers
+ *
+ *	Changelog	:
+ *			01.Nov.12 [get_const_next_align] Function added (returns align without copying).
  */
 
 #ifndef ALIGN_LIST_H_
@@ -209,7 +213,7 @@ inline void destroy_align_list(align_list *l)
 		align_list_pop_front(l);
 	free(l);
 }
-inline bam1_t * get_next_align(align_list *l)		// Returns A COPY of current align
+inline bam1_t * get_next_align(align_list *l)		// Returns a *COPY* of current align
 {
 
 	if(l->first_el==NULL)
@@ -234,6 +238,33 @@ inline bam1_t * get_next_align(align_list *l)		// Returns A COPY of current alig
 	l->curr_el=l->curr_el->next_el;
 	return duplicate_align(l->curr_el->align);		// Copy!
 }
+
+inline const bam1_t * get_const_next_align(align_list *l)		// Returns a *CONSTANT REFERENCE* to current align
+{
+
+	if(l->first_el==NULL)
+	{
+		//printf("[get_next_align] l->first_el==NULL\n");
+		return (bam1_t*) NULL;
+	}
+
+	if(l->curr_el==NULL)
+	{
+		//printf("[get_next_align] curr_el==NULL!\n");
+		l->curr_el=l->first_el;
+		return duplicate_align(l->curr_el->align);	// Copy!
+	}
+	if(l->curr_el->next_el==NULL)
+	{
+		//printf("[get_next_align] l->curr_el->next_el==NULL\n");
+		l->curr_el=NULL;
+		return (bam1_t*) NULL;
+	}
+
+	l->curr_el=l->curr_el->next_el;
+	return l->curr_el->align;		// No copy!
+}
+
 
 inline bam1_t * get_prev_align(align_list *l)
 {

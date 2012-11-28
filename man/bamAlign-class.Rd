@@ -2,6 +2,12 @@
 \Rdversion{1.1}
 \docType{class}
 \alias{bamAlign-class}
+\alias{alignQual}
+\alias{alignQual-methods}
+\alias{alignQual,bamAlign-method}
+\alias{alignSeq}
+\alias{alignSeq-methods}
+\alias{alignSeq,bamAlign-method}
 \alias{cigarData}
 \alias{cigarData-methods}
 \alias{cigarData,bamAlign-method}
@@ -75,12 +81,6 @@
 \alias{properPair<-}
 \alias{properPair<--methods}
 \alias{properPair<-,bamAlign-method}
-\alias{qualities}
-\alias{qualities-methods}
-\alias{qualities,bamAlign-method}
-\alias{sequence}
-\alias{sequence-methods}
-\alias{sequence,bamAlign-method}
 \alias{refID}
 \alias{refID-methods}
 \alias{refID,bamAlign-method}
@@ -122,6 +122,8 @@ Objects can be created by calls of the form \code{new("bamAlign", alignment)}.
 }
 \section{Methods}{
   \describe{
+    \item{alignQual}{\code{signature(object = "bamAlign")}: Returns quality scores of read (one for each query-base). }
+    \item{alignSeq}{\code{signature(object = "bamAlign")}: Returns base sequence (of read). }
     \item{cigarData}{\code{signature(object = "bamAlign")}: Returns data.frame with listed cigar items.}
     \item{failedQC}{\code{signature(object = "bamAlign")}: Gets flag item. }
     \item{failedQC<-}{\code{signature(object = "bamAlign")}: Sets flag item. }
@@ -147,7 +149,6 @@ Objects can be created by calls of the form \code{new("bamAlign", alignment)}.
     \item{position}{\code{signature(object = "bamAlign")}: Returns align position (on Ref-Sequence). }
     \item{properPair}{\code{signature(object = "bamAlign")}: Gets flag item. }
     \item{properPair<-}{\code{signature(object = "bamAlign")}: Sets flag item. }
-    \item{qualities}{\code{signature(object = "bamAlign")}: Returns quality scores of read (one for each query-base). }
     \item{refID}{\code{signature(object = "bamAlign")}: Returns (0-based) ID of Reference Sequence (As indicated by ID column returned by getRefData). }
     \item{reverseStrand}{\code{signature(object = "bamAlign")}: Gets flag item. }
     \item{reverseStrand<-}{\code{signature(object = "bamAlign")}: Sets flag item. }
@@ -155,7 +156,6 @@ Objects can be created by calls of the form \code{new("bamAlign", alignment)}.
     \item{secondaryAlign<-}{\code{signature(object = "bamAlign")}: Sets flag item. }
     \item{secondInPair}{\code{signature(object = "bamAlign")}: Gets flag item. }
     \item{secondInPair<-}{\code{signature(object = "bamAlign")}: Sets flag item. }
-    \item{sequence}{\code{signature(object = "bamAlign")}: Returns base sequence (of read). }
     \item{unmapped}{\code{signature(object = "bamAlign")}: Gets flag item. }
     \item{unmapped<-}{\code{signature(object = "bamAlign")}: Sets flag item. }
 	 }
@@ -178,8 +178,8 @@ refID(align)
 position(align)
 nCigar(align)
 cigarData(align)
-sequence(align)
-qualities(align)
+alignSeq(align)
+alignQual(align)
 reverseStrand(align)
 reverseStrand(align)<-TRUE
 reverseStrand(align)
