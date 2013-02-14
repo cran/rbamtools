@@ -39,16 +39,14 @@
 \alias{stepPrevAlign}
 \alias{stepPrevAlign-methods}
 \alias{stepPrevAlign,bamRange-method}
-\alias{windBack}
-\alias{windBack-methods}
-\alias{windBack,bamRange-method}
+\alias{rewind,bamRange-method}
 \alias{writeCurrentAlign}
 \alias{writeCurrentAlign-methods}
 \alias{writeCurrentAlign,bamRange-method}
 \title{Class \code{"bamRange"}}
 \description{bamRange represents a double linked list of bamAlign objects which overlap with a defined region in a BAM-file. The bamRange-function retrieves all alignments in the depicted Range from BAM-File into a bamRange object. A bamRange object maintains a double-linked list of aligns and a pointer to a current align.
 
-windBack shifts the current align before the first align (=past the last align). When there is no align, nothing happens. The functions writeCurrentAlign, insertPreCurrent, insertPastCurrent can be used to write bamAlign data to bamRange object. The function writeCurrentAlign overwrites the data of the current bamRange align. When no current align is set (i.e. ==NULL), nothing is written. The functions insertPreCurrent and insertPastCurrent insert an bamAlign object into the bamRange list. When no current align is set, insertPreCurrent inserts the object as the last object and insertPastCurrent inserts the object as the first align object in the bamRange list.
+rewind shifts the current align before the first align (=past the last align). When there is no align, nothing happens. The functions writeCurrentAlign, insertPreCurrent, insertPastCurrent can be used to write bamAlign data to bamRange object. The function writeCurrentAlign overwrites the data of the current bamRange align. When no current align is set (i.e. ==NULL), nothing is written. The functions insertPreCurrent and insertPastCurrent insert an bamAlign object into the bamRange list. When no current align is set, insertPreCurrent inserts the object as the last object and insertPastCurrent inserts the object as the first align object in the bamRange list.
 
 push_back (push_front) appends a bamAlign before the first (or behind the last) element of bamRange. pop_front (pop_back) removes the first (last) bamAlign from bamRange.
 }
@@ -73,6 +71,7 @@ Objects can be created by calls of the form \code{range<-bamRange(reader, coords
     \item{pop_front}{\code{signature(object = "bamRange")}: Removes first align from list. }
     \item{push_back}{\code{signature(object = "bamRange")}: Adds align at the end of the list. }
     \item{push_front}{\code{signature(object = "bamRange")}: Adds align at the front of the list. }
+    \item{rewind}{\code{signature(object = "bamRange")}: Shifts current align to position before first align. }
     \item{size}{\code{signature(object = "bamRange")}: Returns number of aligns in list. }
     \item{writeCurrentAlign}{\code{signature(object = "bamRange")}: Overwrites current align with given align. }
 	 }
@@ -113,6 +112,7 @@ dfr<-as.data.frame(range)
 size(range)
 align<-getNextAlign(range)
 cigarData(align)
+rewind(range)
 # while(!is.null(align))
 # {
 #   print(position(align))

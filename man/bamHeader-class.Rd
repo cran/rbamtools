@@ -37,6 +37,9 @@ header<-getHeader(reader)
 htxt<-getHeaderText(header)
 # Extract header line segment
 hl<-headerLine(htxt)
+# Get header program
+hp<-headerProgram(htxt)
+hp
 # Re-create binary header structure
 header2<-bamHeader(htxt)
 # Use created structure for new BAM-file

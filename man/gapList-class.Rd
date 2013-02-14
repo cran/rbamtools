@@ -40,13 +40,10 @@ Objects can be created by calls of the form \code{gapList(reader,coords))}.
 \author{Wolfgang Kaisers}
 \examples{
 library(rbamtools)
+# Open (indexed) BAM file
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
-idx<-paste(bam,"bai",sep=".")
-# Open BAM file
-reader<-bamReader(bam)
-# Load BAM index file
-load.index(reader,idx)
-coords<-as.integer(c(0,0,249250621))
+reader<-bamReader(bam,idx=TRUE)
+coords<-getRefCoords(reader,"chr1")
 gl<-gapList(reader,coords)
 size(gl)
 nAligns(gl)

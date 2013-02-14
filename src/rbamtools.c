@@ -294,8 +294,9 @@ SEXP bam_reader_load_index(SEXP pIdxFile)
 	}
 	const char *idxFile=CHAR(STRING_ELT(pIdxFile,0));
 	FILE *f=fopen(idxFile,"rb");
-
 	bam_index_t *index = bam_index_load_core(f);
+	fclose(f);
+
 	SEXP idx;
 	PROTECT(idx=R_MakeExternalPtr( (void*)(index),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(idx,finalize_bam_index);
@@ -381,6 +382,7 @@ SEXP bam_reader_save_aligns(SEXP pReader,SEXP pWriter)
 		res=samread(reader,align);
 	}
 
+	bam_destroy1(align);	// checks for >0!
 	if(res==-2)
 	{
 		error("[bam_reader_save_aligns] samread found truncated BAM-file.\n");
@@ -950,13 +952,13 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 	SEXP qsm_vector;
 	PROTECT(qsm_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 11: lcs
-	SEXP nmcs_vector;
-	PROTECT(nmcs_vector=allocVector(INTSXP,nRows));
+	// Column 11: lcl
+	SEXP nmcl_vector;
+	PROTECT(nmcl_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 12: mcs
-	SEXP mcs_vector;
-	PROTECT(mcs_vector=allocVector(INTSXP,nRows));
+	// Column 12: mcl
+	SEXP mcl_vector;
+	PROTECT(mcl_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
 
@@ -971,17 +973,17 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 		INTEGER(id_vector)                  [i]=i+1;
 		INTEGER(refid_vector)        		[i]=l->refid;
 		// lend - max(left_cigar_len)+1
-		INTEGER(lstart_vector)        		[i]=el->lend-getByte(el->lcs,0)+1;
+		INTEGER(lstart_vector)        		[i]=el->lend-getByte(el->lcl,0)+1;
 		INTEGER(lend_vector)	            [i]=el->lend;
 		INTEGER(rstart_vector)	            [i]=el->rstart;
 		INTEGER(rend_vector)  		        [i]=el->rstart+el->r_cigar_size-1;
 		INTEGER(gap_len_vector)			    [i]=el->gap_len;
 		INTEGER(nAligns_vector)		        [i]=el->nAligns;
 		INTEGER(nProbes_vector)             [i]=el->nProbes;
-		INTEGER(nlstart_vector)	            [i]=bitmask_nPos(el->lcs);
-		INTEGER(qsm_vector)					[i]=bitmask_sumPos(el->lcs);
-		INTEGER(nmcs_vector)				[i]=el->lcs;
-		INTEGER(mcs_vector)					[i]=el->mcs;
+		INTEGER(nlstart_vector)	            [i]=bitmask_nPos(el->lcl);
+		INTEGER(qsm_vector)					[i]=bitmask_sumPos(el->lcl);
+		INTEGER(nmcl_vector)				[i]=el->lcl;
+		INTEGER(mcl_vector)					[i]=el->mcl;
 	}
 	// Reset curr position
 	l->curr=curr;
@@ -997,8 +999,8 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 	SET_VECTOR_ELT(dflist,8,nProbes_vector);
 	SET_VECTOR_ELT(dflist,9,nlstart_vector);
 	SET_VECTOR_ELT(dflist,10,qsm_vector);
-	SET_VECTOR_ELT(dflist,11,nmcs_vector);
-	SET_VECTOR_ELT(dflist,12,mcs_vector);
+	SET_VECTOR_ELT(dflist,11,nmcl_vector);
+	SET_VECTOR_ELT(dflist,12,mcl_vector);
 
 	///////////////////////////////////////////////////////////////////////////
 	// Column Names
@@ -1018,8 +1020,8 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 	SET_STRING_ELT(col_names,8,mkChar("nProbes"));
 	SET_STRING_ELT(col_names,9,mkChar("nlstart"));
 	SET_STRING_ELT(col_names,10,mkChar("lm_sum"));
-	SET_STRING_ELT(col_names,11,mkChar("lcs"));
-	SET_STRING_ELT(col_names,12,mkChar("mcs"));
+	SET_STRING_ELT(col_names,11,mkChar("lcl"));
+	SET_STRING_ELT(col_names,12,mkChar("mcl"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
 	// Row Names
@@ -1469,23 +1471,22 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	++nProtected;
 
 
-	// Column 10: qsm=Quadrupel mcs sum of minimal cigar size
-	// mcs contains minimum cigar size values (of flanking left and right M=match segment)
-	// Sum of Quadrupel of rightmost values (=4 largest values) in mcs
+	// Column 10: qsm=Quadrupel mcl sum of minimal cigar size
+	// mcl contains minimum cigar size values (of flanking left and right M=match segment)
+	// Sum of Quadrupel of rightmost values (=4 largest values) in mcl
 	SEXP qsm_vector;
 	PROTECT(qsm_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 11: nMcs
-	SEXP nmcs_vector;
-	PROTECT(nmcs_vector=allocVector(INTSXP,nRows));
+	// Column 11: nmcl
+	SEXP nmcl_vector;
+	PROTECT(nmcl_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
 	// Column 12: gqs
 	SEXP gqs_vector;
 	PROTECT(gqs_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-
 
 	//site_ll_element *ell;
 	site_list *l;
@@ -1495,7 +1496,7 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	unsigned i,j,k=0;
 
 	// Scaling factor: Maximum value for gqs is read-length
-	unsigned smcs_denom=bitmap_size*smcs_len/2;
+	unsigned smcl_denom=bitmap_size*nQsm;
 
 	for(i=0;i<nRefs;++i)
 	{
@@ -1506,17 +1507,17 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 			el=site_list_get_curr_pp(l);
 			INTEGER(id_vector)                  [k]=k+1; // row-id: should start with 1
 			INTEGER(refid_vector)        		[k]=l->refid+1;
-			INTEGER(lstart_vector)        		[k]=el->lend-getByte(el->lcs,0)+1;
+			INTEGER(lstart_vector)        		[k]=el->lend-getByte(el->lcl,0)+1;
 			INTEGER(lend_vector)	            [k]=el->lend;
 			INTEGER(rstart_vector)	            [k]=el->rstart;
 			INTEGER(rend_vector)  		        [k]=el->rstart+el->r_cigar_size-1;
 			INTEGER(gap_len_vector)			    [k]=el->gap_len;
 			INTEGER(nAligns_vector)		        [k]=el->nAligns;
 			INTEGER(nProbes_vector)             [k]=el->nProbes;
-			INTEGER(nlstart_vector)	            [k]=bitmask_nPos(el->lcs);
-			INTEGER(qsm_vector)					[k]=getSmcs(el->mcs); // smcs = sum of minimal cigar size
-			INTEGER(nmcs_vector)				[k]=bitmask_nPos(el->mcs);
-			INTEGER(gqs_vector)                 [k]=INTEGER(nlstart_vector)[k]*INTEGER(qsm_vector)[k]*10/smcs_denom;
+			INTEGER(nlstart_vector)	            [k]=bitmask_nPos(el->lcl);
+			INTEGER(qsm_vector)					[k]=getSmcl(el->mcl); // smcl = sum of minimal cigar size
+			INTEGER(nmcl_vector)				[k]=bitmask_nPos(el->mcl);
+			INTEGER(gqs_vector)                 [k]=INTEGER(nlstart_vector)[k]*INTEGER(qsm_vector)[k]*2*10/smcl_denom;
 		}
 	}
 
@@ -1551,7 +1552,7 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	SET_VECTOR_ELT(dflist,8,nProbes_vector);
 	SET_VECTOR_ELT(dflist,9,nlstart_vector);
 	SET_VECTOR_ELT(dflist,10,qsm_vector);
-	SET_VECTOR_ELT(dflist,11,nmcs_vector);
+	SET_VECTOR_ELT(dflist,11,nmcl_vector);
 	SET_VECTOR_ELT(dflist,12,gqs_vector);
 
 	///////////////////////////////////////////////////////////////////////////
@@ -1571,7 +1572,7 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	SET_STRING_ELT(col_names, 8,mkChar("nProbes"));
 	SET_STRING_ELT(col_names, 9,mkChar("nlstart"));
 	SET_STRING_ELT(col_names,10,mkChar("qsm"));
-	SET_STRING_ELT(col_names,11,mkChar("nMcs"));
+	SET_STRING_ELT(col_names,11,mkChar("nmcl"));
 	SET_STRING_ELT(col_names,12,mkChar("gqs"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
@@ -1874,11 +1875,11 @@ SEXP bam_range_get_align_df(SEXP pRange)
 	// Read Adress of current align->for reconstitution at the end
 	align_element *e=l->curr_el;
 	wind_back(l);
-	bam1_t *align;
+	const bam1_t *align;
 
 	// create data.frame
 	int nProtected=0;
-	int nCols=7;
+	int nCols=9;
 	SEXP dflist;
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
@@ -1920,16 +1921,26 @@ SEXP bam_range_get_align_df(SEXP pRange)
 	PROTECT(qual_vector=allocVector(STRSXP,nRows));
 	++nProtected;
 
+	// Column 7: name
+	SEXP name_vector;
+	PROTECT(name_vector=allocVector(STRSXP,nRows));
+	++nProtected;
+
+	// Column 8: strand_reverse
+	SEXP strev_vector;
+	PROTECT(strev_vector=allocVector(LGLSXP,nRows));
+	++nProtected;
+
 	// seq+cigar
 	unsigned char *raw_seq;
 	int32_t seq_len;
-	int buf_size=1024;
+	int buf_size=2048;
 	char *buf=(char*) calloc(buf_size,sizeof(char));
 	uint8_t *quals;
 
 	for(i=0;i<nRows;++i)
 	{
-		align=get_next_align(l);
+		align=get_const_next_align(l);
 		INTEGER(ref_vector)[i]=(align->core.tid);
 		INTEGER(pos_vector)[i]=(align->core.pos);
 		INTEGER(nCigar_vector)[i]=(align->core.n_cigar);
@@ -1969,6 +1980,14 @@ SEXP bam_range_get_align_df(SEXP pRange)
 				buf[j]=(char) (quals[j]+33);
 			buf[j]=0;
 			SET_STRING_ELT(qual_vector,i,mkChar(buf));
+
+		/////////////////////////////////////////
+		// read name
+		SET_STRING_ELT(name_vector,i,mkChar(bam1_qname(align)));
+
+		////////////////////////////////////////
+		// strand_info
+		LOGICAL(strev_vector)[i]=bam1_strand(align);
 	}
 
 	// Reset curr_el pointer
@@ -1981,6 +2000,8 @@ SEXP bam_range_get_align_df(SEXP pRange)
 	SET_VECTOR_ELT(dflist,4,flag_vector);
 	SET_VECTOR_ELT(dflist,5,seq_vector);
 	SET_VECTOR_ELT(dflist,6,qual_vector);
+	SET_VECTOR_ELT(dflist,7,name_vector);
+	SET_VECTOR_ELT(dflist,8,strev_vector);
 
 	// Column Names
 	SEXP col_names;
@@ -1994,6 +2015,8 @@ SEXP bam_range_get_align_df(SEXP pRange)
 	SET_STRING_ELT(col_names,4,mkChar("flag"));
 	SET_STRING_ELT(col_names,5,mkChar("seq"));
 	SET_STRING_ELT(col_names,6,mkChar("qual"));
+	SET_STRING_ELT(col_names,7,mkChar("name"));
+	SET_STRING_ELT(col_names,8,mkChar("revstrand"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
 	SEXP row_names;

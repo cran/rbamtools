@@ -1,9 +1,9 @@
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 #  File   : rbamtools.r                                                         #
-#  Date   : 21.Sep.2012                                                         #
+#  Date   : 12.Mar.2012                                                         #
 #  Content: R-Source for package rbamtools                                      #
-#  Version: 2.3.10                                                              #
+#  Version: 2.4.2                                                               #
 #  Author : W. Kaisers                                                          #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
@@ -23,9 +23,10 @@
 #  20.Feb.13  Fixed Error in merge.bamGapList
 #  27.Feb.13  Renamed createIndex -> create.index and loadIndex -> load.index
 #             and bamSiteList -> bamGapList
+#  18.Apr.13  Corrected some memory leaks in C-Code as reported by Brian Ripley.
+#  22.Apr.13  Added (read-) name and revstrand to as.data.frame.bamRange (as proposed by Ander Muniategui)
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
-#.Last.lib<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
 .onUnload<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
@@ -173,6 +174,8 @@ setMethod(f="getRefCoords",signature="bamReader",definition=function(object,sn){
   id<-which(sn==ref$SN)
   if(length(id)==0)
     stop("[getRefCoords] No match for sn in ref-data-SN!")
+  coords<-c(ref$ID[id],0,ref$LN[id])
+  names(coords)<-c("refid","start","stop")
   return(c(ref$ID[id],0,ref$LN[id]))
 })
 
@@ -879,7 +882,7 @@ setMethod("as.list",signature="headerProgram",definition=function(x,...){return(
 
 setMethod("show","headerProgram",function(object)
 {
-  cat("An object of class \"",class(object),"\"\n")
+  cat("An object of class \"",class(object),"\"\n",sep="")
   for(i in 1:length(object@l))
   {
     cat(names(object@l)[i],":",object@l[[i]],"\n")
@@ -1394,7 +1397,7 @@ setMethod(f="initialize",signature="bamRange",
             if(!is(reader,"bamReader"))
               stop("[bamRange.initialize] reader must be an instance of bamReader!")
             if(length(coords)!=3)
-              stop("[bamRange.initialize] coords must be 3-dim numeric (ref,start,stop)!")  
+              stop("[bamRange.initialize] coords must be numeric with length=3 (ref,start,stop)!")  
             if(is.null(reader@index))
               stop("[bamRange.initialize] bamReader must have initialized index!")
             if(!is(complex,"logical"))
@@ -1452,8 +1455,8 @@ setMethod("stepPrevAlign",signature("bamRange"),definition=function(object)
 
 # Resets current align to NULL position (i.e. before first element)
 # The next call to getNextAlign then returns the first element of list
-setGeneric("windBack", function(object) standardGeneric("windBack"))
-setMethod("windBack",signature="bamRange",definition=function(object)
+#setGeneric("windBack", function(object) standardGeneric("windBack"))
+setMethod("rewind",signature="bamRange",definition=function(object)
 {invisible(.Call("bam_range_wind_back",object@range,PACKAGE="rbamtools"))})
 
 setGeneric("push_back",function(object,value) standardGeneric("push_back"))

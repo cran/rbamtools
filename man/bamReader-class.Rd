@@ -57,14 +57,13 @@
     \item{getHeader}{\code{signature(object = "bamReader")}: Returns object of class bamHeader which contains binary representation of bam-header data. }
     \item{getHeaderText}{\code{signature(object = "bamReader")}: Returns object of class bamHeaderText which contains textual representation of bam-header data. }
     \item{getNextAlign}{\code{signature(object = "bamReader")}: Returns object of class bamAlign which contains data of next Align from file. When EOF is reached the function returns NULL. }
-    \item{getRefCoords}{\code{signature(object="bamReader",sn="character")}: Helper function that returns coordinates of entire ref for usage with bamRange, gapList or siteList function. }
+    \item{getRefCoords}{\code{signature(object="bamReader",sn="character")}: Helper function takes a sequence name and returns coordinates of entire reference sequence for usage with bamRange, gapList or siteList function. The function returns a vector of length 3. The vector elements are named "refid","start","stop". }
     \item{getRefCount}{\code{signature(object = "bamReader")}: Returns number of reference sequences. }
     \item{getRefData}{\code{signature(object = "bamReader")}: Returns data frame which contains three columns: For each reference sequence, the corresponding row contains the Reference-ID (1st column, refID), the Reference name (2nd column, refName) and the length of the Reference sequence (3rd column, refLength).
 }
     \item{isOpen}{\code{signature(object = "bamReader")}: Returns TRUE when file connection is open. }
     \item{rewind}{\code{signature(object = "bamReader")}: Resets current file position. The subsequent call to getNextAlign will return the first align in the BAM-file.}
-    \item{bamSort}{\code{signature(object = "bamReader")}: BAM-files must be sorted before an index can be created.
-During this routine, some content of the source file is copied into the working memory, sorted and written into temporary files. Finally, the sorted files are merged into a single target. The name of the target is [prefix].bam.
+    \item{bamSort}{\code{signature(object = "bamReader",prefix="character",byName=FALSE,maxmem=1e+9)}: BAM-files must be sorted before an index can be created. During this routine, some content of the source file is copied into the working memory, sorted and written into temporary files. Finally, the sorted files are merged into a single target. The name of the sorted BAM-file will be [prefix].bam.
 Number and size of temporary files depend on source file size and used working memory (maxmem). Small
 maxmem values result in large numbers of temporary files. The minimum maxmem value is 100000000. Smaller maxmem
 values cause an error. }

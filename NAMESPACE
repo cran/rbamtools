@@ -103,7 +103,6 @@ exportMethods(
 	tail,
 	unmapped,
 	"unmapped<-",
-	windBack,
 	writeCurrentAlign
 )
 exportClasses(

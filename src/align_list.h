@@ -245,19 +245,16 @@ const bam1_t * get_const_next_align(align_list *l)		// Returns a *CONSTANT REFER
 
 	if(l->first_el==NULL)
 	{
-		//printf("[get_next_align] l->first_el==NULL\n");
 		return (bam1_t*) NULL;
 	}
 
 	if(l->curr_el==NULL)
 	{
-		//printf("[get_next_align] curr_el==NULL!\n");
 		l->curr_el=l->first_el;
-		return duplicate_align(l->curr_el->align);	// Copy!
+		return l->curr_el->align;	// No Copy!
 	}
 	if(l->curr_el->next_el==NULL)
 	{
-		//printf("[get_next_align] l->curr_el->next_el==NULL\n");
 		l->curr_el=NULL;
 		return (bam1_t*) NULL;
 	}
