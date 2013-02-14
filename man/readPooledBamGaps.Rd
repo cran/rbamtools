@@ -7,6 +7,7 @@
   \item{infiles}{Filenames of BAM-files to be opened for data extraction.}
   \item{idxInfiles}{Optional: Name of BAM-index files}
 }
+\value{bamGapList}
 \author{Wolfgang Kaisers}
 \examples{
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")

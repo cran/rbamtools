@@ -10,9 +10,9 @@
 \alias{nAligns}
 \alias{nAligns-methods}
 \alias{nAligns,gapList-method}
-\alias{nGapAligns}
-\alias{nGapAligns-methods}
-\alias{nGapAligns,gapList-method}
+\alias{nAlignGaps}
+\alias{nAlignGaps-methods}
+\alias{nAlignGaps,gapList-method}
 \alias{show,gapList-method}
 \alias{size,gapList-method}
 \title{Class \code{"gapList"}}
@@ -33,8 +33,8 @@ Objects can be created by calls of the form \code{gapList(reader,coords))}.
     \item{coerce}{\code{signature(from = "gapList", to = "data.frame")}: Coercion of gapList to data.frame.}
     \item{coerce}{\code{signature("gapList","data.frame")}: Coercion of gapList to data.frame.}
     \item{show}{\code{signature(object = "gapList")}: Prints a short message with some summarizing data. }
-    \item{nAlign}{\code{signature(object = "gapList")}: Returns number of aligns in specified Range. }
-    \item{nGapAlign}{\code{signature(object = "gapList")}: Returns number of gapped aligns in specified Range. }
+    \item{nAligns}{\code{signature(object = "gapList")}: Returns number of aligns in specified Range. }
+    \item{nAlignGaps}{\code{signature(object = "gapList")}: Returns number of align gaps in specified Range. }
 	 }
 }
 \author{Wolfgang Kaisers}
@@ -47,7 +47,7 @@ coords<-getRefCoords(reader,"chr1")
 gl<-gapList(reader,coords)
 size(gl)
 nAligns(gl)
-nGapAligns(gl)
+nAlignGaps(gl)
 gl
 df<-as.data.frame(gl)
 head(df)

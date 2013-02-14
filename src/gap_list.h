@@ -50,7 +50,7 @@ typedef struct {
 	gap_element *curr_el;
 	unsigned long size;
 	unsigned long nAligns;
-	unsigned long nGapAligns;
+	unsigned long nAlignGaps;
 } gap_list;
 
 gap_list * init_gap_list()
@@ -216,7 +216,7 @@ void list_gaps(gap_list *l,const bam1_t* align)
 			if(op==BAM_CREF_SKIP)
 			{
 				// Count gaps
-				++(l->nGapAligns);
+				++(l->nAlignGaps);
 				// N -> Add gap to list
 				g.left_stop=position;
 				g.gap_len=cigar[i] >> BAM_CIGAR_SHIFT;

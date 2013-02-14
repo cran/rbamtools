@@ -9,7 +9,7 @@
 \alias{siteList}
 \alias{initialize,gapSiteList-method}
 \alias{nAligns,gapSiteList-method}
-\alias{nGapAligns,gapSiteList-method}
+\alias{nAlignGaps,gapSiteList-method}
 \alias{show,gapSiteList-method}
 \alias{size,gapSiteList-method}
 \title{Class \code{"gapSiteList"}}
@@ -30,8 +30,8 @@ Objects can be created by calls of the form \code{siteList(reader,coords))}.
     \item{coerce}{\code{signature(from = "gapList", to = "data.frame")}: Coercion of gapSiteList to data.frame.}
     \item{coerce}{\code{signature("gapList","data.frame")}: Coercion of gapSiteList to data.frame.}
     \item{show}{\code{signature(object = "gapList")}: Prints a short message with some summarizing data. }
-    \item{nAlign}{\code{signature(object = "gapList")}: Returns number of aligns in specified Range. }
-    \item{nGapAlign}{\code{signature(object = "gapList")}: Returns number of gapped aligns in specified Range. }
+    \item{nAligns}{\code{signature(object = "gapList")}: Returns number of aligns in specified Range. }
+    \item{nAlignGaps}{\code{signature(object = "gapList")}: Returns number of align gaps in specified Range. }
 	 }
 }
 \author{Wolfgang Kaisers}
@@ -44,7 +44,7 @@ coords<-getRefCoords(reader,"chr1")
 sl<-siteList(reader,coords)
 size(sl)
 nAligns(sl)
-nGapAligns(sl)
+nAlignGaps(sl)
 sl
 df<-as.data.frame(sl)
 head(df)

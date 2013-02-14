@@ -9,6 +9,18 @@
 \newcommand{\rtx}[1]{{\textsf{#1}}}
 \newcommand{\rcl}[1]{{\texttt{#1}}}
 \newcommand{\rfc}[1]{{\texttt{#1}}}
+\newcommand{\robj}[1]{{\texttt{#1}}}
+
+% Imported from Biobase package:
+\newcommand{\R}{{\textsf{R}}}
+\newcommand{\code}[1]{{\texttt{#1}}}
+\newcommand{\term}[1]{{\emph{#1}}}
+\newcommand{\Rpackage}[1]{\textsf{#1}}
+\newcommand{\Rfunction}[1]{\texttt{#1}}
+\newcommand{\Robject}[1]{\texttt{#1}}
+\newcommand{\Rclass}[1]{{\textit{#1}}}
+\newcommand{\Rmethod}[1]{{\textit{#1}}}
+\newcommand{\Rfunarg}[1]{{\textit{#1}}}
 
 \title{Using rbambools package}
 \author{Wolfgang Kaisers, CBiBs HHU Dusseldorf}
@@ -22,6 +34,8 @@
 \SweaveOpts{concordance=TRUE}
 
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ %
+
+A short notice in advance: During the last release change, the variable 'nGapAligns' was replaced by 'nAlignGaps' because the new term describes the contained value less ambiguously than the old one.
 
 \section{What this package is made for}
 
@@ -335,6 +349,12 @@ The higher the score the more likely is the fact that a gap-site represents a sp
 
 The description of object types in this section starts with reading and writing access to BAM files, proceeds to objects which elementary data inside BAM files and ends with the description of more complex containers.
 
+\subsection{Included example files within rbamtools}
+
+There are two example files included which are located in the "/inst/extdata" subdirectory. The directory contains a sorted BAM file "accepted\_hits.bam" and the corresponding index file "accepted\_hits.bam.bai".
+
+They were produced (using the \rfc{extractRanges} function) from a RNA-seq experiment. A human probe was sequenced using an Illumina Hiseq sequencer. Fastq-reads were aligned with tophat against homo sapiens UCSC reference genome. Complex aligns (i.e. nCigar>1) were extracted for genes KLHL17 (chr1) and SNRNP25 (chr16). The BAM file contains 3333 aligns.
+
 \subsection{Reading and writing access}
 
 Immediate reading and writing access is provided by \rcl{bamReader} and \rcl{bamWriter} Objects.
@@ -439,13 +459,13 @@ setVal(headl,"SO","coordinate")
 
 dict<-new("refSeqDict")
 addSeq(dict,SN="chr1",LN=249250621)
-addSeq(dict,SN="chr10",LN=135534747)
+addSeq(dict,SN="chr16",LN=90354753)
 dict
 
 prog<-new("headerProgram")
 setVal(prog,"ID","1")
 setVal(prog,"PN","tophat")
-setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hs_ucsc_index reads.fq")
+setVal(prog,"CL","tophat --library-type fr-unstranded hs_ucsc_index reads.fastq")
 setVal(prog,"VN","2.0.0")
 bh<-bamHeaderText(head=headl,dict=dict,prog=prog)
 #getHeaderText(bh)
@@ -539,6 +559,19 @@ The same accessors can also be used to set the accordant values:
 unmapped(align)<-TRUE
 @
 
+\subsubsection{Creating bamAlign objects from scratch}
+The \Rfunction{bamAlign} function can be used to create \Rclass{bamAlign} objects from scratch:
+<<>>=
+align<-bamAlign("HWUSI-0001","ATGTACGTCG","Qual/Strng","4M10N6M",refid=0,position=100)
+align
+name(align)
+alignSeq(align)
+alignQual(align)
+cigarData(align)
+refID(align)
+position(align)
+@
+The created bamAlign objects can be added to a \Rclass{bamRange} list or be written to a BAM-file via \Rclass{bamWriter}.
 
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ %
 
@@ -574,6 +607,20 @@ coords
 range<-bamRange(reader,coords)
 size(range)
 @
+
+\rcl{bamRange} objects keep a pointer to a current align structure for iteration purposes. Addidionally there are some summarizing values stored (which are displayed by \code{show}) which describe the range inside the reference from which the \code{bamRange} object was read (seqid,qrBegin,qrEnd,complex) and some statistis (size,qSeqMinLen,qSeqMaxLen). Most of the values are printed upon \rfc{show}:
+<<>>=
+range
+getCoords(range)
+getSeqLen(range)
+getParams(range)
+getRefName(range)
+@
+The (0-based) positions of the leftmost and rightmost matching nucleotides in the align-list are not included by default but can be separately calculated:
+<<>>=
+getAlignRange(range)
+@
+
 
 
 \subsubsection{Accessing aligns in bamReader}
@@ -615,11 +662,11 @@ dfr[1:6,c(1:3,5:8)]
 @
 The columns 4 and 9 contain the type of the adjacent cigar items (which should always be 'M') are omitted.\\
 \newline
-The \rfc{size} function returns the number of gaps contained in the object. The functions \rfc{nAligns} and \rfc{nGapAligns} return the total number of aligns and the number of gapped aligns in the scanned range respectively:
+The \rfc{size} function returns the number of gaps contained in the object. The functions \rfc{nAligns} and \rfc{nAlignGaps} return the total number of aligns and the number of gapped aligns in the scanned range respectively:
 <<eval=FALSE>>=
 size(gl)
 nAligns(gl)
-nGapAligns(gl)
+nAlignGaps(gl)
 @
 
 \subsection{gapSiteList}
@@ -657,7 +704,7 @@ coords<-getRefCoords(reader,"chr1")
 sl<-siteList(reader,coords)
 size(sl)
 nAligns(sl)
-nGapAligns(sl)
+nAlignGaps(sl)
 sl
 df<-as.data.frame(sl)
 head(df)
@@ -672,11 +719,121 @@ bsl<-bamGapList(reader)
 bsl
 size(bsl)
 nAligns(bsl)
-nGapAligns(bsl)
+nAlignGaps(bsl)
 summary(bsl)
 dfr<-as.data.frame(bsl)
 head(dfr)
 @
+
+\section{Miscellaneous functions}
+
+
+\subsection{bamCount and bamCountAll}
+
+The \Rfunction{bamCount} counts aligns and CIGAR-items in align ranges defined by coordinates. The function returns a named integer vector of length 10.\\
+The \Rfunction{bamCountAll} counts aligns and CIGAR-items for whole BAM-files (represented by a \Rclass{bamReader}). The function optionally takes a \code{verbose} argument which controls the textual output during runtime. The function returns a \Rclass{data.frame}. Each line contains counts for one reference sequence, each column contains data for one CIGAR-OP type. Columns with total counts, referene sequence id (ID) and reference sequence length (LN) are added.
+
+<<>>=
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+coords<-c(0,0,14730)
+count<-bamCount(reader,coords)
+count
+count<-bamCountAll(reader,verbose=TRUE)
+count
+@
+
+\subsection{create.idx.batch}
+
+The \Rfunction{create.idx.batch} is intended to create index files for a batch of given BAM-files. The names of the created BAM-index files can optionally be added. The standard name for BAM-index files is the name of the BAM file plus an added suffix ".bai". The third (optional) argument is \Rfunarg{rebuild}. When \Rfunarg{rebuild} is \code{FALSE} the function will only create not already existing BAM-index files. When \Rfunarg{rebuild} is \code{TRUE} the function will build BAM-index for all given BAM-files.\\
+\newline
+Sometimes (especially when BAM-files have been copied), they may be errorneous. Rebuilding index files is a way to check the integrity of a BAM-file.
+
+<<eval=FALSE>>=
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+create.idx.batch(bam)
+@
+
+\subsection{reader2fastq, range2fastq}
+
+The \Rfunction{reader2fastq} and \Rfunction{range2fastq} take (optionally random subsets) of whole BAM-files (via \Rclass{bamReader}) or selected ranges (via \Rclass{bamRange}) and copy aligns to fastq files.
+
+For handling of aligns inside whole BAM-files, use the \Rfunction{reader2fastq} function. Aligns are read from BAM files via \Rfunction{getNextAlign}. For an opened file, there is a pointer to the last retrieved align kept. So multiple calls to \Rfunction{getNextAlign} will retrieve subsequent aligns.\\
+This comes into play when there are precedent calls to \Rfunction{getNextAlign} or a subset has been drawn via a given logical vector. When a logical vector is given, there will be a call to \Rfunction{getNextAlign} for every entry in the vector. The function then returns the number of checked aligns. When EOF is reached before the vector is processed, the number of checked aligns is smaller than the length of the given logical vector.
+When no logical vector is given, the function returns the number of written aligns.
+<<eval=FALSE>>=
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+reader<-bamReader(bam)
+reader2fastq(reader,"out.fastq")
+bamClose(reader)
+# Reopen in order to point to first align
+reader<-bamReader(bam)
+index<-sample(1:100,20)
+reader2fastq(reader,"out_subset.fastq",which=index)
+@
+
+
+The function \Rfunction {range2fastq} writes all aligns in a \Rclass{bamRange} object into a fastq file. Optionally, a logical vector (where length must be equal to size of range) can be given. In this case only the depicted aligns are copied into the fastq file and the remaining alings are skipped.
+<<eval=FALSE>>=
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+reader<-bamReader(bam,idx=TRUE)
+coords<-as.integer(c(0,0,249250621))
+range<-bamRange(reader,coords)
+range2fastq(range,"range.fastq")
+index<-sample(1:size(range),100)
+range2fastq(range,"range_subset.fastq",which=index)
+@
+
+\subsection{Functions for reading and displaying Phred quality scores}
+
+Phred quality scores Q are defindes as $Q=-10 log_{10} P$ where P is the base calling error probability. 
+
+\paragraph{getQualDf} takes a \rcl{bamReader} and returns a data.frame. The data.frame has 128 rows. This number is arbitrary set as the upper limit for counted quality scores all greater scores are counted as if their values where 127. The number of columns equals the maximum sequence length in the given \rcl{bamRange}.\\
+
+<<>>=
+qdf<-getQualDf(range)
+qdf[32:38,1:10]
+qdr<-getQualDf(range,prob=TRUE)
+qrr<-round(qdr,2)
+qrr[32:38,1:10]
+@
+
+\paragraph{getQualQuantiles} takes a \rcl{bamReader} and a vector of quantiles (must be between 0 and 1) and returns a data.frame. The data.frame contains one row for each quantile and also as many columns as the maximum sequence length.\\
+
+<<>>=
+qt<-getQualQuantiles(range,c(0.25,0.5,0.75))
+qt[,1:10]
+@
+
+\paragraph{plotQualQuant} takes a \rcl{bamReader} and plots the 0.1, 0.25, 0.5, 0.75 and 0.9 quantiles for all occurring sequence positions.
+
+<<eval=TRUE,fig=TRUE>>=
+plotQualQuant(range)
+@
+
+
+\subsection{Functions for calculation and displaying align-depth}
+
+Align depth means quantification of present matches for each nucleotide position in a given range.
+
+\paragraph{The alignDepth member function} calculates align depth for a given bamRange object. From the \rcl{bamRange} object, the range is extracted and for each nucleotide position whithin this range the numbers of align matches are calculated. When \rcl{alignDepth} is called wich \robj{gap=TRUE}, the function counts aligns solely for gap-adjacent match regions (cigar-op's).\\
+
+Whe extract a \rcl{bamRange} for the WASH7
+
+<<eval=TRUE>>=
+# WASH7P coordinates
+coords<-as.integer(c(0,16950,17400))
+range<-bamRange(reader,coords)
+bamClose(reader)
+ad<-alignDepth(range)
+ad
+getParams(ad)
+@
+
+<<eval=TRUE,fig=TRUE>>=
+plotAlignDepth(ad,col="lightblue")
+@
+
+
 
 
 % +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ %

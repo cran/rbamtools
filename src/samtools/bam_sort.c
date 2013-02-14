@@ -385,7 +385,7 @@ void bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, size
 	fp = strcmp(fn, "-")? bam_open(fn, "r") : bam_dopen(fileno(stdin), "r");
 	if (fp == 0) {
 		// REP: fprintf(stderr, "[bam_sort_core] fail to open file %s\n", fn);
-		Rprintf("[bam_sort_core] fail to open file %s\n", fn);
+		Rprintf("[bam_sort_core_ext] fail to open file %s\n", fn);
 		return;
 	}
 	header = bam_header_read(fp);
@@ -404,12 +404,12 @@ void bam_sort_core_ext(int is_by_qname, const char *fn, const char *prefix, size
 	}
 	if (ret != -1)
 		//REP: fprintf(stderr, "[bam_sort_core] truncated file. Continue anyway.\n");
-		Rprintf("[bam_sort_core] truncated file. Continue anyway.\n");
+		Rprintf("[bam_sort_core_ext] truncated file. Continue anyway.\n");
 	if (n == 0) sort_blocks(-1, k, buf, prefix, header, is_stdout);
 	else { // then merge
 		char **fns, *fnout;
 		// REP: fprintf(stderr, "[bam_sort_core] merging from %d files...\n", n+1);
-		Rprintf("[bam_sort_core] merging from %d files...\n", n+1);
+		Rprintf("[bam_sort_core_ext] merging from %d files...\n", n+1);
 		sort_blocks(n++, k, buf, prefix, header, 0);
 		fnout = (char*)calloc(strlen(prefix) + 20, 1);
 // REP:	if (is_stdout) sprintf(fnout, "-");

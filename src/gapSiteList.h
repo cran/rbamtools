@@ -116,7 +116,7 @@ typedef struct site_list
 
 	unsigned refid;
 	unsigned long int nAligns;
-	unsigned long int nGapAligns;
+	unsigned long int nAlignGaps;
 } site_list;
 
 site_list* site_list_init(){ return(calloc(sizeof(site_list),1));}
@@ -509,7 +509,7 @@ site_list* site_list_copy(site_list *l)
 {
 	site_list* res=site_list_init();
 	res->nAligns=l->nAligns;
-	res->nGapAligns=l->nGapAligns;
+	res->nAlignGaps=l->nAlignGaps;
 	res->refid=l->refid;
 
 	site_list_element *et,*el=l->first;
@@ -583,7 +583,7 @@ void list_gap_sites(site_list *l,const bam1_t* align)
 			if(op==BAM_CREF_SKIP)
 			{
 				// Count gaps
-				++(l->nGapAligns);
+				++(l->nAlignGaps);
 				// N -> Add gap to list
 				lend=position;
 				gap_len=cigar[i] >> BAM_CIGAR_SHIFT;

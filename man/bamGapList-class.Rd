@@ -11,7 +11,7 @@
 \alias{bamGapList,bamReader-method}
 \alias{initialize,bamGapList-method}
 \alias{nAligns,bamGapList-method}
-\alias{nGapAligns,bamGapList-method}
+\alias{nAlignGaps,bamGapList-method}
 \alias{show,bamGapList-method}
 \alias{size,bamGapList-method}
 \title{Class \code{"bamGapList"}}
@@ -33,8 +33,8 @@ Objects can be created by calls of the form \code{siteList(reader,coords))}.
     \item{coerce}{\code{signature(from = "bamGapList", to = "data.frame")}: Coercion of bamGapList to data.frame.}
     \item{coerce}{\code{signature("bamGapList","data.frame")}: Coercion of bamGapList to data.frame.}
     \item{show}{\code{signature(object = "bamGapList")}: Prints a short message with some summarizing data. }
-    \item{nAlign}{\code{signature(object = "bamGapList")}: Returns number of aligns in specified Range. }
-    \item{nGapAlign}{\code{signature(object = "bamGapList")}: Returns number of gapped aligns in specified Range. }
+    \item{nAligns}{\code{signature(object = "bamGapList")}: Returns number of aligns in specified Range. }
+    \item{nAlignGaps}{\code{signature(object = "bamGapList")}: Returns number of align gaps in specified Range. }
 	 }
 }
 \author{Wolfgang Kaisers}
@@ -46,7 +46,7 @@ bsl<-bamGapList(reader)
 bsl
 size(bsl)
 nAligns(bsl)
-nGapAligns(bsl)
+nAlignGaps(bsl)
 summary(bsl)
 dfr<-as.data.frame(bsl)
 head(dfr)

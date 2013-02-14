@@ -3,7 +3,7 @@
 #  File   : rbamtools.r                                                         #
 #  Date   : 12.Mar.2012                                                         #
 #  Content: R-Source for package rbamtools                                      #
-#  Version: 2.4.2                                                               #
+#  Version: 2.6.0                                                               #
 #  Author : W. Kaisers                                                          #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
@@ -25,11 +25,22 @@
 #             and bamSiteList -> bamGapList
 #  18.Apr.13  Corrected some memory leaks in C-Code as reported by Brian Ripley.
 #  22.Apr.13  Added (read-) name and revstrand to as.data.frame.bamRange (as proposed by Ander Muniategui)
+#  11.Jun.13  Added reader2fastq and range2fastq functions (2.5.3, valgrind tested)
+#  11.Jun.13  Changed signature for bamSave: added refid argument which is needed to prevent samtools crashes
+#             when creating BAM files with single align regions and appropriate refSeqDict entries.
+#             (2.5.4, valgrind tested)
+#  12.Jun.13  Added extractRanges function (2.5.5)
+#  21.Jun.13  Added bamAlign function (2.5.6)
+#  01.Jul.13  Added bamCount function (2.5.8)
+#  02.Jul.13  Added bamCountAll function, valgrind tested (2.5.9)
+#  18.Jul.13  Changed 'nGapAligns' to 'nAlignGaps (2.5.10) nGapAligns deprecated!
+#  24.JUl.13  Added alignQual function, valgrind tested (2.5.11)
+#  28.Jul.13  Added alignDepth function, valgrind tested (2.5.12)
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
 .onUnload<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 #  Declaration of generics
 setGeneric("filename", function(object) standardGeneric("filename"))
 setGeneric("isOpen",function(con,rw="") standardGeneric("isOpen"))
@@ -51,7 +62,8 @@ setGeneric("size",function(object) standardGeneric("size"))
 # Generic for retrieving Nr of aligns in BAM region from gapList
 setGeneric("nAligns",   function(object)standardGeneric("nAligns"))
 # Generic for retrieving Nr of gapped-aligns in BAM region from gapList
-setGeneric("nGapAligns",function(object)standardGeneric("nGapAligns"))
+setGeneric("nAlignGaps",function(object)standardGeneric("nAlignGaps"))
+
 # Generic for reading gapLists (align gaps) from bamReader
 setGeneric("gapList",function(object,coords)standardGeneric("gapList"))
 # Generic for reading gapSiteList (merged align gap sites) from bamReader
@@ -60,17 +72,17 @@ setGeneric("siteList",function(object,coords)standardGeneric("siteList"))
 setGeneric("bamGapList",function(object)standardGeneric("bamGapList"))
 
 
-###################################################################################################
-#                                                                                                 #
-# bamReader                                                                                       #
-#                                                                                                 #
-###################################################################################################
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+#                                                                               #
+# bamReader                                                                     #
+#                                                                               #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 
 setClass("bamReader",representation(filename="character",reader="externalptr",
 				index="externalptr",startpos="numeric"),
          validity=function(object){return(ifelse(is.null(object@reader),FALSE,TRUE))})
 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 #  Opening and closing a BAM-File for reading
 #  
 setMethod(f="initialize", signature="bamReader",
@@ -125,12 +137,12 @@ setMethod(f="bamClose",signature="bamReader",definition=function(object) {
 })
 
 #  End: Opening and closing a BAM-File for reading
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 #  Header related functions
 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 #  This is one standard Method for creation of bamHeader                        #
 #  and is used as a simple way to pass a header to a new                        #
 #  instance of bamWriter                                                        #
@@ -181,9 +193,9 @@ setMethod(f="getRefCoords",signature="bamReader",definition=function(object,sn){
 
 
 #  End Header related functions
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 #  Index related functions
 
 # create.index
@@ -217,10 +229,20 @@ setGeneric("index.initialized",function(object) standardGeneric("index.initializ
 setMethod("index.initialized", signature="bamReader",definition=function(object)
 {return(!(.Call("is_nil_externalptr",object@index,PACKAGE="rbamtools")))})
 
-setGeneric("bamSort",function(object,prefix,byName=FALSE,maxmem=1e+9) standardGeneric("bamSort"))
+setGeneric("bamSort",function(object,prefix="sorted",byName=FALSE,maxmem=1e+9) standardGeneric("bamSort"))
 setMethod(f="bamSort",signature="bamReader",
           definition=function(object,prefix="sorted",byName=FALSE,maxmem=1e+9)
           {
+            if(!isOpen(object))
+              stop("[bamSort] bamReader must be opened!")
+            if(!is.logical(byName))
+              stop("[bamSort] byName must be logical!")
+            if(length(byName)>1)
+              stop("[bamSort] byName must have length 1!")
+            if(!is.numeric(maxmem))
+              stop("[bamSort] maxmem must be numeric!")
+            if(length(maxmem)>1)
+              stop("[bamSort] maxmem must have length 1!")
             maxmem<-floor(maxmem)
             cat("[bamSort] Filename: ",object@filename,"\n")
             cat("[bamSort] Prefix  : ",prefix,"\n")
@@ -232,7 +254,7 @@ setMethod(f="bamSort",signature="bamReader",
           })
 
 #  End Index related functions
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 
 
 # getNextAlign
@@ -245,8 +267,30 @@ setMethod(f="getNextAlign",signature="bamReader",definition=function(object)
     return(new("bamAlign",ans))
 })
 
+setGeneric("reader2fastq",function(object,filename,which,append=FALSE)standardGeneric("reader2fastq"))
+setMethod("reader2fastq","bamReader",function(object,filename,which,append=FALSE){
+  if(!isOpen(object))
+    stop("[reader2fastq] Reader must be opened!")
+  if(!is.logical(append))
+    stop("[reader2fastq] append must be logical!")
+  if(!is.character(filename))
+    stop("[reader2fastq] filename must be character!")
+  
+  if(missing(which))
+    return(invisible(.Call("bam_reader_write_fastq",object@reader,filename,append,PACKAGE="rbamtools")))
+  else
+  {
+    if(!is.numeric(which))
+      stop("[reader2fastq] which argument must be numeric!")  
+    ans<-.Call("bam_reader_write_fastq_index",object@reader,filename,as.integer(sort(unique(which))),append,PACKAGE="rbamtools")
+    if(ans<length(which))
+      cat("[reader2fastq] EOF reached.\n")
+    cat("[reader2fastq]",ans,"records written.\n")
+    return(invisible(ans))
+  }
+})
 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 # Reading gap-lists
 setMethod("gapList","bamReader",function(object,coords)
 {
@@ -267,7 +311,7 @@ setMethod("bamGapList","bamReader",function(object)
   return(new("bamGapList",object))
 })
 
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 
 setGeneric("rewind",function(object)standardGeneric("rewind"))
 setMethod("rewind","bamReader",function(object) {return(invisible(.Call("bam_reader_seek",object@reader,object@startpos,PACKAGE="rbamtools")))})
@@ -329,19 +373,226 @@ setMethod("bamCopy","bamReader",function(object,writer,refids,verbose=FALSE)
     nAligns<-nAligns+size(range)
     if(verbose)
       cat("[bamCopy.bamReader] i: ",i,"\tCopying ",format(size(range),big.mark=bm,width=10)," aligns for Reference '",ref$SN[mtc[i]],"'.\n",sep="")
-    bamSave(writer,range)
+    bamSave(writer,range,ref$ID[mtc[i]])
     rm(range)
     gc()    
   }
   cat("[bamCopy.bamReader] Copying ",format(nAligns,big.mark=bm,width=10)," aligns finished.\n",sep="")
 })
 
-###################################################################################################
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+
+
+
+setGeneric("extractRanges",function(object,ranges,filename,complex=FALSE,header,idxname)standardGeneric("extractRanges"))
+setMethod("extractRanges","bamReader",definition=function(object,ranges,filename,complex=FALSE,header,idxname){
+  if(!isOpen(object))  
+    stop("[extractRanges] Provided reader must be opened!")
+  if(!index.initialized(object))
+    stop("[extractRanges] Provided reader must have initialized index!")
+  if(missing(header))
+    header<-getHeader(object)
+  else{
+    if(!is(header,"bamHeader"))
+      stop("[extractRanges] header must be of class 'bamHeader'")
+    cat("[extractRanges] bamHeader provided. Slot 'headerLine' will be changed (SO: unknown). Slot 'refSeqDict' will be overwritten.\n")
+  }
+  if(!is.data.frame(ranges))
+    stop("[extractRanges] ranges must be 'data.frame'!")
+  if(!is.logical(complex))
+    stop("[extractRanges] complex must be logical!")
+  if(length(complex)>1)
+    stop("[extractRanges] complex must have length 1!")
+  
+  # Preparing ranges table
+  if(!all(is.element(c("seqid","start","end"),names(ranges))))
+    stop("[extractRanges] ranges argument must contain columns 'seqid','start','end'!")
+  
+  
+  # Preparing filenames
+  file_prefix<-sub("^([^.]*).*","\\1",basename(filename))
+  unsort_filename<-file.path(dirname(filename),paste("unsort",paste(file_prefix,"bam",sep="."),sep="_"))
+  filename<-file.path(dirname(filename),paste(file_prefix,"bam",sep="."))
+  cat("[extractRanges] Provided filename is changed to '",filename,"' (see help for 'bamSort').\n",sep="")
+  
+  if(missing(idxname))
+    idxname<-paste(filename,"bai",sep=".")
+  else{
+    if(!is.character(idxname))
+      stop("[extractRanges] idxname must be character!\n")
+  }
+  bm<-Sys.localeconv()[7]
+  
+  # +++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+  # prepare range data
+  
+  # +++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+  # It is essential for indexing, that all ref-ID's which   #                      
+  # occur in aligns are also (implicitly) present in the    #
+  # reference sequence dictionary (RSD) section.            #
+  #                                                         #
+  # E.g. when there is an align which has refid 4, there    #
+  # must be at least 5 entries in RSD because they are      #
+  # indexed implicitly (that is: there is no entry in RSD   #
+  # which says refid=4).                                    #
+  #                                                         #
+  # Their ID is identified with the numbers                 #
+  # 0 to [(number of Entries in RSD)-1].                    #
+  #                                                         #
+  # Otherwise samtools indexing crashes without warning.    #
+  # +++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+  
+  gp<-ranges[,c("seqid","start","end")] 
+  rd<-getRefData(object)
+  mtc<-match(gp$seqid,rd$SN)
+  isna<-is.na(mtc)
+  if(all(isna))
+  {
+    cat("[extractRanges] No matching seqids for genes:\n")
+    print(gp)
+    cat("[extractRanges] No output generated.\n")
+    return(invisible())
+  }
+  if(any(isna))
+  {
+    cat("[extractRanges] Missing seqid matches. Skipping following genes:\n")
+    print(gp[isna,])
+    gp<-gp[!isna,]
+  }
+  
+  n<-dim(gp)[1]
+  gp$old_ID<-rd$ID[mtc]
+  gp$LN<-rd$LN[mtc]
+  
+  # Provide (unique) new ID's
+  renew<-data.frame(old=sort(unique(gp$old_ID)))
+  nid<-dim(renew)[1]
+  renew$new<-0:(nid-1)
+  mtc<-match(gp$old_ID,renew$old)
+  
+  gp$new_ID<-renew$new[mtc]
+  
+  new_rd<-merge(renew,rd,by.x="old",by.y="ID")
+  nref<-dim(new_rd)[1]
+
+  # +++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+  # create new header
+  
+  htxt<-getHeaderText(header)
+  hl<-headerLine(htxt)
+  setVal(hl,"SO","unsorted")
+  
+  rsd<-new("refSeqDict")
+  for(i in 1:nref)
+    addSeq(rsd,SN=new_rd$SN[i],LN=new_rd$LN[i])
+  headerLine(htxt)<-hl
+  refSeqDict(htxt)<-rsd
+  
+  # +++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+  # Writing aligns
+  cat("[extractRanges] Writing aligns to temporary file '",unsort_filename,"'.\n",sep="")
+  writer<-bamWriter(bamHeader(htxt),unsort_filename)
+  
+  nAligns<-0
+  for(i in 1:n)
+  {
+    range<-bamRange(object,c(gp$old_ID[i],gp$start[i],gp$end[i]))
+    if(size(range)==0)
+      cat("No aligns found for gene '",gp$gene_name[i],"'.\n")
+    else
+    {
+      bamSave(writer,range,refid=gp$new_ID[i])
+      nAligns<-nAligns+size(range)
+    }
+  }
+  cat("[extractRanges] Writing of",format(nAligns,big.mark=bm),"aligns finished.\n")
+  bamClose(writer)
+  
+  # +++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+  # Sorting BAM output file
+  cat("[extractRanges] Sorting:\n")
+  nread<-bamReader(unsort_filename)
+  if(!isOpen(nread))
+    stop("unsorted bam file not found!")
+  bamSort(nread,prefix=file_prefix)
+  bamClose(nread)
+  
+  # +++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+  # Creating index for ouput file
+  cat("[extractRanges] Creating index '",basename(idxname),"'.\n",sep="")
+  nread<-bamReader(filename)
+  create.index(nread,idx_filename=idxname)
+  cat("[extractRanges] Finished.\n")
+  cat("[extractRanges] You may want to delete file '",basename(unsort_filename),"'.\n",sep="")
+  return(invisible(nAligns))
+})
+
+
+setGeneric("bamCount",function(object,coords)standardGeneric("bamCount"))
+setMethod("bamCount",signature="bamReader",definition=function(object,coords) {
+  if(!index.initialized(object))
+    stop("[bamCount] reader must have initialized index! Use 'load.index'!")
+  if(missing(coords))
+    stop("[bamCount] coords is not optional!")
+  if(!is.numeric(coords))
+    stop("[bamCount] coords must be numeric")
+  
+  res<-.Call("bam_count",object@reader,object@index,coords,PACKAGE="rbamtools")
+  names(res)<-c("M","I","D","N","S","H","P","=","X","nAligns")
+  return(res)
+})
+
+setGeneric("bamCountAll",function(object,verbose=FALSE)standardGeneric("bamCountAll"))
+setMethod("bamCountAll","bamReader",function(object,verbose=FALSE)
+{
+  if(!isOpen(object))
+    stop("[bamCountAll.bamReader] reader is not open! Check 'isOpen'!")
+  if(!index.initialized(object))
+    stop("[bamCountAll.bamReader] reader must have initialized index! Check 'index.initialized'!")
+  
+  # Check refids argument: When missing copy all ref's
+  ref<-getRefData(object)
+  nr<-nrow(ref)
+  
+  # Count first refid
+  # and read size and names of result
+  if(verbose)
+    cat("[bamCountAll] Counting ",ref$SN[1], "\t[ 1/",nr,"]",sep="")
+  count<-bamCount(object,c(ref$ID[1],0,ref$LN[1]))
+  nc<-length(count)
+  
+  mtx<-matrix(numeric(nc*nr),ncol=nc)
+  colnames(mtx)<-names(count)
+  rownames(mtx)<-ref$SN
+  mtx[1,]<-count
+
+  if(nr>1)
+  {
+    for(i in 2:nr)
+    {
+      if(verbose)
+        cat("\r[bamCountAll] Counting ",ref$SN[i], "\t[",format(i,width=2),"/",nr,"]",sep="")
+      mtx[i,]<-bamCount(object,c(ref$ID[i],0,ref$LN[i]))
+    }
+  }
+  
+  if(verbose)
+    cat("\n[bamCountAll] Finished.\n")
+  res<-as.data.frame(mtx)
+  res$ID<-ref$ID
+  res$LN<-ref$LN
+  return(res)
+})
+
+
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 #                                                                                                 #
 # bamHeader                                                                                       #
 # Description: See SAM File Format Specification (v1.4-r985) September 7,2011, Section 1.3        #
 #                                                                                                 #
-###################################################################################################
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
 
 setClass("bamHeader",representation(header="externalptr"),
          validity=function(object){return(ifelse(is.null(object@header),FALSE,TRUE))})
@@ -709,8 +960,13 @@ setMethod("tail","refSeqDict",definition=function(x,n=6L,...) {
 })
 
 setMethod("show","refSeqDict",function(object){
-  cat("An object of class \"",class(object),"\"\n",sep="")
-  print(head(object))
+  if(length(object@SN)>0)
+  {
+    cat("An object of class \"",class(object),"\"\n",sep="")
+    print(head(object))
+  }else{
+    cat("An empty object of class \"",class(object),"\".\n",sep="")
+  }
 })
 
 #  End refSeqDict
@@ -759,6 +1015,23 @@ setMethod(f="initialize",signature="headerReadGroup", definition=function(.Objec
     .Object@l[[f]]<-substr(tags[i],4,nchar(tags[i]))
   }
   return(.Object)
+})
+
+
+setMethod("show","headerReadGroup",function(object)
+{
+  n<-length(object@l)
+  if(n>0)
+  {
+    cat("An object of class \"",class(object),"\"\n",sep="")
+    for(i in 1:length(object@l))
+    {
+      cat(names(object@l)[i],":",object@l[[i]],"\n")
+    } 
+  }else{
+    cat("An empty object of class \"",class(object),"\"\n",sep="")
+  }
+  return(invisible())
 })
 
 setMethod("getHeaderText",signature="headerReadGroup",definition=function(object,delim="\t") {
@@ -882,10 +1155,16 @@ setMethod("as.list",signature="headerProgram",definition=function(x,...){return(
 
 setMethod("show","headerProgram",function(object)
 {
-  cat("An object of class \"",class(object),"\"\n",sep="")
-  for(i in 1:length(object@l))
+  n<-length(object@l)
+  if(n>0)
   {
-    cat(names(object@l)[i],":",object@l[[i]],"\n")
+    cat("An object of class \"",class(object),"\"\n",sep="")
+    for(i in 1:length(object@l))
+    {
+      cat(names(object@l)[i],":",object@l[[i]],"\n")
+    } 
+  }else{
+    cat("An empty object of class \"",class(object),"\"\n",sep="")
   }
   return(invisible())
 })
@@ -1112,16 +1391,19 @@ setMethod("isOpen",signature="bamWriter",definition=function(con,rw="")
 setMethod(f="bamClose",signature="bamWriter",definition=function(object)
 { invisible(.Call("bam_writer_close",object@writer,PACKAGE="rbamtools"))})
 
-setMethod(f="bamSave",signature="bamWriter",definition=function(object,value) 
+setMethod(f="bamSave",signature="bamWriter",definition=function(object,value,refid) 
 {
+  if(missing(refid))
+    stop("[bamSave] refid is not optional!")
+  if(!is.numeric(refid))
+    stop("[bamSave] refid must be numeric")
+  if(refid<0)
+    stop("[bamSave] refid must be >=0!")
+  refid<-as.integer(refid)
   if(is(value,"bamAlign"))
-  {
-    return(invisible(.Call("bam_writer_save_align",object@writer,value@align,PACKAGE="rbamtools")))
-  }
+    return(invisible(.Call("bam_writer_save_align",object@writer,value@align,refid,PACKAGE="rbamtools")))
   if(is(value,"bamRange"))
-  {
-    return(invisible(.Call("bam_range_write",object@writer,value@range,PACKAGE="rbamtools")))
-  }
+    return(invisible(.Call("bam_range_write",object@writer,value@range,refid,PACKAGE="rbamtools")))
   else
     stop("bamSave: Saved object must be of type bamAlign or bamRange!\n")
 })
@@ -1162,12 +1444,12 @@ setMethod("size",signature="gapList",definition=function(object)
 setMethod("nAligns",signature="gapList",definition=function(object)
 {.Call("gap_list_get_nAligns",object@list,PACKAGE="rbamtools")})
 
-setMethod("nGapAligns",signature="gapList",definition=function(object)
-{.Call("gap_list_get_nGapAligns",object@list,PACKAGE="rbamtools")})
+setMethod("nAlignGaps",signature="gapList",definition=function(object)
+{.Call("gap_list_get_nAlignGaps",object@list,PACKAGE="rbamtools")})
 
 setMethod("show","gapList",function(object){
   cat("An object of class '",class(object),"'. size: ",size(object),"\n",sep="")
-  cat("nAligns:",nAligns(object),"\tnGapAligns:",nGapAligns(object),"\n")
+  cat("nAligns:",nAligns(object),"\tnAlignGaps:",nAlignGaps(object),"\n")
   return(invisible())
 })
 
@@ -1203,12 +1485,12 @@ setMethod("size",signature="gapSiteList",definition=function(object)
 setMethod("nAligns",signature="gapSiteList",definition=function(object)
 {.Call("gap_site_list_get_nAligns",object@list,PACKAGE="rbamtools")})
 
-setMethod("nGapAligns",signature="gapSiteList",definition=function(object)
-{.Call("gap_site_list_get_nGapAligns",object@list,PACKAGE="rbamtools")})
+setMethod("nAlignGaps",signature="gapSiteList",definition=function(object)
+{.Call("gap_site_list_get_nAlignGaps",object@list,PACKAGE="rbamtools")})
 
 setMethod("show","gapSiteList",function(object){
   cat("An object of class '",class(object),"'. size: ",size(object),"\n",sep="")
-  cat("nAligns:",nAligns(object),"\tnGapAligns:",nGapAligns(object),"\n")
+  cat("nAligns:",nAligns(object),"\tnAlignGaps:",nAlignGaps(object),"\n")
   return(invisible())
 })
 
@@ -1267,13 +1549,13 @@ setMethod("size",signature="bamGapList",definition=function(object)
 setMethod("nAligns",signature="bamGapList",definition=function(object)
 {.Call("gap_site_ll_get_nAligns",object@list,PACKAGE="rbamtools")})
 
-setMethod("nGapAligns",signature="bamGapList",definition=function(object)
-{.Call("gap_site_ll_get_nGapAligns",object@list,PACKAGE="rbamtools")})
+setMethod("nAlignGaps",signature="bamGapList",definition=function(object)
+{.Call("gap_site_ll_get_nAlignGaps",object@list,PACKAGE="rbamtools")})
 
 setMethod("show","bamGapList",function(object){
   bm<-Sys.localeconv()[7]
   cat("An object of class '",class(object),"'. size: ",format(size(object),big.mark=bm),"\n",sep="")
-  cat("nAligns:",format(nAligns(object),big.mark=bm),"\tnGapAligns:",format(nGapAligns(object),big.mark=bm),"\n")
+  cat("nAligns:",format(nAligns(object),big.mark=bm),"\tnAlignGaps:",format(nAlignGaps(object),big.mark=bm),"\n")
   
   return(invisible())
 })
@@ -1349,7 +1631,7 @@ readPooledBamGapDf<-function(infiles,idxInfiles=paste(infiles,".bai",sep=""))
   ga<-readPooledBamGaps(infiles,idxInfiles=paste(infiles,".bai",sep=""))
   dfr<-as.data.frame(ga)
   attr(dfr,"nAligns")<-nAligns(ga)
-  attr(dfr,"nGapAligns")<-nGapAligns(ga)
+  attr(dfr,"nAlignGaps")<-nAlignGaps(ga)
   return(dfr)
 }
 
@@ -1368,6 +1650,18 @@ readPooledBamGapDf<-function(infiles,idxInfiles=paste(infiles,".bai",sep=""))
 # can be iterated, readed, written, deleted and added. bamRange objects can be written to a       #
 # BAM-file via an Instance of bamWriter.                                                          #
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# bamRange parameters:                                                                            #
+# 1: seqid      : 0-based index of seqid                                                          #
+# 2: qrBegin    : 0-based left boundary of query region (query range begin)                       #
+# 3: qrEnd      : 0-based right boundary of query region (query range end)                        #
+# 4: complex    : 0= all aligns included, 1= only aligns with n_cigar > 1 included                #
+# 5: rSeqLen    : Length of reference sequence (from getRefData)                                  #
+# 6: qSeqMinLen : Minimum of query sequence length (= read length)                                #
+# 7: qSeqMaxLen : Maximum of query sequence length (= read length)                                #
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+
+setClass("bamRange",representation(range="externalptr"),
+         validity=function(object) { return(ifelse(is.null(object@range),FALSE,TRUE)) })
 
 bamRange<-function(reader=NULL,coords=NULL,complex=FALSE) {
   if(!is.null(reader))
@@ -1378,17 +1672,15 @@ bamRange<-function(reader=NULL,coords=NULL,complex=FALSE) {
   return(new("bamRange",reader,coords,complex))
 }
 
-setClass("bamRange",representation(range="externalptr"),
-         validity=function(object) { return(ifelse(is.null(object@range),FALSE,TRUE)) })
-
 setMethod(f="initialize",signature="bamRange",
           definition=function(.Object,reader=NULL,coords=NULL,complex=FALSE)
-          {        
+          { 
+            
             # +++++++++++++++++++++++++++++++++++++++++++            
             #  Create empty range
             if(is.null(reader))
             {
-              .Object@range<-.Call("bam_range_init")
+              .Object@range<-.Call("bam_range_init",PACKAGE="rbamtools")
               return(.Object)
             }
             
@@ -1406,24 +1698,54 @@ setMethod(f="initialize",signature="bamRange",
               stop("[bamRange.initialize] complex must have length 1!")
             if(!index.initialized(reader))
               stop("[bamRange.initialize] reader must have initialized index! Use 'load.index'!")
-            .Object@range<-.Call("bam_range_fetch",reader@reader,reader@index,trunc(coords),complex,PACKAGE="rbamtools")
+            
+            .Object<-.Call("bam_range_fetch",reader@reader,reader@index,trunc(coords),complex,PACKAGE="rbamtools")
             return(.Object)
           })
-
-# REMOVED:
-# setMethod("as.data.frame",signature="bamRange",definition=function(x,row.names=NULL,optional=FALSE,...) {
-#   return(.Call("bam_range_get_align_df",x@range,PACKAGE="rbamtools"))
-# })
-
 
 
 setMethod("size",signature="bamRange",definition=function(object)
 {.Call("bam_range_get_size",object@range,PACKAGE="rbamtools")})
 
+setGeneric("getCoords",function(object)standardGeneric("getCoords"))
+setMethod("getCoords","bamRange",function(object){ return(.Call("bam_range_get_coords",object@range))})
+
+setGeneric("getParams",function(object)standardGeneric("getParams"))
+setMethod("getParams","bamRange",function(object){ return(.Call("bam_range_get_params",object@range))})
+
+setGeneric("getSeqLen",function(object)standardGeneric("getSeqLen"))
+setMethod("getSeqLen","bamRange",function(object){
+  return(.Call("bam_range_get_seqlen",object@range,PACKAGE="rbamtools"))
+})
+
+setGeneric("getRefName",function(object)standardGeneric("getRefName"))
+setMethod("getRefName","bamRange",function(object) return(.Call("bam_range_get_refname",object@range,PACKAGE="rbamtools")))
+
 setMethod("show","bamRange",function(object){
-  cat("An object of class '",class(object),"'. size: ",size(object),"\n",sep="")
+  bm<-Sys.localeconv()[7]
+  w<-11
+  r<-"right"
+  cat("Class       : ",format(class(object),w=w,j=r)                   ,"\n",sep="")
+  cat("Size        : ",format(format(size(object),big.m=bm),w=w,j=r)   ,"\n",sep="")
+
+  params<-.Call("bam_range_get_params",object@range,PACKAGE="rbamtools")
+  cat("Seqid       : ",format(format(params[1],big.m=bm),w=w,j=r)     ,"\n",sep="")
+  cat("qrBegin     : ",format(format(params[2],big.m=bm),w=w,j=r)     ,"\n",sep="")
+  cat("qrEnd       : ",format(format(params[3],big.m=bm),w=w,j=r)     ,"\n",sep="")
+  cat("Complex     : ",format(params[4],w=w,big.m=bm)                ,"\n",sep="")
+  cat("rSeqLen(LN) : ",format(format(params[5],big.m=bm),w=w,j=r)   ,"\n",sep="")
+  cat("qSeqMinLen  : ",format(format(params[6],big.m=bm),w=w,j=r)   ,"\n",sep="")
+  cat("qSeqMaxLen  : ",format(format(params[7],big.m=bm),w=w,j=r)   ,"\n",sep="")
+  
+  refname<-.Call("bam_range_get_refname",object@range,PACKAGE="rbamtools")
+  if(!is.null(refname))
+  cat("Refname     : ",format(refname,w=w,j="right")       ,"\n",sep="")  
   return(invisible())
 })
+
+setGeneric("getAlignRange",function(object)standardGeneric("getAlignRange"))
+setMethod("getAlignRange","bamRange",function(object)return(.Call("bam_range_get_align_range",object@range,PACKAGE="rbamtools")))
+
 
 setMethod("getNextAlign",signature="bamRange",definition=function(object)
 {
@@ -1516,6 +1838,175 @@ setMethod("moveCurrentAlign",signature="bamRange",definition=function(object,tar
   return(invisible())
 })
 
+
+setGeneric("range2fastq",function(object,filename,which,append=FALSE) standardGeneric("range2fastq"))
+setMethod("range2fastq",signature="bamRange",definition=function(object,filename,which,append=FALSE){
+  if(!is.character(filename))
+    stop("[range2fastq] filename must be character!")
+  if(!is.logical(append))
+    stop("[range2fastq] append must be logical!")
+  
+  if(missing(which))
+  {
+    .Call("bam_range_write_fastq",object@range,filename,append,PACKAGE="rbamtools")
+  }else{
+    if(!is.numeric(which))
+      stop("[range2fastq] which must be numeric!")
+    mx<-max(which)
+    if(mx>size(object))
+      cat("[range2fastq] Maximum index (",mx,") is greater than size of range (",size(object),")!\n",sep="")
+    written<-.Call("bam_range_write_fastq_index",object@range,filename,as.integer(sort(unique(which))),append,PACKAGE="rbamtools")
+    cat("[range2fastq]",written,"records written.\n")
+  }
+  return(invisible())
+})
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+# Functions to read and display phred qualities from bamRange
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+
+setGeneric("getQualDf",function(object,prob=FALSE,...)standardGeneric("getQualDf"))
+setMethod("getQualDf","bamRange",function(object,prob=FALSE,...){
+  if(!is.logical(prob))
+    stop("[getQualDf.bamRange] ")
+  if(prob)
+  {
+    qdf<-.Call("bam_range_get_qual_df",object@range,PACKAGE="rbamtools")
+    rel<-function(x)
+    {
+      xs<-sum(x)
+      if(xs>0)
+        return(x/xs)
+      return(x)
+    }
+    res<-data.frame(lapply(qdf,rel))
+    names(res)<-names(qdf)
+    attributes(res)$col.sums<-unlist(lapply(qdf,sum))
+    return(res)
+  }
+  return(.Call("bam_range_get_qual_df",object@range,PACKAGE="rbamtools"))
+})
+
+setGeneric("getQualQuantiles",function(object,quantiles,...)standardGeneric("getQualQuantiles"))
+setMethod("getQualQuantiles","bamRange",function(object,quantiles,...){
+  
+  if(!is.numeric(quantiles))
+    stop("[getQualQuantiles.bamRange] quantiles must be numeric!")
+  if(!(all(quantiles>=0)&all(quantiles<=1)))
+     stop("[getQualQuantiles.bamRange] all quantiles mustbe in [0,1]")
+  quantiles<-sort(unique(round(quantiles,2)))
+
+  # Count qual values for each sequence position
+  qdf<-.Call("bam_range_get_qual_df",object@range,PACKAGE="rbamtools")
+  
+  # Convert integer counts into column-wise relative values
+  rel<-function(x)
+  {
+    xs<-sum(x)
+    if(xs>0)
+      return(x/xs)
+    return(x)
+  }
+  qrel<-data.frame(lapply(qdf,rel))
+  names(qrel)<-names(qdf)
+    
+  # Walk through each column and extract row number
+  # for given quantile values
+  res<-.Call("get_col_quantiles",quantiles,qrel)
+  row.names(res)<-paste("q",floor(quantiles*100),sep="_")
+  return(res)
+})
+
+setGeneric("plotQualQuant",function(object)standardGeneric("plotQualQuant"))
+setMethod("plotQualQuant","bamRange",function(object){
+  quant<-c(0.1,0.25,0.5,0.75,0.9)
+  qq<-getQualQuantiles(object,quant)
+  maxQ=floor(1.2*max(qq))
+  xv<-1:ncol(qq)
+  plot(xv,xv,ylim=c(0,maxQ),type="n",las=1,ylab="phred score",xlab="sequence position",main="Phred Quantiles for sequence")
+  lines(xv,qq[1,],col="blue"  ,lty=2)
+  lines(xv,qq[2,],col="orange",lty=1)
+  lines(xv,qq[3,],col="red"   ,lwd=2)
+  lines(xv,qq[4,],col="orange",lty=1)
+  lines(xv,qq[5,],col="blue"  ,lty=2)  
+  return(invisible()) 
+})
+
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+#                                                                               #
+# alignDepth                                                                    #
+#                                                                               #
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# alignDepch parameters:                                                                          #
+# - - bamRange derived - -                                                                        #
+# 1: seqid      : 0-based index of seqid                                                          #
+# 2: qrBegin    : 0-based left boundary of query region (query range begin)                       #
+# 3: qrEnd      : 0-based right boundary of query region (query range end)                        #
+# 4: complex    : 0= all aligns included, 1= only aligns with n_cigar > 1 included                #
+# 5: rSeqLen    : Length of reference sequence (from getRefData)                                  #
+# 6: qSeqMinLen : Minimum of query sequence length (= read length)                                #
+# 7: qSeqMaxLen : Maximum of query sequence length (= read length)                                #
+# - - alignDepth proprietary - -
+# 6: gap     : 0=all aligns counted, 1=only gap adjacent match regions counted                    #
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+
+setClass("alignDepth",representation(depth="integer",pos="integer",params="numeric",refname="character"))
+
+setGeneric("alignDepth",function(object,gap=FALSE)standardGeneric("alignDepth"))
+setMethod("alignDepth","bamRange",function(object,gap=FALSE){
+  if(!is.logical(gap))
+    stop("[alignDepth.bamRange] gap must be logical!")
+  return(.Call("bam_range_get_align_depth",object@range,gap,PACKAGE="rbamtools"))  
+})
+
+setMethod("show","alignDepth",function(object){
+  bm<-Sys.localeconv()[7]
+  w<-11
+  cat("Class       : ",format(class(object),w=w,j="right")  ,"\n",sep="")
+  cat("Seqid       : ",format(object@params[1],w=w,big.m=bm)    ,"\n",sep="")
+  cat("qrBegin     : ",format(object@params[2],w=w,big.m=bm)    ,"\n",sep="")
+  cat("qrEnd       : ",format(object@params[3],w=w,big.m=bm)    ,"\n",sep="")
+  cat("Complex     : ",format(object@params[4],w=w,big.m=bm)    ,"\n",sep="")
+  cat("rSeqLen(LN) : ",format(object@params[5],w=w,big.m=bm)    ,"\n",sep="")
+  cat("qSeqMinLen  : ",format(object@params[6],w=w,big.m=bm)    ,"\n",sep="")  
+  cat("qSeqMaxLen  : ",format(object@params[7],w=w,big.m=bm)    ,"\n",sep="")
+  cat("refname     : ",format(object@refname,w=w,j="right")       ,"\n",sep="") 
+  n<-6
+  x<-object@depth[1:n]
+  names(x)<-object@pos[1:n]
+  print(x)
+  return(invisible())
+})
+
+setGeneric("getDepth",function(object,named=FALSE)standardGeneric("getDepth"))
+setMethod("getDepth","alignDepth",function(object,named=FALSE){
+  if(!is.logical(named))
+    stop("[getDepth.alignDepth] named must be logical!")
+  if(named)
+  {
+    dp<-object@depth
+    names(dp)=object@pos
+    return(dp)
+  }
+  return(object@depth)
+})
+
+setGeneric("getPos",function(object)standardGeneric("getPos"))
+setMethod("getPos","alignDepth",function(object){return(object@pos)})
+setMethod("getParams","alignDepth",function(object){return(object@params)})
+
+
+setGeneric("plotAlignDepth",function(object,...)standardGeneric("plotAlignDepth"))
+setMethod("plotAlignDepth","alignDepth",function(object,...){
+  plot(object@pos,object@depth,type="l",las=1,col="#1F78B4",bty="n",xlab="position",ylab="alignDepth",main="alignDepth")
+  mtext(paste("Refname:",object@refname))
+  return(invisible())
+})
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+
 ###################################################################################################
 #                                                                                                 #
 # bamAlign                                                                                        #
@@ -1537,7 +2028,6 @@ setMethod(f="initialize", signature="bamAlign",
             return(.Object)
           }
 )
-
 
 # bamAlign Member Reader functions
 setGeneric("name",function(object) standardGeneric("name"))
@@ -1590,6 +2080,82 @@ setMethod("show","bamAlign",function(object){
   cat("cigarData:\n")
   print(cigarData(object))
 })
+
+bamAlign<-function(qname,qseq,qqual,cigar,refid,position,flag=272L,alqual=10L,
+                   mrefid=(-1L),mpos=(-1L),insertsize=0L)
+{
+  if(missing(qname))
+    stop("[bamAlign] Missing query name!")
+  if(missing(qseq))
+    stop("[bamAlign] Missing query sequence string!")
+  if(missing(qqual))
+    stop("[bamAlign] Missing query quality string!")
+  if(missing(cigar))
+    stop("[bamAlign] Missing CIGAR string!")
+  if(missing(refid))
+    stop("[bamAlign] Missing refid!")
+  if(missing(position))
+    stop("[bamAlign] Missing position!")
+  
+  
+  if(!is.character(qname))
+    stop("[bamAlign] Query name must be character!")
+  if(!is.character(qseq))
+    stop("[bamAlign] Query sequence must be character!")
+  if(!is.character(qqual))
+    stop("[bamAlign] Query quality must be character!")
+  if(nchar(qseq)!=nchar(qqual))
+    stop("[bamAlign] Query sequence string and quality string must have equal size!")  
+  
+  if(!is.character(cigar))
+    stop("[bamAlign] CIGAR string must be character!")
+  if(!is.numeric(refid))
+    stop("[bamAlign] refid must be numeric!")
+  if(!is.numeric(position))
+    stop("[bamAlign] position must be numeric!")
+  
+  refid<-as.integer(refid)
+  position<-as.integer(position)
+  
+  # String-values:
+  # 1) query-name
+  # 2) query sequence
+  # 3) quality string
+  # 4) CIGAR string
+  
+  strval<-character(4)
+  strval[1]<-qname
+  strval[2]<-qseq
+  strval[3]<-qqual
+  strval[4]<-cigar
+  
+  # Integer-values:
+  # 1) refid
+  # 2) position
+  # 3) flag
+  # 4) align quality
+  # 5) mate refid
+  # 6) mate position
+  # 7) insert size
+  intval<-integer(4)
+  intval[1]<-refid
+  intval[2]<-position
+  intval[3]<-flag
+  intval[4]<-alqual
+  intval[5]<-mrefid
+  intval[6]<-mpos
+  intval[7]<-insertsize
+  
+  ans<-.Call("bam_align_create",strval,intval)
+  # Must be checked because align list returns NULL when end is reached
+  if(is.null(ans))
+  {  
+    cat("[bamAlign] Align creation unsuccessful! Data inconsistency?\n")
+    return(NULL)
+  }
+  
+  return(new("bamAlign",ans))
+}
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 # Queries against alignment flag (Readers and Accessors)
@@ -1771,6 +2337,9 @@ as.data.frame.bamGapList<-function(x,row.names=NULL,optional=FALSE,...)
 
 as.data.frame.refSeqDict<-function(x,row.names=NULL,optional=FALSE,...)
 {
+  n<-length(x@SN)
+  if(n==0)
+    return(data.frame(SN=character(0),LN=numeric(0),AS=character(0),M5=numeric(0),SP=character(0),UR=character(0)))
   if(is.null(row.names))
     row.names<-1:(length(x@SN))
   else if(length(row.names)!=length(x@SN))
@@ -1787,26 +2356,46 @@ setAs("refSeqDict","data.frame",function(from)
   {return(data.frame(SN=from@SN,LN=from@LN,AS=from@AS,M5=from@M5,SP=from@SP,UR=from@UR,row.names=1:length(from@SN)))})
 
 
-
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
-#  Unexported and undocumented routines
-
-create.idx.batch<-function(bam,idx=paste(bam,".bai",sep=""))
+create.idx.batch<-function(bam,idx=paste(bam,".bai",sep=""),rebuild=FALSE)
 {
-  # create.idx.batch(bamUcFiles)
+  if(!is.character(bam))
+    stop("'bam' must be character!")
+  if(!is.character(idx))
+    stop("'idx' must be character!")
+  if(length(bam)!=length(idx))
+    stop("'bam' and 'idx' must have same length!")  
+  if(!is.logical(rebuild))
+    stop("'rebuild' must be logical!")
+  if(length(rebuild)>1)
+    stop("'rebuild' must have length 1!")
+  
+  
   n<-length(bam)
   for(i in 1:n)
   {
     cat("[",format(i,width=2),"/",n,"] ",sep="")
     if(!file.exists(bam[i]))
-      stop("[create.idx.batch] File",i,"does not exist!")
-    reader<-bamReader(bam[i])
-    create.index(reader,idx[i])
-    bamClose(reader)
+      stop("File ",i," does not exist!")
+    if(rebuild[1])
+    {
+      reader<-bamReader(bam[i])
+      create.index(reader,idx[i])
+      bamClose(reader)       
+    }else{
+      if(!file.exists(idx[i]))
+      {
+        reader<-bamReader(bam[i])
+        create.index(reader,idx[i])
+        bamClose(reader)     
+      }
+    }
     cat("OK\n")
   }
   return(invisible())
 }
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+#  Unexported and undocumented routines
 
 readSepGapTables<-function(bam,profo,defo="sep_gap",idx=paste(bam,".bai",sep=""))
 {
@@ -1930,6 +2519,55 @@ readAccGapTables<-function(bam,profo,defo="sep_gap",idx=paste(bam,".bai",sep="")
   cat("[readAccGapTables] Final sites: ",format(size(bsl),big.mark=bm,width=9),"\n")
   return(res)
 }
+
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+#  Unexported and undocumented miscellaneous functions
+
+copy_fastq<-function(infile,outfile,which,append=FALSE)
+{
+  if(!is.character(infile))
+    stop("[copy_fastq] infile must be character!")
+  if(!is.character(outfile))
+    stop("[copy_fastq] outfile must be character!")
+  if(!is.numeric(which))
+    stop("[copy_fastq] which must be numeric!")
+  if(any(which<=0))
+    stop("[copy_fastq] Only positive numbers in which allowed!")
+  which<-as.integer(sort(unique(which)))
+  if(!is.logical(append))
+    stop("[copy_fastq] append must be logical!")
+  
+  if(!file.exists(infile))
+    stop("[copy_fastq] infile does not exist!")
+  
+  ans<-.Call("copy_fastq_records",infile,outfile,which,append,PACKAGE="rbamtools")
+  
+  bm<-Sys.localeconv()[7]
+  if(length(which)<ans)
+    cat("[copy_fastq] Incomplete copy: ",format(ans,big.mark=bm),"/",format(length(which),big.mark=bm),". EOF reached?",sep="")
+  return(invisible(ans))
+}
+
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+# (will be removed with next release)
+setGeneric("nGapAligns",function(object)standardGeneric("nGapAligns"))
+setMethod("nGapAligns",signature="gapList",definition=function(object){
+  .Deprecated("nAlignGaps",package="rbamtools")
+  return(nAlignGaps(object))
+})
+setMethod("nGapAligns",signature="gapSiteList",definition=function(object){
+  .Deprecated("nAlignGaps",package="rbamtools")
+  return(nAlignGaps(object))
+})
+setMethod("nGapAligns",signature="bamGapList",definition=function(object){
+  .Deprecated("nAlignGaps",package="rbamtools")
+  return(nAlignGaps(object))
+})
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + #
+
+
 #(res<-readAccGapTables(bam=grs$bamEns,profo="~/project/"))
 
 
