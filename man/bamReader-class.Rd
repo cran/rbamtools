@@ -14,6 +14,9 @@
 \alias{getHeader,bamReader-method}
 \alias{getHeaderText,bamReader-method}
 \alias{getNextAlign,bamReader-method}
+\alias{getRefCoords}
+\alias{getRefCoords-methods}
+\alias{getRefCoords,bamReader-method}
 \alias{getRefCount}
 \alias{getRefCount-methods}
 \alias{getRefCount,bamReader-method}
@@ -47,13 +50,14 @@
 \section{Methods}{
   \describe{
     \item{bamClose}{\code{signature(object = "bamReader")}: Closes connection to BAM-file. }
-    \item{bamCopy}{\code{signature(object = "bamReader",writer="bamWriter",refids,verbose)}: Copies all aligns for gifen refids from reader to writer. When no refids are given, aligns for all refids are copied. refids refer to Reference-ID's returned by 'getRefData' (ID column). Missing matches (from refids into Reference-ID's) will terminate the function with an error.}
+    \item{bamCopy}{\code{signature(object = "bamReader",writer="bamWriter",refids,verbose)}: Copies all aligns for given refids from reader to writer. When no refids are given, aligns for all refids are copied. refids refer to Reference-ID's returned by 'getRefData' (ID column). Missing matches (from refids into Reference-ID's) will terminate the function with an error.}
     \item{bamSave}{\code{signature(object = "bamReader",writer="bamWriter")}: Copies all aligns from reader to writer.}
     \item{createIndex}{\code{signature(object = "bamReader", filename="character")}: Creates an index file for opened BAM-file. Therfore the BAM-file must be position-sorted. filename determines the name of the new BAM-Index-file (usually bam_filename.bam.idx) }
     \item{filename}{\code{signature(object = "bamReader")}: Returns filename of opened BAM-file. }
     \item{getHeader}{\code{signature(object = "bamReader")}: Returns object of class bamHeader which contains binary representation of bam-header data. }
     \item{getHeaderText}{\code{signature(object = "bamReader")}: Returns object of class bamHeaderText which contains textual representation of bam-header data. }
     \item{getNextAlign}{\code{signature(object = "bamReader")}: Returns object of class bamAlign which contains data of next Align from file. When EOF is reached the function returns NULL. }
+    \item{getRefCoords}{\code{signature(object="bamReader",sn="character")}: Helper function that returns coordinates of entire ref for usage with bamRange, gapList or siteList function. }
     \item{getRefCount}{\code{signature(object = "bamReader")}: Returns number of reference sequences. }
     \item{getRefData}{\code{signature(object = "bamReader")}: Returns data frame which contains three columns: For each reference sequence, the corresponding row contains the Reference-ID (1st column, refID), the Reference name (2nd column, refName) and the length of the Reference sequence (3rd column, refLength).
 }
@@ -99,6 +103,8 @@ align<-getNextAlign(range)
 writer<-bamWriter(getHeader(reader),"newFile1.bam")
 bamSave(reader,writer)
 bamClose(writer)
+# reader2<-bamReader("newFile1.bam")
+# bamSort(reader,"newFile1s")
 # Copy align for Reference-ID '0'
 writer<-bamWriter(getHeader(reader),"newFile2.bam")
 bamCopy(reader,writer,0)

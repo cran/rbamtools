@@ -20,7 +20,7 @@
 The gapList class represents a list of Alignment gaps (i.e. N-items in Cigar-data). For each gap, the type of left and right adjacent Cigar items is reported plus size of each. The list can be converted into a data.frame which then contains the columns: refid, position (which identify the align), left_cigar_len,left_cigar_type, left_stop (characterize the left boundary) and right_start, right_cigar_len, right_cigar_type (characterize the right boundary). The adjacent cigar-types should be 0 (i.e. M=match). left_stop is the 0-based position of last exon nucleotide, right_start is the 0-based position of the first exon nucleotide.
 }
 \section{Objects from the Class}{
-Objects can be created by calls of the form \code{new("bamAlign",reader,coords))}.
+Objects can be created by calls of the form \code{gapList(reader,coords))}.
 }
 \section{Slots}{
   \describe{
@@ -32,7 +32,7 @@ Objects can be created by calls of the form \code{new("bamAlign",reader,coords))
     \item{size}{\code{signature(x = "gapList")}: Returns number of gapped-align items in list. }
     \item{coerce}{\code{signature(from = "gapList", to = "data.frame")}: Coercion of gapList to data.frame.}
     \item{coerce}{\code{signature("gapList","data.frame")}: Coercion of gapList to data.frame.}
-    \item{show}{\code{signature(object = "gapList")}: Returns head of data.frame representation. }
+    \item{show}{\code{signature(object = "gapList")}: Prints a short message with some summarizing data. }
     \item{nAlign}{\code{signature(object = "gapList")}: Returns number of aligns in specified Range. }
     \item{nGapAlign}{\code{signature(object = "gapList")}: Returns number of gapped aligns in specified Range. }
 	 }

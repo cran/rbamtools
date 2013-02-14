@@ -48,8 +48,8 @@ typedef struct {
 	gap_element *last_el;
 	gap_element *curr_el;
 	unsigned long size;
-	unsigned long nAlings;
-	unsigned long nGapAlings;
+	unsigned long nAligns;
+	unsigned long nGapAligns;
 } gap_list;
 
 inline gap_list * init_gap_list()
@@ -185,55 +185,76 @@ inline void list_gaps(gap_list *l,const bam1_t* align)
 	g.refid=align->core.tid;
 	g.position=position;
 	// Count total Aligns
-	++(l->nAlings);
+	++(l->nAligns);
 	//printf("[list_gaps] refid: %i\tposition: %i\tn_cigar: %i\n",g.refid,g.position,n_cigar);
 
 
 	if(n_cigar>2)
 	{
-		// Assumes that first and last cigar type cannot be N!
 		// In this loop there's always a valid left and right cigar
+
+		// BAM_CMATCH		= 0 = M match or mismatch
+		// BAM_CREF_SKIP	= 3 = N skip on the reference (e.g. spliced alignment) *
+		// BAM_CINS		    = 1 = S clip on the read with clipped sequence
+
+		// First cigar item must be M! Otherwise drop align.
+		if((cigar[0] & BAM_CIGAR_MASK)!=BAM_CMATCH)
+			return;
 
 		// Add size of first cigar to position to get *1-based* left stop
 		// BAM is *0-based*
+		// position always points to *1-based* last nucleotide of active cigar item
 		position+= (cigar[0] >> BAM_CIGAR_SHIFT);
 
 		for(i=1;i<(n_cigar-1);++i)
 		{
-			// BAM_CMATCH		= 0 = M match or mismatch
-			// BAM_CREF_SKIP	= 3 = N skip on the reference (e.g. spliced alignment) *
-			// BAM_CINS		= 1 = S clip on the read with clipped sequence
 
-			// ERROR: First CIGAR item cannot be I or D or N.
-			op = cigar[0] & BAM_CIGAR_MASK;
-			if((op!= BAM_CMATCH) && (op!=BAM_CINS))
-				return;
 
 			op = cigar[i] & BAM_CIGAR_MASK;
 			//printf("op %i\t",op);
 			if(op==BAM_CREF_SKIP)
 			{
 				// Count gaps
-				++(l->nGapAlings);
+				++(l->nGapAligns);
 				// N -> Add gap to list
 				g.left_stop=position;
 				g.gap_len=cigar[i] >> BAM_CIGAR_SHIFT;
+
 				position += g.gap_len;
+				// position now points to *1-based* last nuc of gap
+
+				// Right start (first nuc) is one after last intron position
 				g.right_start=position+1;
 
+				// left side of N must be M otherwise skip align
+				if((cigar[i-1] & BAM_CIGAR_MASK)!=BAM_CMATCH)
+					return;
 				// Add left cigar data
 				g.left_cigar_len=cigar[i-1]>>BAM_CIGAR_SHIFT;
 				// Adding one -> always positive values -> output as factor
-				g.left_cigar_type=(cigar[i-1] & BAM_CIGAR_MASK)+1;
+				g.left_cigar_type=BAM_CMATCH+1;
 
+				// right side of N must be M otherwise skip align
+				if((cigar[i+1] & BAM_CIGAR_MASK)!=BAM_CMATCH)
+					return;
 				// Add right cigar data
 				g.right_cigar_len=cigar[i+1]>>BAM_CIGAR_SHIFT;
 				// Adding one -> always positive values -> output as factor
-				g.right_cigar_type=(cigar[i+1] & BAM_CIGAR_MASK)+1;
+				g.right_cigar_type=BAM_CMATCH+1;
 
 				gap_list_push_back(l,g);
+				
+				// next cigar can also be processed because we know it's an M
+				++i;
+				position+=(cigar[i] >> BAM_CIGAR_SHIFT);
+				// position now points to *1-based* last nuc of match
 			}
-			else if(op == BAM_CMATCH || op == BAM_CINS)
+			else if(op == BAM_CMATCH)
+			{
+				// position then points on rightmost nuc of exon
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
+			}
+			else if(op == BAM_CDEL)
 			{
 				// shift position
 				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
