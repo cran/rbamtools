@@ -84,9 +84,9 @@ bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
 idx<-paste(bam,"bai",sep=".")
 # Open BAM file
 reader<-bamReader(bam)
-# createIndex(reader,idx)
+# create.index(reader,idx)
 # Load BAM index file
-loadIndex(reader,idx)
+load.index(reader,idx)
 index.initialized(reader)   # Should return 'TRUE'
 
 # +++++++++++++++++++++++++++++++++++++++++++++++

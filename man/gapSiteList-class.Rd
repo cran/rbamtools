@@ -42,7 +42,7 @@ idx<-paste(bam,"bai",sep=".")
 # Open BAM file
 reader<-bamReader(bam)
 # Load BAM index file
-loadIndex(reader,idx)
+load.index(reader,idx)
 coords<-as.integer(c(0,0,249250621))
 sl<-siteList(reader,coords)
 size(sl)

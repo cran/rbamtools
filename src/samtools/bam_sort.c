@@ -12,11 +12,12 @@
 #include "ksort.h"
 #include <R.h>
 
-// All "static" declarations removed (wk).
+// All "static" declarations removed (wk)
 
 int g_is_by_qname = 0;
 
-inline int strnum_cmp(const char *a, const char *b)
+
+static R_INLINE int strnum_cmp(const char *a, const char *b)
 {
 	char *pa, *pb;
 	pa = (char*)a; pb = (char*)b;
@@ -317,7 +318,7 @@ int bam_merge(int argc, char *argv[])
 
 typedef bam1_t *bam1_p;
 
-inline int bam1_lt(const bam1_p a, const bam1_p b)
+static R_INLINE int bam1_lt(const bam1_p a, const bam1_p b)
 {
 	if (g_is_by_qname) {
 		int t = strnum_cmp(bam1_qname(a), bam1_qname(b));

@@ -61,18 +61,18 @@ struct _gz_header_s {
 
 #define DEF_MEM_LEVEL 8
 
-static inline uint32_t byte_swap_4(uint32_t v){
+static R_INLINE uint32_t byte_swap_4(uint32_t v){
 	v = ((v & 0x0000FFFFU) << 16) | (v >> 16);
 	return ((v & 0x00FF00FFU) << 8) | ((v & 0xFF00FF00U) >> 8);
 }
 
-static inline uint64_t byte_swap_8(uint64_t v){
+static R_INLINE uint64_t byte_swap_8(uint64_t v){
 	v = ((v & 0x00000000FFFFFFFFLLU) << 32) | (v >> 32);
 	v = ((v & 0x0000FFFF0000FFFFLLU) << 16) | ((v & 0xFFFF0000FFFF0000LLU) >> 16);
 	return ((v & 0x00FF00FF00FF00FFLLU) << 8) | ((v & 0xFF00FF00FF00FF00LLU) >> 8);
 }
 
-static inline int is_big_endian(){
+static R_INLINE int is_big_endian(){
 	int x = 0x01;
 	char *c = (char*)&x;
 	return (c[0] != 0x01);
@@ -496,7 +496,7 @@ RAZF* razf_dopen2(int fd, const char *mode)
 }
 #endif
 
-static inline RAZF* _razf_open(const char *filename, const char *mode, int _load_index){
+static R_INLINE RAZF* _razf_open(const char *filename, const char *mode, int _load_index){
 	int fd;
 	RAZF *rz;
 	if(strstr(mode, "r")){

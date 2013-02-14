@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <R.h>
 
 #ifndef kroundup32
 #define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
@@ -43,7 +44,7 @@ extern "C" {
 }
 #endif
 	
-static inline int kputsn(const char *p, int l, kstring_t *s)
+static R_INLINE int kputsn(const char *p, int l, kstring_t *s)
 {
 	if (s->l + l + 1 >= s->m) {
 		s->m = s->l + l + 2;
@@ -56,12 +57,12 @@ static inline int kputsn(const char *p, int l, kstring_t *s)
 	return l;
 }
 
-static inline int kputs(const char *p, kstring_t *s)
+static R_INLINE int kputs(const char *p, kstring_t *s)
 {
 	return kputsn(p, strlen(p), s);
 }
 
-static inline int kputc(int c, kstring_t *s)
+static R_INLINE int kputc(int c, kstring_t *s)
 {
 	if (s->l + 1 >= s->m) {
 		s->m = s->l + 2;
@@ -73,7 +74,7 @@ static inline int kputc(int c, kstring_t *s)
 	return c;
 }
 
-static inline int kputw(int c, kstring_t *s)
+static R_INLINE int kputw(int c, kstring_t *s)
 {
 	char buf[16];
 	int l, x;
@@ -90,7 +91,7 @@ static inline int kputw(int c, kstring_t *s)
 	return 0;
 }
 
-static inline int kputuw(unsigned c, kstring_t *s)
+static R_INLINE int kputuw(unsigned c, kstring_t *s)
 {
 	char buf[16];
 	int l, i;
@@ -107,7 +108,7 @@ static inline int kputuw(unsigned c, kstring_t *s)
 	return 0;
 }
 
-static inline int *ksplit(kstring_t *s, int delimiter, int *n)
+static R_INLINE int *ksplit(kstring_t *s, int delimiter, int *n)
 {
 	int max = 0, *offsets = 0;
 	*n = ksplit_core(s->s, delimiter, &max, &offsets);

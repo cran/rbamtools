@@ -8,6 +8,7 @@
 #ifndef GAPSITELISTLIST_H_
 #define GAPSITELISTLIST_H_
 
+#include <R.h>
 #include "gapSiteList.h"
 
 typedef struct site_ll_element
@@ -17,14 +18,14 @@ typedef struct site_ll_element
 	struct site_ll_element *last;
 }site_ll_element;
 
-inline site_ll_element * site_ll_element_init(site_list *l)
+static R_INLINE site_ll_element * site_ll_element_init(site_list *l)
 {
 	site_ll_element* el=calloc(sizeof(site_ll_element),1);
 	el->l=l;
 	return el;
 }
 
-inline void site_ll_element_destroy(site_ll_element *el)
+static R_INLINE void site_ll_element_destroy(site_ll_element *el)
 {
 	site_list_destroy(el->l);
 	free(el);
@@ -39,7 +40,7 @@ typedef struct site_ll
 	unsigned size;
 } site_ll;
 
-inline site_ll * site_ll_init()
+site_ll * site_ll_init()
 {
 	site_ll * sll=calloc(sizeof(site_ll),1);
 	return sll;

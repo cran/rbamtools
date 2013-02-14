@@ -3,7 +3,7 @@
 #  File   : rbamtools.r                                                         #
 #  Date   : 21.Sep.2012                                                         #
 #  Content: R-Source for package rbamtools                                      #
-#  Version: 2.1.5                                                               #
+#  Version: 2.3.10                                                              #
 #  Author : W. Kaisers                                                          #
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
@@ -18,8 +18,11 @@
 #  08.Nov.12  Reading and writing big bamRanges (pure C, no R) valgrind checked.
 #  09.Nov.12  [bamCopy.bamReader] Added which allows refwise copying.
 #  31.Dec.12  gapSiteList class added
-#  11.Jan.13  bamSiteList class added
-#  06.Feb.13  First successful test of bamSiteList on 36 BAM-files (871.926/sec)
+#  11.Jan.13  bamGapList class added
+#  06.Feb.13  First successful test of bamGapList on 36 BAM-files (871.926/sec)
+#  20.Feb.13  Fixed Error in merge.bamGapList
+#  27.Feb.13  Renamed createIndex -> create.index and loadIndex -> load.index
+#             and bamSiteList -> bamGapList
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
 #.Last.lib<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
@@ -52,8 +55,8 @@ setGeneric("nGapAligns",function(object)standardGeneric("nGapAligns"))
 setGeneric("gapList",function(object,coords)standardGeneric("gapList"))
 # Generic for reading gapSiteList (merged align gap sites) from bamReader
 setGeneric("siteList",function(object,coords)standardGeneric("siteList"))
-# Generic for reading bamSiteList (merged align gap sites for whole bam-files) from bamReader
-setGeneric("bamSiteList",function(object)standardGeneric("bamSiteList"))
+# Generic for reading bamGapList (merged align gap sites for whole bam-files) from bamReader
+setGeneric("bamGapList",function(object)standardGeneric("bamGapList"))
 
 
 ###################################################################################################
@@ -101,7 +104,7 @@ bamReader<-function(filename,indexname,idx=FALSE,verbose=0){
     idxfile<-paste(filename,"bai",sep=".")
   else
     idxfile<-indexname   
-  loadIndex(reader,idxfile)
+  load.index(reader,idxfile)
  
   if(verbose[1]==1)
     cat("[bamReader] Opened file '",basename(filename),"' and index '",basename(idxfile),"'.\n",sep="")
@@ -180,18 +183,21 @@ setMethod(f="getRefCoords",signature="bamReader",definition=function(object,sn){
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 #  Index related functions
 
-# createIndex
-setGeneric("createIndex",function(object,idx_filename) standardGeneric("createIndex"))
-setMethod(f="createIndex",signature="bamReader",definition=function(object,idx_filename)
-{invisible(.Call("bam_reader_create_index",path.expand(object@filename),
+# create.index
+setGeneric("create.index",function(object,idx_filename) standardGeneric("create.index"))
+setMethod(f="create.index",signature="bamReader",definition=function(object,idx_filename)
+{
+  if(missing(idx_filename))
+    idx_filename<-paste(object@filename,".bai",sep="")
+  invisible(.Call("bam_reader_create_index",path.expand(object@filename),
                  path.expand(idx_filename),PACKAGE="rbamtools"))})
 
-setGeneric("loadIndex",function(object,filename) standardGeneric("loadIndex"))
-setMethod("loadIndex",signature="bamReader",definition=function(object,filename){
+setGeneric("load.index",function(object,filename) standardGeneric("load.index"))
+setMethod("load.index",signature="bamReader",definition=function(object,filename){
   if(!is.character(filename))
-    stop("[bamReader.loadIndex] Filename must be character!\n")
+    stop("[bamReader.load.index] Filename must be character!\n")
   if(!file.exists(filename))
-    stop("[bamReader.loadIndex] Index file \"",filename,"\" does not exist!\n")
+    stop("[bamReader.load.index] Index file \"",filename,"\" does not exist!\n")
   
   # Set index Variable in given bamReader object:
   # Read object name, create expression string and evaluate in parent frame
@@ -251,11 +257,11 @@ setMethod("siteList","bamReader",function(object,coords)
     stop("[siteList.bamReader] Reader must have initialized index!")
   return(new("gapSiteList",object,coords))
 })
-setMethod("bamSiteList","bamReader",function(object)
+setMethod("bamGapList","bamReader",function(object)
 {
   if(!index.initialized(object))
-    stop("[bamSiteList.bamReader] Reader must have initialized index!")
-  return(new("bamSiteList",object))
+    stop("[bamGapList.bamReader] Reader must have initialized index!")
+  return(new("bamGapList",object))
 })
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
@@ -1214,14 +1220,14 @@ merge.gapSiteList<-function(x,y,...)
 
 ###################################################################################################
 #                                                                                                 #
-# bamSiteList                                                                                     #
+# bamGapList                                                                                     #
 #                                                                                                 #
 ###################################################################################################
 
-setClass("bamSiteList",representation(list="externalptr",refdata="data.frame"),
+setClass("bamGapList",representation(list="externalptr",refdata="data.frame"),
          validity=function(object){ return(ifelse(is.null(object@list),FALSE,TRUE))})
 
-setMethod(f="initialize","bamSiteList",definition=function(.Object,reader){
+setMethod(f="initialize","bamGapList",definition=function(.Object,reader){
   if(missing(reader))
   {
     .Object@list<-.Call("gap_site_ll_init")
@@ -1229,9 +1235,9 @@ setMethod(f="initialize","bamSiteList",definition=function(.Object,reader){
   }
   
   if(!is(reader,"bamReader"))
-    stop("[bamSiteList.initialize] reader must be an instance of bamReader!\n")
+    stop("[bamGapList.initialize] reader must be an instance of bamReader!\n")
   if(is.null(reader@index))
-    stop("[bamSiteList.initialize] bamReader must have initialized index!\n")
+    stop("[bamGapList.initialize] bamReader must have initialized index!\n")
   
   ref<-getRefData(reader)
   ref$start<-0L
@@ -1252,16 +1258,16 @@ setMethod(f="initialize","bamSiteList",definition=function(.Object,reader){
 
 # siteList function for retrieving objects in bamReader section
 
-setMethod("size",signature="bamSiteList",definition=function(object)
+setMethod("size",signature="bamGapList",definition=function(object)
 {.Call("gap_site_ll_get_size",object@list,PACKAGE="rbamtools")})
 
-setMethod("nAligns",signature="bamSiteList",definition=function(object)
+setMethod("nAligns",signature="bamGapList",definition=function(object)
 {.Call("gap_site_ll_get_nAligns",object@list,PACKAGE="rbamtools")})
 
-setMethod("nGapAligns",signature="bamSiteList",definition=function(object)
+setMethod("nGapAligns",signature="bamGapList",definition=function(object)
 {.Call("gap_site_ll_get_nGapAligns",object@list,PACKAGE="rbamtools")})
 
-setMethod("show","bamSiteList",function(object){
+setMethod("show","bamGapList",function(object){
   bm<-Sys.localeconv()[7]
   cat("An object of class '",class(object),"'. size: ",format(size(object),big.mark=bm),"\n",sep="")
   cat("nAligns:",format(nAligns(object),big.mark=bm),"\tnGapAligns:",format(nGapAligns(object),big.mark=bm),"\n")
@@ -1269,25 +1275,31 @@ setMethod("show","bamSiteList",function(object){
   return(invisible())
 })
 
-summary.bamSiteList<-function(object,...)
+summary.bamGapList<-function(object,...)
 { return(merge(object@refdata,.Call("gap_site_ll_get_summary_df",object@list))) }
 
-merge.bamSiteList<-function(x,y,...)
+merge.bamGapList<-function(x,y,...)
 {
-  if(!is(y,"bamSiteList"))
-    stop("[merge.bamSiteList] y must be bamSiteList!")
-  #lref<-x@refdata
-  #rref<-y@refdata
+  if(!is(y,"bamGapList"))
+    stop("[merge.bamGapList] y must be bamGapList!")
+  if(size(x)==0)
+    stop("[merge.bamGapList] size(x)==0!")
+  if(size(y)==0)
+    stop("[merge.bamGapList] size(y)==0!")
   mref<-merge(x@refdata,y@refdata,by="SN",all=T)
   
   n<-dim(mref)[1]
   .Call("gap_site_ll_set_curr_first",x@list)
   .Call("gap_site_ll_set_curr_first",y@list)
-  res<-new("bamSiteList")
+  res<-new("bamGapList")
   for(i in 1:n)
   {
     if(is.na(mref$ID.x[i]))
+    {
       .Call("gap_site_ll_add_curr_pp",y@list,res@list,as.integer(i-1))
+      # copy values from .y to .x side (for later use in ref)
+      mref[i,2:4]<-mref[i,5:7]
+    }
     else if(is.na(mref$ID.y[i]))
       .Call("gap_site_ll_add_curr_pp",x@list,res@list,as.integer(i-1))
     else
@@ -1295,11 +1307,11 @@ merge.bamSiteList<-function(x,y,...)
   }
   
   # get l-part of refdata
-  ysn<-mref$SN[is.na(mref$ID.x)]
-  mtc<-match(ysn,y@refdata$SN)
-  res@refdata<-rbind(x@refdata,y@refdata[mtc,])
-  # reset ID to new values
-  res@refdata$ID<-0:(n-1)
+  ref<-mref[,1:4]
+  names(ref)<-c("SN","ID","LN","start")
+  # reset ID to new values  
+  ref$ID<-0:(n-1)
+  res@refdata<-ref
   return(res)
 }
 
@@ -1313,14 +1325,14 @@ readPooledBamGaps<-function(infiles,idxInfiles=paste(infiles,".bai",sep=""))
     bam<-infiles[i]
     reader<-bamReader(bam)
     if(!file.exists(idxInfiles[i]))
-      createIndex(reader,idxInfiles[i])
-    loadIndex(reader,idxInfiles[i])
+      create.index(reader,idxInfiles[i])
+    load.index(reader,idxInfiles[i])
     if(i==1)
-      ga<-bamSiteList(reader)
+      ga<-bamGapList(reader)
     else
     {
-      ga1<-bamSiteList(reader)
-      ga<-merge.bamSiteList(ga,ga1)
+      ga1<-bamGapList(reader)
+      ga<-merge.bamGapList(ga,ga1)
     }
     cat("\r[readPooledBamGaps] (",format(i,width=2),"/",n,") Finished. List-size: ",format(size(ga),width=7,big.mark=bm),
               "\tnAligns: ",format(nAligns(ga),width=13,big.mark=bm),".\n",sep="")
@@ -1333,7 +1345,6 @@ readPooledBamGapDf<-function(infiles,idxInfiles=paste(infiles,".bai",sep=""))
 { 
   ga<-readPooledBamGaps(infiles,idxInfiles=paste(infiles,".bai",sep=""))
   dfr<-as.data.frame(ga)
-  dfr$gqs<-dfr$nlstart*dfr$qmm
   attr(dfr,"nAligns")<-nAligns(ga)
   attr(dfr,"nGapAligns")<-nGapAligns(ga)
   return(dfr)
@@ -1359,7 +1370,7 @@ bamRange<-function(reader=NULL,coords=NULL,complex=FALSE) {
   if(!is.null(reader))
   {
     if(!index.initialized(reader))
-      stop("[bamRange] reader must have initialized index! Use 'loadIndex'!")
+      stop("[bamRange] reader must have initialized index! Use 'load.index'!")
   }
   return(new("bamRange",reader,coords,complex))
 }
@@ -1391,7 +1402,7 @@ setMethod(f="initialize",signature="bamRange",
             if(length(complex)>1)
               stop("[bamRange.initialize] complex must have length 1!")
             if(!index.initialized(reader))
-              stop("[bamRange.initialize] reader must have initialized index! Use 'loadIndex'!")
+              stop("[bamRange.initialize] reader must have initialized index! Use 'load.index'!")
             .Object@range<-.Call("bam_range_fetch",reader@reader,reader@index,trunc(coords),complex,PACKAGE="rbamtools")
             return(.Object)
           })
@@ -1752,7 +1763,7 @@ as.data.frame.gapList<-function(x,row.names=NULL,optional=FALSE,...)
   {return(.Call("gap_list_get_df",x@list,PACKAGE="rbamtools"))}
 as.data.frame.gapSiteList<-function(x,row.names=NULL,optional=FALSE,...)
 {return(.Call("gap_site_list_get_df",x@list,PACKAGE="rbamtools"))}
-as.data.frame.bamSiteList<-function(x,row.names=NULL,optional=FALSE,...)
+as.data.frame.bamGapList<-function(x,row.names=NULL,optional=FALSE,...)
 {return(.Call("gap_site_ll_get_df",x@list,x@refdata$SN,PACKAGE="rbamtools"))}
 
 as.data.frame.refSeqDict<-function(x,row.names=NULL,optional=FALSE,...)
@@ -1771,3 +1782,177 @@ setAs("gapList","data.frame",function(from)
   {return(.Call("gap_list_get_df",from@list,PACKAGE="rbamtools"))})
 setAs("refSeqDict","data.frame",function(from)
   {return(data.frame(SN=from@SN,LN=from@LN,AS=from@AS,M5=from@M5,SP=from@SP,UR=from@UR,row.names=1:length(from@SN)))})
+
+
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+#  Unexported and undocumented routines
+
+create.idx.batch<-function(bam,idx=paste(bam,".bai",sep=""))
+{
+  # create.idx.batch(bamUcFiles)
+  n<-length(bam)
+  for(i in 1:n)
+  {
+    cat("[",format(i,width=2),"/",n,"] ",sep="")
+    if(!file.exists(bam[i]))
+      stop("[create.idx.batch] File",i,"does not exist!")
+    reader<-bamReader(bam[i])
+    create.index(reader,idx[i])
+    bamClose(reader)
+    cat("OK\n")
+  }
+  return(invisible())
+}
+
+readSepGapTables<-function(bam,profo,defo="sep_gap",idx=paste(bam,".bai",sep=""))
+{
+  require(rbamtools)
+  fo<-file.path(profo,defo)
+  if(!file.exists(fo))
+    dir.create(fo)
+  bm<-Sys.localeconv()[7]
+  
+  n<-length(bam)
+  for(i in 1:n)
+  {
+    cat("[readSepGapTables] i:(",format(i,width=2),"/",n,")",sep="")
+    
+    if(!file.exists(bam[i]))
+      stop("[readSepGapTables] i:",i," File does not exist!")
+    
+    reader<-bamReader(bam[i])
+    if(!file.exists(idx[i]))
+      create.index(reader,idx[i])
+    load.index(reader,idx[i])
+    if(i==1)
+    {
+      bsl<-bamGapList(reader)
+      dfr<-as.data.frame(bsl)
+      save(dfr,file=file.path(fo,paste("bsl_",i,".RData",sep="")))
+      write.table(dfr,file=file.path(fo,paste("bsl_",i,".csv",sep="")),sep=";",row.names=FALSE)
+      cat("\r[readSepGapTables] i:(",format(i,width=2),"/",n,")\tnr sites: ",format(size(bsl),big.mark=bm,width=9),"\n",sep="")    
+    }
+    else
+    {
+      # save site-table for bam[i]
+      bsli<-bamGapList(reader)
+      dfri<-as.data.frame(bsli)
+      save(dfri,file=file.path(fo,paste("bsl_",i,".RData",sep="")))
+      write.table(dfri,file=file.path(fo,paste("bsl_",i,".csv",sep="")),sep=";",row.names=FALSE)
+      
+      # save cum-merged site-table for bam[i]
+      bsl<-merge(bsl,bsli)
+      dfr<-as.data.frame(bsl)
+      save(dfr,file=file.path(fo,paste("bsl_c_",i,".RData",sep="")))
+      write.table(dfr,file=file.path(fo,paste("bsl_c_",i,".csv",sep="")),sep=";",row.names=FALSE)      
+      cat("\r[readSepGapTables] i:(",format(i,width=2),"/",n,")\tnr sites: ",format(size(bsl),big.mark=bm,width=9),"\n",sep="")                      
+    }
+  }
+  cat("[readSepGapTables] Finished.")
+}
+
+readAccGapTables<-function(bam,profo,defo="sep_gap",idx=paste(bam,".bai",sep=""))
+{
+  # setup
+  require(rbamtools)
+  fo<-file.path(profo,defo)
+  if(!file.exists(fo))
+    dir.create(fo)
+  bm<-Sys.localeconv()[7]
+  
+  n<-length(bam)
+  res<-data.frame(i=1:n,sites=numeric(n),acc=numeric(n),nov=numeric(n))
+  for(i in 1:n)
+  {
+    cat("[readAccGapTables] i:(",format(i,width=2),"/",n,")",sep="")
+    
+    if(!file.exists(bam[i]))
+      stop("[readAccGapTables] i:",i," File does not exist!")
+    
+    reader<-bamReader(bam[i])
+    if(!file.exists(idx[i]))
+      create.index(reader,idx[i])
+    load.index(reader,idx[i])
+    
+    if(i==1) # first bam file
+    {
+      bsl<-bamGapList(reader)
+      dfr<-as.data.frame(bsl)
+      save(dfr,file=file.path(fo,paste("bsl_",i,".RData",sep="")))
+      
+      # write report values
+      res$sites[1]<-dim(dfr)[1]
+      res$acc[1]<-res$sites[1]
+      res$nov[1]<-res$sites[1]
+      
+      # printout status line
+      cat("\r[readAccGapTables] i:(",format(i,width=2),"/",n,")\tnr sites: ",format(size(bsl),big.mark=bm,width=9),"\n",sep="")    
+    }
+    else    # subsequent bam file
+    {
+      # read sites from bam[i]
+      bsli<-bamGapList(reader)
+      dfri<-as.data.frame(bsli)
+      
+      # extract novel sites as difference from accumulated sites
+      mrg<-merge(dfri[,c("id","seqid","lend","rstart")],dfr[,c("id","seqid","lend","rstart")],by=c("seqid","lend","rstart"),all.x=TRUE)
+      mrg$new<-is.na(mrg$id.y)
+      mrg$id.x<-NULL
+      mrg$id.y<-NULL
+      nov<-merge(dfri,mrg,all=T)
+      nov<-nov[nov$new,c(4,1,5,2,3,6:13)]
+      nov$new<-NULL
+      nov<-nov[order(nov$seqid,nov$lend,nov$rstart),]
+      
+      # Save image
+      save(dfri,nov,dfr ,file=file.path(fo,paste("acc_",i,".RData",sep="")))
+      
+      # create new accumulation via merging
+      bsl<-merge(bsl,bsli)
+      dfr<-as.data.frame(bsl)
+      
+      # write report values
+      res$sites[i]<-dim(dfri)[1]
+      res$acc[i]<-dim(dfr)[1]
+      res$nov[i]<-dim(nov)[1]
+      
+      # print-out status line
+      cat("\r[readAccGapTables] i:(",format(i,width=2),"/",n,")\tnr sites: ",format(size(bsl),big.mark=bm,width=9),"\n",sep="")                      
+    }
+  }
+  
+  # save final image
+  save(dfr,file=file.path(fo,"bsl_acc_final.RData"))
+  cat("[readAccGapTables] Final sites: ",format(size(bsl),big.mark=bm,width=9),"\n")
+  return(res)
+}
+#(res<-readAccGapTables(bam=grs$bamEns,profo="~/project/"))
+
+
+# read_summary_table<-function(n=36,profo="~/project/sep_gap")
+# {
+#   res<-data.frame(i=1:n,sites=numeric(n),acc=numeric(n),nov=numeric(n))
+#   cat("[read_summary_table] i=",i,"\n")
+#   i<-2
+#   load(file.path(profo,paste("acc_",i,".RData",sep="")))
+#   res$sites[1]<-dim(dfr)[1]
+#   res$acc[1]<-dim(dfr)[1]
+#   res$nov[1]<-dim(dfr)[1]
+#   
+#   res$sites[i]<-dim(dfri)[1]
+#   res$acc[i]<-dim(dfr)[1]
+#   res$nov[i]<-dim(nov)[1]
+#   
+#   for(i in 3:n)
+#   {
+#     cat("[read_summary_table] i=",i,"\n")
+#     load(file.path(profo,paste("acc_",i,".RData",sep="")))
+#     res$sites[i]<-dim(dfri)[1]
+#     res$acc[i]<-dim(dfr)[1]
+#     res$nov[i]<-dim(nov)[1]
+#   }
+#   cat("[read_summary_table] Finished.\n")
+#   return(res)
+# }
+#res<-read_summary_table(n=36,profo="~/project/sep_gap")

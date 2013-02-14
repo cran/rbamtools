@@ -46,6 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <R.h>
 
 #ifndef BAM_LITE
 #define BAM_VIRTUAL_OFFSET16
@@ -708,7 +709,7 @@ extern "C" {
   @param  end  end of the region, 0-based
   @return      bin
  */
-static inline int bam_reg2bin(uint32_t beg, uint32_t end)
+static R_INLINE int bam_reg2bin(uint32_t beg, uint32_t end)
 {
 	--end;
 	if (beg>>14 == end>>14) return 4681 + (beg>>14);
@@ -725,7 +726,7 @@ static inline int bam_reg2bin(uint32_t beg, uint32_t end)
   @param  bsrc  source alignment struct
   @return       pointer to the destination alignment struct
  */
-static inline bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc)
+static R_INLINE bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc)
 {
 	uint8_t *data = bdst->data;
 	int m_data = bdst->m_data;   // backup data and m_data
@@ -746,7 +747,7 @@ static inline bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc)
   @param  src   source alignment struct
   @return       pointer to the destination alignment struct
  */
-static inline bam1_t *bam_dup1(const bam1_t *src)
+static R_INLINE bam1_t *bam_dup1(const bam1_t *src)
 {
 	bam1_t *b;
 	b = bam_init1();
@@ -757,7 +758,7 @@ static inline bam1_t *bam_dup1(const bam1_t *src)
 	return b;
 }
 
-static inline int bam_aux_type2size(int x)
+static R_INLINE int bam_aux_type2size(int x)
 {
 	if (x == 'C' || x == 'c' || x == 'A') return 1;
 	else if (x == 'S' || x == 's') return 2;
