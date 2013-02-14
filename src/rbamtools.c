@@ -15,6 +15,16 @@
 #define rbamtools_c
 #include "rbamtools.h"
 
+void print_bitmask_dec(bitmap_type *value)
+{
+	int i,last_block;
+	last_block=bitmap_size-1;
+	Rprintf("%3u",getByte(*value,last_block));
+	for(i=last_block-1;i>=0;--i)
+		Rprintf(" | %3u",getByte(*value,i));
+	Rprintf("\n");
+}
+
 inline void clear_buf(char *c,unsigned n)
 {
 	int i;
@@ -115,8 +125,8 @@ SEXP bam_reader_open(SEXP filename)
 	samfile_t *reader=samopen(_filename,"rb",0);
 	if(!reader)
 		error("[bam_reader_open] Opening bam_file \"%s\" failed!",_filename);
-	else
-		Rprintf("[bamReader] Opened file \"%s\"\n",_filename);
+	//else
+	//	Rprintf("[bamReader] Opened file \"%s\"\n",_filename);
 
 	SEXP pReader;
 	PROTECT(pReader=R_MakeExternalPtr( (void*)(reader),R_NilValue,R_NilValue));
@@ -135,7 +145,7 @@ SEXP bam_reader_close(SEXP pReader)
 	samfile_t *reader=(samfile_t*) (R_ExternalPtrAddr(pReader));
 	samclose(reader);
 	R_SetExternalPtrAddr(pReader,NULL);
-	Rprintf("[BamReader] closed.\n");
+	Rprintf("[bamReader] closed.\n");
 	return R_NilValue;
 }
 
@@ -509,12 +519,12 @@ SEXP gap_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 {
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 	{
-		error("[gap_list_fetch] pReader is no external pointer!\n");
+		error("[gap_list_fetch] pReader is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pIndex)!=EXTPTRSXP)
 	{
-		error("[gap_list_fetch] pIndex is no external pointer!\n");
+		error("[gap_list_fetch] pIndex is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pCoords)!=REALSXP)
@@ -570,7 +580,7 @@ SEXP gap_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 SEXP gap_list_get_df(SEXP pGapList)
 {
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[get_gap_list_df] no external pointer!");
+		error("[get_gap_list_df] No external pointer!");
 
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 
@@ -715,7 +725,7 @@ SEXP gap_list_get_df(SEXP pGapList)
 	SET_STRING_ELT(col_names,2,mkChar("left_cigar_len"));
 	SET_STRING_ELT(col_names,3,mkChar("left_cigar_type"));
 	SET_STRING_ELT(col_names,4,mkChar("left_stop"));
-	SET_STRING_ELT(col_names,5,mkChar("gap_len"));
+	SET_STRING_ELT(col_names,5,mkChar("gaplen"));
 	SET_STRING_ELT(col_names,6,mkChar("right_start"));
 	SET_STRING_ELT(col_names,7,mkChar("right_cigar_len"));
 	SET_STRING_ELT(col_names,8,mkChar("right_cigar_type"));
@@ -743,7 +753,7 @@ SEXP gap_list_get_df(SEXP pGapList)
 SEXP gap_list_get_size(SEXP pGapList)
 {
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[gap_list_get_size] no external pointer!");
+		error("[gap_list_get_size] No external pointer!");
 
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
@@ -756,27 +766,906 @@ SEXP gap_list_get_size(SEXP pGapList)
 SEXP gap_list_get_nAligns(SEXP pGapList)
 {
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[gap_list_get_size] no external pointer!");
+		error("[gap_list_get_size] No external pointer!");
 
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nAlings);
+	INTEGER(ans)[0]=(l->nAligns);
 	UNPROTECT(1);
 	return ans;
 }
 SEXP gap_list_get_nGapAligns(SEXP pGapList)
 {
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[gap_list_get_size] no external pointer!");
+		error("[gap_list_get_size] No external pointer!");
 
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nGapAlings);
+	INTEGER(ans)[0]=(l->nGapAligns);
 	UNPROTECT(1);
 	return ans;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// gap_site_list
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void finalize_gap_site_list(SEXP ptr)
+{
+	if(TYPEOF(ptr)!=EXTPTRSXP)
+	{
+		error("[finalize_gap_list] No external pointer!\n");
+		return;
+	}
+	struct site_list *l=(site_list*)(R_ExternalPtrAddr(ptr));
+	site_list_destroy(l);
+	l=NULL;
+	R_SetExternalPtrAddr(ptr,NULL);
+}
+
+SEXP create_gap_site_list()
+{
+	site_list *l=site_list_init();
+	SEXP list;
+	PROTECT(list=R_MakeExternalPtr((void*)(l),R_NilValue,R_NilValue));
+	R_RegisterCFinalizer(list,finalize_gap_site_list);
+	UNPROTECT(1);
+	return list;
+}
+
+static int gap_site_list_fetch_func(const bam1_t *b, void *data)
+{
+	site_list *l=(site_list*)data;
+	list_gap_sites(l,b);
+	return 0;
+}
+
+SEXP gap_site_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
+{
+	if(TYPEOF(pReader)!=EXTPTRSXP)
+	{
+		error("[gap_site_list_fetch] pReader is No external pointer!\n");
+		return R_NilValue;
+	}
+	if(TYPEOF(pIndex)!=EXTPTRSXP)
+	{
+		error("[gap_site_list_fetch] pIndex is No external pointer!\n");
+		return R_NilValue;
+	}
+	if(TYPEOF(pCoords)!=REALSXP)
+	{
+		error("[gap_site_list_fetch] pCoords is no REAL!\n");
+		return R_NilValue;
+	}
+	if(LENGTH(pCoords)!=3)
+	{
+		error("[gap_site_list_fetch] pCoords must contain three values (refid,begin,end)!\n");
+		return R_NilValue;
+	}
+
+	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	bam_index_t *index=(bam_index_t*)(R_ExternalPtrAddr(pIndex));
+	if(reader==NULL)
+	{
+		error("[gap_site_list_fetch] Reader must not be NULL pointer!\n");
+		return R_NilValue;
+	}
+	if(index==NULL)
+	{
+		error("[gap_site_list_fetch] Index must not be NULL pointer!\n");
+		return R_NilValue;
+	}
+
+	double *pi=REAL(pCoords);
+	int refid=(int) pi[0];
+	int begin=(int) pi[1];
+	int end=(int) pi[2];
+
+	if(refid<0 || refid >=(reader->header->n_targets))
+	{
+		error("[gap_site_list_fetch] refid out of range!\n");
+		return R_NilValue;
+	}
+	if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+	{
+		error("[gap_site_list_fetch] Begin or end out of range!\n");
+		return R_NilValue;
+	}
+
+	site_list *l=site_list_init();
+	l->refid=refid;
+	bam_fetch(reader->x.bam,index,refid,begin,end,(void*)l,gap_site_list_fetch_func);
+
+	SEXP list;
+	PROTECT(list=R_MakeExternalPtr( (void*)(l),R_NilValue,R_NilValue));
+	R_RegisterCFinalizer(list,finalize_gap_site_list);
+	UNPROTECT(1);
+	Rprintf("[gap_site_list_fetch] Fetched list of size %i.\n",l->size);
+	return list;
+}
+
+SEXP gap_site_list_get_df(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[get_gap_list_df] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+
+	// create data.frame
+	int nProtected=0;
+	int nCols=13;
+	SEXP dflist;
+	PROTECT(dflist=allocVector(VECSXP,nCols));
+	++nProtected;
+	int nRows=(l->size);
+	int i;
+
+	// Column 0: id
+	SEXP id_vector;
+	PROTECT(id_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 1: refid
+	SEXP refid_vector;
+	PROTECT(refid_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 2: lstart
+	SEXP lstart_vector;
+	PROTECT(lstart_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 3: lend
+	SEXP lend_vector;
+	PROTECT(lend_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 4: rstart
+	SEXP rstart_vector;
+	PROTECT(rstart_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 5: rend
+	SEXP rend_vector;
+	PROTECT(rend_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 6: gap_len
+	SEXP gap_len_vector;
+	PROTECT(gap_len_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 7: nAligns
+	SEXP nAligns_vector;
+	PROTECT(nAligns_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 8: nProbes
+	SEXP nProbes_vector;
+	PROTECT(nProbes_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 9: nlstart
+	SEXP nlstart_vector;
+	PROTECT(nlstart_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 10: sum_left_cigar
+	SEXP qmm;
+	PROTECT(qmm=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 11: lcs
+	SEXP nmcs_vector;
+	PROTECT(nmcs_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 12: mcs
+	SEXP mcs_vector;
+	PROTECT(mcs_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+
+	// start position
+	site_list_element *el,*curr;
+	curr=l->curr;
+	site_list_set_curr_first(l);
+
+	for(i=0;i<nRows;++i)
+	{
+		el=site_list_get_curr_pp(l);
+		INTEGER(id_vector)                  [i]=i+1;
+		INTEGER(refid_vector)        		[i]=l->refid;
+		// lend - max(left_cigar_len)+1
+		INTEGER(lstart_vector)        		[i]=el->lend-getByte(el->lcs,0)+1;
+		INTEGER(lend_vector)	            [i]=el->lend;
+		INTEGER(rstart_vector)	            [i]=el->rstart;
+		INTEGER(rend_vector)  		        [i]=el->rstart+el->r_cigar_size-1;
+		INTEGER(gap_len_vector)			    [i]=el->gap_len;
+		INTEGER(nAligns_vector)		        [i]=el->nAligns;
+		INTEGER(nProbes_vector)             [i]=el->nProbes;
+		INTEGER(nlstart_vector)	            [i]=bitmask_nPos(el->lcs);
+		INTEGER(qmm)      [i]=bitmask_sumPos(el->lcs);
+		INTEGER(nmcs_vector)					[i]=el->lcs;
+		INTEGER(mcs_vector)					[i]=el->mcs;
+	}
+	// Reset curr position
+	l->curr=curr;
+
+	SET_VECTOR_ELT(dflist,0,id_vector);
+	SET_VECTOR_ELT(dflist,1,refid_vector);
+	SET_VECTOR_ELT(dflist,2,lstart_vector);
+	SET_VECTOR_ELT(dflist,3,lend_vector);
+	SET_VECTOR_ELT(dflist,4,rstart_vector);
+	SET_VECTOR_ELT(dflist,5,rend_vector);
+	SET_VECTOR_ELT(dflist,6,gap_len_vector);
+	SET_VECTOR_ELT(dflist,7,nAligns_vector);
+	SET_VECTOR_ELT(dflist,8,nProbes_vector);
+	SET_VECTOR_ELT(dflist,9,nlstart_vector);
+	SET_VECTOR_ELT(dflist,10,qmm);
+	SET_VECTOR_ELT(dflist,11,nmcs_vector);
+	SET_VECTOR_ELT(dflist,12,mcs_vector);
+
+	///////////////////////////////////////////////////////////////////////////
+	// Column Names
+	SEXP col_names;
+	PROTECT(col_names=allocVector(STRSXP,nCols));
+	++nProtected;
+
+
+	SET_STRING_ELT(col_names,0,mkChar("id"));
+	SET_STRING_ELT(col_names,1,mkChar("refid"));
+	SET_STRING_ELT(col_names,2,mkChar("lstart"));
+	SET_STRING_ELT(col_names,3,mkChar("lend"));
+	SET_STRING_ELT(col_names,4,mkChar("rstart"));
+	SET_STRING_ELT(col_names,5,mkChar("rend"));
+	SET_STRING_ELT(col_names,6,mkChar("gaplen"));
+	SET_STRING_ELT(col_names,7,mkChar("nAligns"));
+	SET_STRING_ELT(col_names,8,mkChar("nProbes"));
+	SET_STRING_ELT(col_names,9,mkChar("nlstart"));
+	SET_STRING_ELT(col_names,10,mkChar("lm_sum"));
+	SET_STRING_ELT(col_names,11,mkChar("lcs"));
+	SET_STRING_ELT(col_names,12,mkChar("mcs"));
+	setAttrib(dflist,R_NamesSymbol,col_names);
+
+	// Row Names
+	SEXP row_names;
+    PROTECT(row_names=allocVector(STRSXP,nRows));
+    ++nProtected;
+
+	int buf_size=128;
+	char *buf=(char*) calloc(buf_size,sizeof(char));
+    for(i=0;i<nRows;++i)
+    {
+    	sprintf(buf,"%i",i);
+    	SET_STRING_ELT(row_names,i,mkChar(buf));
+    }
+    free(buf);
+    setAttrib(dflist,R_RowNamesSymbol,row_names);
+	setAttrib(dflist,R_ClassSymbol,mkString("data.frame"));
+	UNPROTECT(nProtected);
+	return dflist;
+}
+
+SEXP gap_site_list_get_ref_id(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_get_ref_id] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->refid);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_list_get_size(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_get_size] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->size);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_list_get_nAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_get_nAligns] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->nAligns);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_list_get_nGapAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_get_nGapAligns] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->nGapAligns);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_list_merge(SEXP pLhs, SEXP pRhs, SEXP pRef)
+{
+	if(TYPEOF(pLhs)!=EXTPTRSXP)
+		error("[gap_site_list_merge] pLhs: No external pointer");
+	if(TYPEOF(pRhs)!=EXTPTRSXP)
+		error("[gap_site_list_merge] pRhs: No external pointer");
+	if(TYPEOF(pRef)!=INTSXP)
+		error("[gap_site_list_merge] pRef must be Integer!");
+
+	site_list *lhs=(site_list*)(R_ExternalPtrAddr(pLhs));
+	site_list *rhs=(site_list*)(R_ExternalPtrAddr(pRhs));
+	site_list *mrg=site_list_merge(lhs,rhs,INTEGER(pRef)[0]);
+
+	SEXP list;
+	PROTECT(list=R_MakeExternalPtr( (void*)(mrg),R_NilValue,R_NilValue));
+	R_RegisterCFinalizer(list,finalize_gap_site_list);
+	UNPROTECT(1);
+	Rprintf("[gap_site_list_merge] Merge list of size %i.\n",mrg->size);
+	return list;
+}
+
+SEXP gap_site_list_copy(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_copy] No external pointer!");
+	site_list *src=(site_list*)(R_ExternalPtrAddr(pGapList));
+	site_list *tar=site_list_copy(src);
+
+	SEXP list;
+	PROTECT(list=R_MakeExternalPtr((void*)(tar),R_NilValue,R_NilValue));
+	R_RegisterCFinalizer(list,finalize_gap_site_list);
+	UNPROTECT(1);
+	return list;
+
+}
+
+SEXP bitmask_r_zip(SEXP lhs, SEXP rhs)
+{
+	if(TYPEOF(lhs)!=INTSXP)
+		error("[bitmask_r_zip] lhs must be integer!");
+	if(TYPEOF(rhs)!=INTSXP)
+		error("[bitmask_r_zip] rhs must be integer!");
+	if(LENGTH(lhs)!=LENGTH(rhs))
+		error("[bitmask_r_zip] lhs and rhs must have same length!");
+
+	const int len=LENGTH(lhs);
+	SEXP res;
+	PROTECT(res=allocVector(INTSXP,len));
+	int i;
+	for(i=0;i<len;++i)
+		INTEGER(res)[i]=r_zip_val(INTEGER(lhs)[i],INTEGER(rhs)[i]);
+
+	UNPROTECT(1);
+	return(res);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// gap_site_ll
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void finialize_gap_site_ll(SEXP ptr)
+{
+	if(TYPEOF(ptr)!=EXTPTRSXP)
+		error("[finalize_gap_site_ll] No external pointer!\n");
+	site_ll *l=(site_ll*) (R_ExternalPtrAddr(ptr));
+	site_ll_destroy(l);
+	l=NULL;
+	R_SetExternalPtrAddr(ptr,NULL);
+}
+
+SEXP gap_site_ll_init()
+{
+	site_ll *l=site_ll_init();
+	SEXP list;
+	PROTECT(list=R_MakeExternalPtr( (void*)(l),R_NilValue,R_NilValue));
+	R_RegisterCFinalizer(list,finialize_gap_site_ll);
+	UNPROTECT(1);
+	return list;
+}
+
+SEXP gap_site_ll_fetch(SEXP pReader, SEXP pIndex, SEXP pRefid, SEXP pStart, SEXP pEnd)
+{
+	if(TYPEOF(pReader)!=EXTPTRSXP)
+		error("[gap_site_ll_fetch] pReader is no external pointer!\n");
+	if(TYPEOF(pIndex) !=EXTPTRSXP)
+		error("[gap_site_ll_fetch] pIndex is no external pointer!\n");
+	if(TYPEOF(pRefid) !=INTSXP)
+		error("[gap_site_ll_fetch] pRefid is no INT!\n");
+	if(TYPEOF(pStart) !=INTSXP)
+		error("[gap_site_ll_fetch] pStart is no INT!\n");
+	if(TYPEOF(pEnd)   !=INTSXP)
+		error("[gap_site_ll_fetch] pEnd is no INT!\n");
+	if(LENGTH(pRefid)!=LENGTH(pStart) || LENGTH(pStart)!=LENGTH(pEnd))
+		error("[gap_site_ll_fetch] Unequal Length of pRefid, pStart and pEnd!\n");
+
+	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	bam_index_t *index=(bam_index_t*)(R_ExternalPtrAddr(pIndex));
+	if(reader==NULL)
+	{
+		error("[gap_site_ll_fetch] Reader must not be NULL pointer!\n");
+		return R_NilValue;
+	}
+	if(index==NULL)
+	{
+		error("[gap_site_ll_fetch] Index must not be NULL pointer!\n");
+		return R_NilValue;
+	}
+
+	int i,refid,begin,end;
+	site_list *sl;
+
+	int len=LENGTH(pStart);
+	site_ll *l=site_ll_init();
+
+	for(i=0;i<len;++i,++sl)
+	{
+		sl=site_list_init();
+		refid=INTEGER(pRefid)[i];
+		begin=INTEGER(pStart)[i];
+		end  =INTEGER(pEnd)  [i];
+		sl->refid=refid;
+
+		if(refid<0 || refid>=(reader->header->n_targets))
+			error("[gap_site_ll_fetch] refid out of range!");
+		if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+			error("[gap_site_ll_fetch] Begin or end out of range!");
+		bam_fetch(reader->x.bam,index,refid,begin,end,(void*)sl,gap_site_list_fetch_func);
+		if(sl->size>0)
+			site_ll_add_site_list(l,sl);
+	}
+
+	SEXP list;
+	PROTECT(list=R_MakeExternalPtr( (void*)(l),R_NilValue,R_NilValue));
+	R_RegisterCFinalizer(list,finialize_gap_site_ll);
+	UNPROTECT(1);
+	return list;
+}
+
+SEXP gap_site_ll_set_curr_first(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_ll_set_curr_first] pGapList must be external pointer!");
+	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
+	site_ll_set_curr_first(sll);
+	return R_NilValue;
+}
+
+SEXP gap_site_ll_add_curr_pp(SEXP pSrc,SEXP pTrg,SEXP pRefid)
+{
+	if(TYPEOF(pSrc)!=EXTPTRSXP)
+		error("[gap_site_ll_add_curr_pp] pSrc must be external pointer!");
+	if(TYPEOF(pTrg)!=EXTPTRSXP)
+		error("[gap_site_ll_add_curr_pp] pTrg must be external pointer!");
+	if(TYPEOF(pRefid)!=INTSXP)
+		error("[gap_site_ll_add_curr_pp] pRefid must be Integer!");
+
+	site_ll *src=(site_ll*)(R_ExternalPtrAddr(pSrc));
+	site_ll *trg=(site_ll*)(R_ExternalPtrAddr(pTrg));
+	site_list *l=site_ll_get_curr_site_list_pp(src);
+
+	site_list *ins=site_list_copy(l);
+	ins->refid=INTEGER(pRefid)[0];
+	site_ll_add_site_list(trg,ins);
+
+	return R_NilValue;
+}
+
+SEXP gap_site_ll_add_merge_pp(SEXP plSrc,SEXP prSrc,SEXP pTrg,SEXP pRefid)
+{
+	if(TYPEOF(plSrc)!=EXTPTRSXP)
+		error("[gap_site_ll_add_merge_pp] plSrc must be external pointer!");
+	if(TYPEOF(prSrc)!=EXTPTRSXP)
+		error("[gap_site_ll_add_merge_pp] prSrc must be external pointer!");
+	if(TYPEOF(pTrg)!=EXTPTRSXP)
+		error("[gap_site_ll_add_merge_pp] pTrg must be external pointer!");
+	if(TYPEOF(pRefid)!=INTSXP)
+		error("[gap_site_ll_add_merge_pp] pRefid must be Integer!");
+
+	unsigned refid=INTEGER(pRefid)[0];
+
+	site_ll *l_src=(site_ll*)(R_ExternalPtrAddr(plSrc));
+	site_ll *r_src=(site_ll*)(R_ExternalPtrAddr(prSrc));
+	site_ll *trg  =(site_ll*)(R_ExternalPtrAddr(pTrg));
+
+	//Rprintf("[gap_site_ll_add_merge_pp] plSrc size: %u\tprSrc size: %u\tpTrg size: %u\trefid: %u\n",l_src->size,r_src->size,trg->size,refid);
+
+	// Get pointer to current site_list
+	site_list *ls=site_ll_get_curr_site_list_pp(l_src);
+	if(ls==0)
+		error("[gap_site_ll_add_merge_pp] l_src curr returned 0! Use 'set_curr_first' or check size>0!");
+	//Rprintf("[gap_site_ll_add_merge_pp] l_src size: %u\n",ls->size);
+	site_list *rs=site_ll_get_curr_site_list_pp(r_src);
+	if(rs==0)
+		error("[gap_site_ll_add_merge_pp] r_src curr returned 0! Use 'set_curr_first' or check size>0!");
+	//Rprintf("[gap_site_ll_add_merge_pp] r_src size: %u\n",rs->size);
+
+	// Do merging and add to target list
+	site_list *l=site_list_merge(ls,rs,refid);
+	l->nAligns=ls->nAligns+rs->nAligns;
+	l->nGapAligns=ls->nGapAligns+rs->nGapAligns;
+
+	site_ll_add_site_list(trg,l);
+	//Rprintf("[gap_site_ll_add_merge_pp] Adding site_list of size: %u\trefid: %u\n",l->size,l->refid);
+	return R_NilValue;
+}
+
+
+SEXP gap_site_ll_reset_refid(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_ll_reset_refid] No external pointer!");
+	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
+
+	unsigned size=sll->size;
+	SEXP res;
+	PROTECT(res=allocVector(INTSXP,size));
+
+	site_list *l;
+	site_ll_set_curr_first(sll);
+	unsigned i;
+	for(i=0;i<size;++i)
+	{
+		l=site_ll_get_curr_site_list_pp(sll);
+		l->refid=i;
+		INTEGER(res)[i]=i;
+	}
+	UNPROTECT(1);
+	return(res);
+}
+
+
+SEXP gap_site_ll_get_summary_df(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_ll_get_summary_df] No external pointer!");
+	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
+
+	// create data.frame
+	unsigned nProtected=0;
+	unsigned nCols=4;
+	unsigned nRows=sll->size;
+
+	SEXP dflist;
+	PROTECT(dflist=allocVector(VECSXP,nCols));
+	++nProtected;
+
+	// Column 0: refid
+	SEXP refid_vector;
+	PROTECT(refid_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	// Column 1: size
+	SEXP size_vector;
+	PROTECT(size_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	// Column 2: nAligns
+	SEXP nalign_vector;
+	PROTECT(nalign_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	// Column 3: nGapAligns
+	SEXP ngap_vector;
+	PROTECT(ngap_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	site_list *l;
+	site_ll_set_curr_first(sll);
+	unsigned i;
+	for(i=0;i<nRows;++i)
+	{
+		l=site_ll_get_curr_site_list_pp(sll);
+		INTEGER(refid_vector) [i]=l->refid;
+		INTEGER(size_vector)  [i]=l->size;
+		INTEGER(nalign_vector)[i]=l->nAligns;
+		INTEGER(ngap_vector)  [i]=l->nGapAligns;
+	}
+
+	SET_VECTOR_ELT(dflist, 0,refid_vector);
+	SET_VECTOR_ELT(dflist, 1,size_vector);
+	SET_VECTOR_ELT(dflist, 2,nalign_vector);
+	SET_VECTOR_ELT(dflist, 3,ngap_vector);
+
+	///////////////////////////////////////////////////////////////////////////
+	// Column Names
+	SEXP col_names;
+	PROTECT(col_names=allocVector(STRSXP,nCols));
+	++nProtected;
+
+	SET_STRING_ELT(col_names, 0,mkChar("ID"));
+	SET_STRING_ELT(col_names, 1,mkChar("size"));
+	SET_STRING_ELT(col_names, 2,mkChar("nAligns"));
+	SET_STRING_ELT(col_names, 3,mkChar("nGapAligns"));
+	setAttrib(dflist,R_NamesSymbol,col_names);
+
+	// Row Names
+	SEXP row_names;
+    PROTECT(row_names=allocVector(STRSXP,nRows));
+    ++nProtected;
+
+	int buf_size=128;
+	char *buf=(char*) calloc(buf_size,sizeof(char));
+    for(i=0;i<nRows;++i)
+    {
+    	sprintf(buf,"%i",i);
+    	SET_STRING_ELT(row_names,i,mkChar(buf));
+    }
+    free(buf);
+    setAttrib(dflist,R_RowNamesSymbol,row_names);
+	setAttrib(dflist,R_ClassSymbol,mkString("data.frame"));
+	UNPROTECT(nProtected);
+	return dflist;
+
+}
+
+SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_ll_get_df] No external pointer!");
+	if(TYPEOF(pRefNames)!=STRSXP)
+		error("[gap_site_ll_get_df] pRefNames must be character!");
+
+	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
+
+	// create data.frame
+	unsigned nProtected=0;
+	unsigned nCols=13;
+	unsigned nRefs=sll->size;
+	unsigned nRows=sum_ll_sizes(sll);
+
+	SEXP dflist;
+	PROTECT(dflist=allocVector(VECSXP,nCols));
+	++nProtected;
+
+	// Column 0: id
+	SEXP id_vector;
+	PROTECT(id_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 1: refid
+	SEXP refid_vector;
+	PROTECT(refid_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 2: lstart
+	SEXP lstart_vector;
+	PROTECT(lstart_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 3: lend
+	SEXP lend_vector;
+	PROTECT(lend_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 4: rstart
+	SEXP rstart_vector;
+	PROTECT(rstart_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 5: rend
+	SEXP rend_vector;
+	PROTECT(rend_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 6: gap_len
+	SEXP gap_len_vector;
+	PROTECT(gap_len_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 7: nAligns
+	SEXP nAligns_vector;
+	PROTECT(nAligns_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 8: nAligns
+	SEXP nProbes_vector;
+	PROTECT(nProbes_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+	// Column 9: nlstart: number of different lstart positions on gap_site
+	SEXP nlstart_vector;
+	PROTECT(nlstart_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	// Column 10: qmm=Quadrupel mcs mean; mcs contains minimum cigar size values
+	// (of flanking left and right M=match segment)
+	// Mean of Quadrupel of rightmost values (=4 largest values) in mcs
+	SEXP qmm_vector;
+	PROTECT(qmm_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	// Column 11: nMcs
+	SEXP nmcs_vector;
+	PROTECT(nmcs_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+	// Column 12: gqs
+	SEXP gqs_vector;
+	PROTECT(gqs_vector=allocVector(INTSXP,nRows));
+	++nProtected;
+
+
+	//site_ll_element *ell;
+	site_list *l;
+	site_list_element *el;
+
+	site_ll_set_curr_first(sll);
+	unsigned i,j,k=0;
+	for(i=0;i<nRefs;++i)
+	{
+		l=site_ll_get_curr_site_list_pp(sll);
+		site_list_set_curr_first(l);
+		for(j=0;j<l->size;++j,++k)
+		{
+			el=site_list_get_curr_pp(l);
+			INTEGER(id_vector)                  [k]=k+1; // row-id: should start with 1
+			INTEGER(refid_vector)        		[k]=l->refid+1;
+			INTEGER(lstart_vector)        		[k]=el->lend-getByte(el->lcs,0)+1;
+			INTEGER(lend_vector)	            [k]=el->lend;
+			INTEGER(rstart_vector)	            [k]=el->rstart;
+			INTEGER(rend_vector)  		        [k]=el->rstart+el->r_cigar_size-1;
+			INTEGER(gap_len_vector)			    [k]=el->gap_len;
+			INTEGER(nAligns_vector)		        [k]=el->nAligns;
+			INTEGER(nProbes_vector)             [k]=el->nProbes;
+			INTEGER(nlstart_vector)	            [k]=bitmask_nPos(el->lcs);
+			INTEGER(qmm_vector)					[k]=getQmean(el->mcs);
+			INTEGER(nmcs_vector)				[k]=bitmask_nPos(el->mcs);
+			INTEGER(gqs_vector)                 [k]=INTEGER(nlstart_vector)[k]*INTEGER(qmm_vector)[k];
+		}
+	}
+
+	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// Convert left_cigar_type to vector
+
+	SEXP levs;
+	int nLevels=LENGTH(pRefNames);
+	PROTECT(levs=allocVector(STRSXP,nLevels));
+	++nProtected;
+
+	for(i=0;i<nLevels;++i)
+		SET_STRING_ELT(levs,i,STRING_ELT(pRefNames,i));
+	setAttrib(refid_vector,R_LevelsSymbol,levs);
+
+	SEXP csymb;
+	PROTECT(csymb=mkString("factor"));
+	++nProtected;
+	setAttrib(refid_vector,R_ClassSymbol,csymb);
+
+	//UNPROTECT(nProtected);
+	//return(refid_vector);
+
+	SET_VECTOR_ELT(dflist,0,id_vector);
+	SET_VECTOR_ELT(dflist,1,refid_vector);
+	SET_VECTOR_ELT(dflist,2,lstart_vector);
+	SET_VECTOR_ELT(dflist,3,lend_vector);
+	SET_VECTOR_ELT(dflist,4,rstart_vector);
+	SET_VECTOR_ELT(dflist,5,rend_vector);
+	SET_VECTOR_ELT(dflist,6,gap_len_vector);
+	SET_VECTOR_ELT(dflist,7,nAligns_vector);
+	SET_VECTOR_ELT(dflist,8,nProbes_vector);
+	SET_VECTOR_ELT(dflist,9,nlstart_vector);
+	SET_VECTOR_ELT(dflist,10,qmm_vector);
+	SET_VECTOR_ELT(dflist,11,nmcs_vector);
+	SET_VECTOR_ELT(dflist,12,gqs_vector);
+
+	///////////////////////////////////////////////////////////////////////////
+	// Column Names
+	SEXP col_names;
+	PROTECT(col_names=allocVector(STRSXP,nCols));
+	++nProtected;
+
+	SET_STRING_ELT(col_names, 0,mkChar("id"));
+	SET_STRING_ELT(col_names, 1,mkChar("seqid")); // Needed for spliceSites
+	SET_STRING_ELT(col_names, 2,mkChar("lstart"));
+	SET_STRING_ELT(col_names, 3,mkChar("lend"));
+	SET_STRING_ELT(col_names, 4,mkChar("rstart"));
+	SET_STRING_ELT(col_names, 5,mkChar("rend"));
+	SET_STRING_ELT(col_names, 6,mkChar("gaplen"));
+	SET_STRING_ELT(col_names, 7,mkChar("nAligns"));
+	SET_STRING_ELT(col_names, 8,mkChar("nProbes"));
+	SET_STRING_ELT(col_names, 9,mkChar("nlstart"));
+	SET_STRING_ELT(col_names,10,mkChar("qmm"));
+	SET_STRING_ELT(col_names,11,mkChar("nMcs"));
+	SET_STRING_ELT(col_names,12,mkChar("gqs"));
+	setAttrib(dflist,R_NamesSymbol,col_names);
+
+	// Row Names
+	SEXP row_names;
+    PROTECT(row_names=allocVector(STRSXP,nRows));
+    ++nProtected;
+
+	int buf_size=128;
+	char *buf=(char*) calloc(buf_size,sizeof(char));
+    for(i=0;i<nRows;++i)
+    {
+    	sprintf(buf,"%i",i);
+    	SET_STRING_ELT(row_names,i,mkChar(buf));
+    }
+    free(buf);
+    setAttrib(dflist,R_RowNamesSymbol,row_names);
+	setAttrib(dflist,R_ClassSymbol,mkString("data.frame"));
+	UNPROTECT(nProtected);
+	return dflist;
+}
+
+SEXP gap_site_ll_get_size(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_ll_get_size] No external pointer!");
+	site_ll *l=(site_ll*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(REALSXP,1));
+	REAL(ans)[0]=(double) sum_ll_sizes(l);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_ll_get_nAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_ll_get_nAligns] No external pointer!");
+	site_ll *l=(site_ll*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(REALSXP,1));
+	REAL(ans)[0]=(double)get_nAligns(l);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_ll_get_nGapAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("gap_site_ll_get_nGapAligns] No external pointer!");
+	site_ll *l=(site_ll*) (R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(REALSXP,1));
+	REAL(ans)[0]=(double)get_nGapAligns(l);
+	UNPROTECT(1);
+	return ans;
+}
+
+
+/*
+
+
+
+SEXP gap_site_list_get_size(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_get_size] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->size);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_list_get_nAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_get_nAligns] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->nAligns);
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP gap_site_list_get_nGapAligns(SEXP pGapList)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_get_nGapAligns] No external pointer!");
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=(l->nGapAligns);
+	UNPROTECT(1);
+	return ans;
+}
+*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // BamRange
@@ -825,12 +1714,12 @@ SEXP bam_range_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pComplex)
 {
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 	{
-		error("[bam_range_fetch] pReader is no external pointer!\n");
+		error("[bam_range_fetch] pReader is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pIndex)!=EXTPTRSXP)
 	{
-		error("[bam_range_fetch] pIndex is no external pointer!\n");
+		error("[bam_range_fetch] pIndex is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pCoords)!=REALSXP)
@@ -949,12 +1838,12 @@ SEXP bam_range_write_current_align(SEXP pRange,SEXP pAlign)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pRange is no external pointer!\n");
+		error("[bam_range_push_back] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pAlign is no external pointer!\n");
+		error("[bam_range_push_back] pAlign is No external pointer!\n");
 		return R_NilValue;
 	}
 	write_current_align((align_list*)(R_ExternalPtrAddr(pRange)),(bam1_t*) (R_ExternalPtrAddr(pAlign)));
@@ -965,12 +1854,12 @@ SEXP bam_range_insert_past_curr_align(SEXP pRange,SEXP pAlign)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pRange is no external pointer!\n");
+		error("[bam_range_push_back] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pAlign is no external pointer!\n");
+		error("[bam_range_push_back] pAlign is No external pointer!\n");
 		return R_NilValue;
 	}
 	insert_past_curr_align((align_list*)(R_ExternalPtrAddr(pRange)),(bam1_t*) (R_ExternalPtrAddr(pAlign)));
@@ -981,12 +1870,12 @@ SEXP bam_range_insert_pre_curr_align(SEXP pRange,SEXP pAlign)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pRange is no external pointer!\n");
+		error("[bam_range_push_back] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pAlign is no external pointer!\n");
+		error("[bam_range_push_back] pAlign is No external pointer!\n");
 		return R_NilValue;
 	}
 	insert_pre_curr_align((align_list*)(R_ExternalPtrAddr(pRange)),(bam1_t*) (R_ExternalPtrAddr(pAlign)));
@@ -999,12 +1888,12 @@ SEXP bam_range_mv_curr_align(SEXP pSrc, SEXP pTarget)
 	// and Moves current align in src to next align
 	if(TYPEOF(pSrc)!=EXTPTRSXP)
 	{
-		error("[bam_range_mv_curr_align] pSrc is no external pointer!\n");
+		error("[bam_range_mv_curr_align] pSrc is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pTarget)!=EXTPTRSXP)
 	{
-		error("[bam_range_mv_curr_align] pTarget is no external pointer!\n");
+		error("[bam_range_mv_curr_align] pTarget is No external pointer!\n");
 		return R_NilValue;
 	}
 
@@ -1015,7 +1904,7 @@ SEXP bam_range_mv_curr_align(SEXP pSrc, SEXP pTarget)
 SEXP bam_range_get_align_df(SEXP pRange)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
-		error("[bam_range_get_align_df] no external pointer!");
+		error("[bam_range_get_align_df] No external pointer!");
 
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
 	// Read Adress of current align->for reconstitution at the end
@@ -1163,12 +2052,12 @@ SEXP bam_range_write(SEXP pWriter,SEXP pRange)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_write] pRange is no external pointer!\n");
+		error("[bam_range_write] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pWriter)!=EXTPTRSXP)
 	{
-		error("[bam_range_write] pWriter is no external pointer!\n");
+		error("[bam_range_write] pWriter is No external pointer!\n");
 		return R_NilValue;
 	}
 
@@ -1201,7 +2090,7 @@ SEXP bam_range_wind_back(SEXP pRange)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_wind_back] pRange is no external pointer!\n");
+		error("[bam_range_wind_back] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
@@ -1213,7 +2102,7 @@ SEXP bam_range_get_size(SEXP pRange)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_get_size] pRange is no external pointer!\n");
+		error("[bam_range_get_size] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
@@ -1228,12 +2117,12 @@ SEXP bam_range_push_back(SEXP pRange,SEXP pAlign)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pRange is no external pointer!\n");
+		error("[bam_range_push_back] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_back] pAlign is no external pointer!\n");
+		error("[bam_range_push_back] pAlign is No external pointer!\n");
 		return R_NilValue;
 	}
 	align_list_push_back((align_list*)(R_ExternalPtrAddr(pRange)),(bam1_t*) (R_ExternalPtrAddr(pAlign)));
@@ -1244,12 +2133,12 @@ SEXP bam_range_push_front(SEXP pRange,SEXP pAlign)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_front] pRange is no external pointer!\n");
+		error("[bam_range_push_front] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
 	{
-		error("[bam_range_push_front] pAlign is no external pointer!\n");
+		error("[bam_range_push_front] pAlign is No external pointer!\n");
 		return R_NilValue;
 	}
 	align_list_push_front((align_list*)(R_ExternalPtrAddr(pRange)),(bam1_t*) (R_ExternalPtrAddr(pAlign)));
@@ -1260,7 +2149,7 @@ SEXP bam_range_pop_back(SEXP pRange)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_pop_back] pRange is no external pointer!\n");
+		error("[bam_range_pop_back] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	align_list_pop_back((align_list*)(R_ExternalPtrAddr(pRange)));
@@ -1270,7 +2159,7 @@ SEXP bam_range_pop_front(SEXP pRange)
 {
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 	{
-		error("[bam_range_pop_front] pRange is no external pointer!\n");
+		error("[bam_range_pop_front] pRange is No external pointer!\n");
 		return R_NilValue;
 	}
 	align_list_pop_front((align_list*)(R_ExternalPtrAddr(pRange)));
@@ -1363,7 +2252,7 @@ SEXP bam_writer_open(SEXP pHeader,SEXP pFilename)
 {
 	if(TYPEOF(pHeader)!=EXTPTRSXP)
 	{
-		error("[bam_writer_open] pHeader no external pointer!\n");
+		error("[bam_writer_open] pHeader No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pFilename)!=STRSXP)
@@ -1388,7 +2277,7 @@ SEXP bam_reader_open_writer(SEXP pReader,SEXP pFilename)
 {
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 	{
-		error("[bam_writer_open] pReader no external pointer!\n");
+		error("[bam_writer_open] pReader No external pointer!\n");
 		return R_NilValue;
 	}
 	if(TYPEOF(pFilename)!=STRSXP)

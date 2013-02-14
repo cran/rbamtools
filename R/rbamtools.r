@@ -8,16 +8,22 @@
 #  ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+#  CRAN submission:
+#  wput rbamtools_2.0.tar.gz ftp://cran.r-project.org/incoming/ 
 #  Changelog
 #  30.Okt.12  [initialize.gapList] Made printout message optional (verbose)
 #  31.Okt.12  [bamRange] Included test for initialized index
 #  31.Okt.12  Check for open reader in getHeader, getHeaderText, getRefCount
 #  01.Nov.12  [get_const_next_align] added to correct memory leak.
 #  08.Nov.12  Reading and writing big bamRanges (pure C, no R) valgrind checked.
-#  09.Nov.12  [bamCopy.bamReader] Added which allows refwise copying. 
+#  09.Nov.12  [bamCopy.bamReader] Added which allows refwise copying.
+#  31.Dec.12  gapSiteList class added
+#  11.Jan.13  bamSiteList class added
+#  06.Feb.13  First successful test of bamSiteList on 36 BAM-files (871.926/sec)
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
-.Last.lib<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
+#.Last.lib<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
+.onUnload<-function(libpath) { library.dynam.unload("rbamtools",libpath) }
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 #  Declaration of generics
@@ -42,6 +48,13 @@ setGeneric("size",function(object) standardGeneric("size"))
 setGeneric("nAligns",   function(object)standardGeneric("nAligns"))
 # Generic for retrieving Nr of gapped-aligns in BAM region from gapList
 setGeneric("nGapAligns",function(object)standardGeneric("nGapAligns"))
+# Generic for reading gapLists (align gaps) from bamReader
+setGeneric("gapList",function(object,coords)standardGeneric("gapList"))
+# Generic for reading gapSiteList (merged align gap sites) from bamReader
+setGeneric("siteList",function(object,coords)standardGeneric("siteList"))
+# Generic for reading bamSiteList (merged align gap sites for whole bam-files) from bamReader
+setGeneric("bamSiteList",function(object)standardGeneric("bamSiteList"))
+
 
 ###################################################################################################
 #                                                                                                 #
@@ -65,7 +78,38 @@ setMethod(f="initialize", signature="bamReader",
           }
 )
 
-bamReader<-function(filename) { return(new("bamReader",filename)) }
+bamReader<-function(filename,indexname,idx=FALSE,verbose=0){
+  if(!is.logical(idx))
+    stop("[bamReader] idx must be logical!")
+  if(length(idx)>1)
+    stop("[bamReader] length(idx) must be 1!")
+  if(!is.numeric(verbose))
+    stop("[bamReader] verbose must be numeric!")
+    
+  reader<-new("bamReader",filename)
+  if((!idx) && missing(indexname))
+  {
+    if(verbose[1]==1)
+      cat("[bamReader] Opened file '",basename(filename),"'.\n",sep="")
+    else if(verbose[1]==2)
+      cat("[bamReader] Opened file '",filename,"'.\n",sep="")
+    return(reader)
+  }
+  
+  # use indexname or set default
+  if(missing(indexname))
+    idxfile<-paste(filename,"bai",sep=".")
+  else
+    idxfile<-indexname   
+  loadIndex(reader,idxfile)
+ 
+  if(verbose[1]==1)
+    cat("[bamReader] Opened file '",basename(filename),"' and index '",basename(idxfile),"'.\n",sep="")
+  else if(verbose[1]==2)
+    cat("[bamReader] Opened file '",filename,"' and index '",idxfile,"'.\n",sep="")
+  
+  return(reader)
+}
 
 setMethod("filename", "bamReader", function(object) return(object@filename))
 setMethod("isOpen",signature="bamReader",definition=function(con,rw="")
@@ -113,6 +157,22 @@ setMethod(f="getRefData",signature="bamReader",definition=function(object) {
   if(!isOpen(object))
     stop("[getRefData.bamReader] reader must be opened! Check with 'isOpen(reader)'!")
   return(.Call("bam_reader_get_ref_data",object@reader,PACKAGE="rbamtools"))})
+
+# getRefCoords: Helper function that returns coordinates of entire ref
+# for usage with bamRange, gapList or siteList function
+setGeneric("getRefCoords",function(object,sn)standardGeneric("getRefCoords"))
+setMethod(f="getRefCoords",signature="bamReader",definition=function(object,sn){
+  if(!is.character(sn))
+    stop("[getRefCoords] sn must be character!")
+  if(length(sn)>1)
+    stop("[getRefCoords] sn must have length 1!")
+  ref<-getRefData(object)
+  id<-which(sn==ref$SN)
+  if(length(id)==0)
+    stop("[getRefCoords] No match for sn in ref-data-SN!")
+  return(c(ref$ID[id],0,ref$LN[id]))
+})
+
 
 #  End Header related functions
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
@@ -176,8 +236,29 @@ setMethod(f="getNextAlign",signature="bamReader",definition=function(object)
     return(new("bamAlign",ans))
 })
 
-setGeneric("gapList",function(object,coords)standardGeneric("gapList"))
-setMethod("gapList","bamReader",function(object,coords) {return(new("gapList",object,coords))})
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
+# Reading gap-lists
+setMethod("gapList","bamReader",function(object,coords)
+{
+  if(!index.initialized(object))
+    stop("[gapList.bamReader] Reader must have initialized index!")
+  return(new("gapList",object,coords))
+})
+setMethod("siteList","bamReader",function(object,coords)
+{
+  if(!index.initialized(object))
+    stop("[siteList.bamReader] Reader must have initialized index!")
+  return(new("gapSiteList",object,coords))
+})
+setMethod("bamSiteList","bamReader",function(object)
+{
+  if(!index.initialized(object))
+    stop("[bamSiteList.bamReader] Reader must have initialized index!")
+  return(new("bamSiteList",object))
+})
+
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ #
 
 setGeneric("rewind",function(object)standardGeneric("rewind"))
 setMethod("rewind","bamReader",function(object) {return(invisible(.Call("bam_reader_seek",object@reader,object@startpos,PACKAGE="rbamtools")))})
@@ -1064,6 +1145,8 @@ setMethod(f="initialize","gapList",definition=function(.Object,reader,coords,ver
   return(.Object)
 })
 
+# gapList function for retrieving objects in bamReader section
+
 setMethod("size",signature="gapList",definition=function(object)
 {.Call("gap_list_get_size",object@list,PACKAGE="rbamtools")})
 
@@ -1078,6 +1161,184 @@ setMethod("show","gapList",function(object){
   cat("nAligns:",nAligns(object),"\tnGapAligns:",nGapAligns(object),"\n")
   return(invisible())
 })
+
+###################################################################################################
+#                                                                                                 #
+# gapSiteList                                                                                     #
+#                                                                                                 #
+###################################################################################################
+
+setClass("gapSiteList",representation(list="externalptr"),
+         validity=function(object){ return(ifelse(is.null(object@list),FALSE,TRUE))})
+
+setMethod(f="initialize","gapSiteList",definition=function(.Object,reader,coords){
+  if(missing(reader) || missing(coords))
+    return(.Object)
+  
+  if(!is(reader,"bamReader"))
+    stop("[gapSiteList.initialize] reader must be an instance of bamReader!\n")
+  if(length(coords)!=3)
+    stop("[gapSiteList.initialize] coords must be 3-dim numeric (ref,start,stop)!\n")  
+  if(is.null(reader@index))
+    stop("[gapSiteList.initialize] bamReader must have initialized index!\n")
+  .Object@list<-.Call("gap_site_list_fetch",reader@reader,reader@index,trunc(coords),PACKAGE="rbamtools")
+  return(.Object)
+})
+
+
+# siteList function for retrieving objects in bamReader section
+
+setMethod("size",signature="gapSiteList",definition=function(object)
+{.Call("gap_site_list_get_size",object@list,PACKAGE="rbamtools")})
+
+setMethod("nAligns",signature="gapSiteList",definition=function(object)
+{.Call("gap_site_list_get_nAligns",object@list,PACKAGE="rbamtools")})
+
+setMethod("nGapAligns",signature="gapSiteList",definition=function(object)
+{.Call("gap_site_list_get_nGapAligns",object@list,PACKAGE="rbamtools")})
+
+setMethod("show","gapSiteList",function(object){
+  cat("An object of class '",class(object),"'. size: ",size(object),"\n",sep="")
+  cat("nAligns:",nAligns(object),"\tnGapAligns:",nGapAligns(object),"\n")
+  return(invisible())
+})
+
+merge.gapSiteList<-function(x,y,...)
+{
+  if(!is(y,"gapSiteList"))
+    stop("[merge.gapSiteList] y must be of class 'gapSiteList'!")
+  res<-new("gapSiteList")
+  res@list<-.Call("gap_site_list_merge",x@list,y@list)
+  return(res)
+}
+
+###################################################################################################
+#                                                                                                 #
+# bamSiteList                                                                                     #
+#                                                                                                 #
+###################################################################################################
+
+setClass("bamSiteList",representation(list="externalptr",refdata="data.frame"),
+         validity=function(object){ return(ifelse(is.null(object@list),FALSE,TRUE))})
+
+setMethod(f="initialize","bamSiteList",definition=function(.Object,reader){
+  if(missing(reader))
+  {
+    .Object@list<-.Call("gap_site_ll_init")
+    return(.Object)
+  }
+  
+  if(!is(reader,"bamReader"))
+    stop("[bamSiteList.initialize] reader must be an instance of bamReader!\n")
+  if(is.null(reader@index))
+    stop("[bamSiteList.initialize] bamReader must have initialized index!\n")
+  
+  ref<-getRefData(reader)
+  ref$start<-0L
+  .Object@list<-.Call("gap_site_ll_fetch",reader@reader,reader@index,ref$ID,ref$start,ref$LN,PACKAGE="rbamtools")
+  
+  # filter refdata for existing lists
+  sm<-.Call("gap_site_ll_get_summary_df",.Object@list,PACKAGE="rbamtools")
+  mtc<-match(ref$ID,sm$ID)
+  .Object@refdata<-ref[!is.na(mtc),]
+  
+  # Re-enumerate ID's to 1:n
+  .Object@refdata$ID<-.Call("gap_site_ll_reset_refid",.Object@list,PACKAGE="rbamtools")
+  # ToDo: merge refdata with summary df?
+  
+  return(.Object)
+})
+
+
+# siteList function for retrieving objects in bamReader section
+
+setMethod("size",signature="bamSiteList",definition=function(object)
+{.Call("gap_site_ll_get_size",object@list,PACKAGE="rbamtools")})
+
+setMethod("nAligns",signature="bamSiteList",definition=function(object)
+{.Call("gap_site_ll_get_nAligns",object@list,PACKAGE="rbamtools")})
+
+setMethod("nGapAligns",signature="bamSiteList",definition=function(object)
+{.Call("gap_site_ll_get_nGapAligns",object@list,PACKAGE="rbamtools")})
+
+setMethod("show","bamSiteList",function(object){
+  bm<-Sys.localeconv()[7]
+  cat("An object of class '",class(object),"'. size: ",format(size(object),big.mark=bm),"\n",sep="")
+  cat("nAligns:",format(nAligns(object),big.mark=bm),"\tnGapAligns:",format(nGapAligns(object),big.mark=bm),"\n")
+  
+  return(invisible())
+})
+
+summary.bamSiteList<-function(object,...)
+{ return(merge(object@refdata,.Call("gap_site_ll_get_summary_df",object@list))) }
+
+merge.bamSiteList<-function(x,y,...)
+{
+  if(!is(y,"bamSiteList"))
+    stop("[merge.bamSiteList] y must be bamSiteList!")
+  #lref<-x@refdata
+  #rref<-y@refdata
+  mref<-merge(x@refdata,y@refdata,by="SN",all=T)
+  
+  n<-dim(mref)[1]
+  .Call("gap_site_ll_set_curr_first",x@list)
+  .Call("gap_site_ll_set_curr_first",y@list)
+  res<-new("bamSiteList")
+  for(i in 1:n)
+  {
+    if(is.na(mref$ID.x[i]))
+      .Call("gap_site_ll_add_curr_pp",y@list,res@list,as.integer(i-1))
+    else if(is.na(mref$ID.y[i]))
+      .Call("gap_site_ll_add_curr_pp",x@list,res@list,as.integer(i-1))
+    else
+      .Call("gap_site_ll_add_merge_pp",x@list,y@list,res@list,as.integer(i-1))
+  }
+  
+  # get l-part of refdata
+  ysn<-mref$SN[is.na(mref$ID.x)]
+  mtc<-match(ysn,y@refdata$SN)
+  res@refdata<-rbind(x@refdata,y@refdata[mtc,])
+  # reset ID to new values
+  res@refdata$ID<-0:(n-1)
+  return(res)
+}
+
+readPooledBamGaps<-function(infiles,idxInfiles=paste(infiles,".bai",sep=""))
+{
+  bm<-Sys.localeconv()[7]
+  n<-length(infiles)
+  for(i in 1:n)
+  {
+    cat("[readPooledBamGaps] (",format(i,width=2),"/",n,") File opened.",sep="")
+    bam<-infiles[i]
+    reader<-bamReader(bam)
+    if(!file.exists(idxInfiles[i]))
+      createIndex(reader,idxInfiles[i])
+    loadIndex(reader,idxInfiles[i])
+    if(i==1)
+      ga<-bamSiteList(reader)
+    else
+    {
+      ga1<-bamSiteList(reader)
+      ga<-merge.bamSiteList(ga,ga1)
+    }
+    cat("\r[readPooledBamGaps] (",format(i,width=2),"/",n,") Finished. List-size: ",format(size(ga),width=7,big.mark=bm),
+              "\tnAligns: ",format(nAligns(ga),width=13,big.mark=bm),".\n",sep="")
+  }
+  cat("\n")
+  return(ga)
+}
+
+readPooledBamGapDf<-function(infiles,idxInfiles=paste(infiles,".bai",sep=""))
+{ 
+  ga<-readPooledBamGaps(infiles,idxInfiles=paste(infiles,".bai",sep=""))
+  dfr<-as.data.frame(ga)
+  dfr$gqs<-dfr$nlstart*dfr$qmm
+  attr(dfr,"nAligns")<-nAligns(ga)
+  attr(dfr,"nGapAligns")<-nGapAligns(ga)
+  return(dfr)
+}
+
 
 ###################################################################################################
 #                                                                                                 #
@@ -1135,6 +1396,7 @@ setMethod(f="initialize",signature="bamRange",
             return(.Object)
           })
 
+# REMOVED:
 # setMethod("as.data.frame",signature="bamRange",definition=function(x,row.names=NULL,optional=FALSE,...) {
 #   return(.Call("bam_range_get_align_df",x@range,PACKAGE="rbamtools"))
 # })
@@ -1488,6 +1750,11 @@ as.data.frame.bamRange<-function(x,row.names=NULL,optional=FALSE,...)
   {return(.Call("bam_range_get_align_df",x@range,PACKAGE="rbamtools"))}
 as.data.frame.gapList<-function(x,row.names=NULL,optional=FALSE,...)
   {return(.Call("gap_list_get_df",x@list,PACKAGE="rbamtools"))}
+as.data.frame.gapSiteList<-function(x,row.names=NULL,optional=FALSE,...)
+{return(.Call("gap_site_list_get_df",x@list,PACKAGE="rbamtools"))}
+as.data.frame.bamSiteList<-function(x,row.names=NULL,optional=FALSE,...)
+{return(.Call("gap_site_ll_get_df",x@list,x@refdata$SN,PACKAGE="rbamtools"))}
+
 as.data.frame.refSeqDict<-function(x,row.names=NULL,optional=FALSE,...)
 {
   if(is.null(row.names))

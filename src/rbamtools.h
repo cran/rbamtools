@@ -9,7 +9,11 @@
  *              29.Okt12  (nemesis) [gap_list_get_df] Changed cigar_type output to 'factor'.
  *              30.Okt.12 (phoibe)  [gap_list_fetch] Removed gap_list_fetch message.
  *              31.Okt.12 (phoibe)  [bam_reader_save_aligns] function & SAM_TYPE_READ added.
- *		01.Nov.12 (nemesis) [get_const_next_align] added to correct memory leak.
+ *				01.Nov.12 (nemesis) [get_const_next_align] added to correct memory leak.
+ *				07.Jan.13 (phoibe)  gap_site_list added (contains bitmask functions)
+ *				18.Jan.13 (phoibe)  gap_site_list_list added.
+ *				01.Feb.13 (phoibe)  [gap_site_ll_add_curr_pp] Testing for empty input list added.
+ *				05.Feb.13 (phoibe)  First successful test with reading bamGap objects with transfer to gapProbes
  */
 
 #ifndef rbamtools_h
@@ -25,6 +29,11 @@
 #include "samtools/sam.h"
 #include "align_list.h"
 #include "gap_list.h"
+
+// Extended gap_list
+#include "gapSiteList.h"
+#include "bitmask.h"
+#include "gapSiteListList.h"
 
 const char * const CIGAR_TYPES="MIDNSHP=X";
 #define SAM_TYPE_READ 2
@@ -73,7 +82,7 @@ SEXP bam_reader_seek(SEXP pReader, SEXP pPos);
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// GapList
+// gap_list
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void finalize_gap_list(SEXP ptr);
@@ -86,7 +95,41 @@ SEXP gap_list_get_nAligns(SEXP pGapList);
 SEXP gap_list_get_nGapAligns(SEXP pGapList);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// BamRange
+// gap_site_list
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void finalize_gap_site_list(SEXP ptr);
+SEXP create_gap_site_list();
+static int gap_site_list_fetch_func(const bam1_t *b, void *data);
+SEXP gap_site_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords);
+SEXP gap_site_list_get_df(SEXP pGapList);
+SEXP gap_site_list_get_ref_id(SEXP pGapList);
+SEXP gap_site_list_get_size(SEXP pGapList);
+SEXP gap_site_list_get_nAligns(SEXP pGapList);
+SEXP gap_site_list_get_nGapAligns(SEXP pGapList);
+SEXP gap_site_list_merge(SEXP pLhs, SEXP pRhs, SEXP pRef);
+SEXP gap_site_list_copy(SEXP pGapList);
+SEXP bitmask_r_zip(SEXP lhs, SEXP rhs);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// gap_site_list_list
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void finialize_gap_site_ll(SEXP ptr);
+SEXP gap_site_ll_init();
+SEXP gap_site_ll_fetch(SEXP pReader, SEXP pIndex, SEXP pRefid, SEXP pStart, SEXP pEnd);
+SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames);
+SEXP gap_site_ll_get_size(SEXP pGapList);
+SEXP gap_site_ll_get_nAligns(SEXP pGapList);
+SEXP gap_site_ll_get_nGapAligns(SEXP pGapList);
+SEXP gap_site_ll_add_curr_pp(SEXP pSrc,SEXP pTrg,SEXP pRefid);
+SEXP gap_site_ll_add_merge_pp(SEXP plSrc,SEXP prSrc,SEXP pTrg,SEXP pRefid);
+SEXP gap_site_ll_reset_refid(SEXP pGapList);
+SEXP gap_site_ll_get_summary_df(SEXP pGapList);
+SEXP gap_site_ll_set_curr_first(SEXP pGapList);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// bam_range
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 static void finalize_bam_range(SEXP ptr);

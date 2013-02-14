@@ -1,0 +1,18 @@
+\name{readPooledBamGaps}
+\alias{readPooledBamGaps}
+\title{readPooledBamGaps}
+\description{The function takes vectors of BAM-file names (plus accompanying names of BAM-index-files) and return a bamSiteList object. The bamSiteList object can be merged with other bamSiteList objects and data can be extracted with the 'as.data.frame' method.}
+\usage{readPooledBamGaps(infiles,idxInfiles=paste(infiles,".bai",sep=""))}
+\arguments{
+  \item{infiles}{Filenames of BAM-files to be opened for data extraction.}
+  \item{idxInfiles}{Optional: Name of BAM-index files}
+}
+\author{Wolfgang Kaisers}
+\examples{
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+rpb<-readPooledBamGaps(bam)
+rpdf<-readPooledBamGapDf(bam)
+hist(rpdf$gqs)
+}
+\keyword{readPooledBamGaps}
+\keyword{readPooledBamGapDf}
