@@ -14,6 +14,7 @@
  *				18.Jan.13 (phoibe)  gap_site_list_list added.
  *				01.Feb.13 (phoibe)  [gap_site_ll_add_curr_pp] Testing for empty input list added.
  *				05.Feb.13 (phoibe)  First successful test with reading bamGap objects with transfer to gapProbes
+ *				18.Mar.13 (nemesis) Corrected inline declarations; Changed qmm to qsm (mean to sum)
  */
 
 #ifndef rbamtools_h
@@ -38,8 +39,6 @@
 const char * const CIGAR_TYPES="MIDNSHP=X";
 #define SAM_TYPE_READ 2
 
-
-inline int cigar2str(char *c,const bam1_t *align);
 bam_header_t* clone_bam_header(bam_header_t *h);
 SEXP is_nil_externalptr(SEXP ptr);
 

@@ -218,7 +218,7 @@ int bam_read1(bamFile fp, bam1_t *b)
 	return 4 + block_len;
 }
 
-inline int bam_write1_core(bamFile fp, const bam1_core_t *c, int data_len, uint8_t *data)
+int bam_write1_core(bamFile fp, const bam1_core_t *c, int data_len, uint8_t *data)
 {
 	uint32_t x[8], block_len = data_len + BAM_CORE_SIZE, y;
 	int i;

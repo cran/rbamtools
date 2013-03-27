@@ -12,6 +12,7 @@
 #ifndef GAP_LIST_H_
 #define GAP_LIST_H_
 
+#include <R.h>
 #include "samtools/sam.h"
 #include "samtools/bam.h"
 
@@ -52,12 +53,12 @@ typedef struct {
 	unsigned long nGapAligns;
 } gap_list;
 
-inline gap_list * init_gap_list()
+gap_list * init_gap_list()
 {
 	return (gap_list*) calloc(1,sizeof(gap_list));
 }
 
-inline gap_element* init_gap_elem(const gap_data data)
+static R_INLINE gap_element* init_gap_elem(const gap_data data)
 {
 	gap_element *e=calloc(1,sizeof(gap_element));
 	e->pos_data=calloc(data_size,sizeof(unsigned));
@@ -73,7 +74,7 @@ inline gap_element* init_gap_elem(const gap_data data)
 	return e;
 }
 
-inline void destroy_gap_elem(gap_element *e)
+static R_INLINE void destroy_gap_elem(gap_element *e)
 {
 	free(e->pos_data);
 	free(e);
@@ -82,7 +83,7 @@ inline void destroy_gap_elem(gap_element *e)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // list generic accessor functions
 
-inline void gap_list_push_back_elem(gap_list *l,gap_element *e)
+void gap_list_push_back_elem(gap_list *l,gap_element *e)
 {
 	if(l->size==0)
 	{
@@ -99,9 +100,9 @@ inline void gap_list_push_back_elem(gap_list *l,gap_element *e)
 	}
 }
 
-inline void gap_list_push_back(gap_list *l,const gap_data data) { gap_list_push_back_elem(l,init_gap_elem(data)); }
+void gap_list_push_back(gap_list *l,const gap_data data) { gap_list_push_back_elem(l,init_gap_elem(data)); }
 
-inline void gap_list_push_front_elem(gap_list *l,gap_element *e)
+static R_INLINE void gap_list_push_front_elem(gap_list *l,gap_element *e)
 {
 	if(l->size==0)
 	{
@@ -118,9 +119,9 @@ inline void gap_list_push_front_elem(gap_list *l,gap_element *e)
 	}
 }
 
-inline void gap_list_push_front(gap_list *l,const gap_data data) { gap_list_push_front_elem(l,init_gap_elem(data)); }
+void gap_list_push_front(gap_list *l,const gap_data data) { gap_list_push_front_elem(l,init_gap_elem(data)); }
 
-inline void pop_back_gap_list(gap_list *l)
+static R_INLINE void pop_back_gap_list(gap_list *l)
 {
 	if(l->first_el!=l->last_el)
 	{
@@ -139,7 +140,7 @@ inline void pop_back_gap_list(gap_list *l)
 	}
 }
 
-inline void pop_front_gap_list(gap_list *l)
+static R_INLINE void pop_front_gap_list(gap_list *l)
 {
 	//printf("[pop_front_gap_list] list size %lu\n",l->size);
 	if(l->first_el!=l->last_el)
@@ -159,19 +160,19 @@ inline void pop_front_gap_list(gap_list *l)
 	}
 }
 
-inline void wind_back_gap_list(gap_list *l) { l->curr_el=NULL; }
+void wind_back_gap_list(gap_list *l) { l->curr_el=NULL; }
 
 ///////////////////////////////////////////////////////////////////////////////
 // higher level functions
 
-inline void destroy_gap_list(gap_list *l)
+void destroy_gap_list(gap_list *l)
 {
 	while(l->size>0)
 		pop_front_gap_list(l);
 	free(l);
 }
 
-inline void list_gaps(gap_list *l,const bam1_t* align)
+void list_gaps(gap_list *l,const bam1_t* align)
 {
 	uint32_t position,n_cigar,i;
 	uint32_t *cigar;

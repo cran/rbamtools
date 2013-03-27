@@ -9,30 +9,21 @@
  *              29.Okt12  (nemesis) Changed gap_list_get_df cigar_type output to 'factor'
  *              30.Okt.12 (phoibe)  Removed gap_list_fetch message
  *              31.Okt.12 (phoibe)  [bam_reader_save_aligns] function & SAM_TYPE_READ added
+ *				18.Mar.13 (nemesis) Corrected inline declarations; Changed qmm to qsm (mean to sum)
  */
 
 #ifndef rbamtools_c
 #define rbamtools_c
 #include "rbamtools.h"
 
-void print_bitmask_dec(bitmap_type *value)
-{
-	int i,last_block;
-	last_block=bitmap_size-1;
-	Rprintf("%3u",getByte(*value,last_block));
-	for(i=last_block-1;i>=0;--i)
-		Rprintf(" | %3u",getByte(*value,i));
-	Rprintf("\n");
-}
-
-inline void clear_buf(char *c,unsigned n)
+static R_INLINE void clear_buf(char *c,unsigned n)
 {
 	int i;
 	for(i=0;i<n;++i)
 		c[i]=(char)0;
 }
 
-inline void set_flag(bam1_t *align,_Bool val,unsigned pattern)
+static R_INLINE void set_flag(bam1_t *align,_Bool val,unsigned pattern)
 {
 	if(val)
 		align->core.flag=(align->core.flag) | pattern;
@@ -40,7 +31,7 @@ inline void set_flag(bam1_t *align,_Bool val,unsigned pattern)
 		align->core.flag=(align->core.flag) & !pattern;
 }
 
-inline int cigar2str(char *c,const bam1_t *align)
+static R_INLINE int cigar2str(char *c,const bam1_t *align)
 {
 	if(align==NULL)
 		return 0;
@@ -69,6 +60,18 @@ inline int cigar2str(char *c,const bam1_t *align)
 	}
 	return strlen(c);
 }
+
+
+void print_bitmask_dec(bitmap_type *value)
+{
+	int i,last_block;
+	last_block=bitmap_size-1;
+	Rprintf("%3u",getByte(*value,last_block));
+	for(i=last_block-1;i>=0;--i)
+		Rprintf(" | %3u",getByte(*value,i));
+	Rprintf("\n");
+}
+
 
 bam_header_t* clone_bam_header(bam_header_t *h)
 {
@@ -145,7 +148,7 @@ SEXP bam_reader_close(SEXP pReader)
 	samfile_t *reader=(samfile_t*) (R_ExternalPtrAddr(pReader));
 	samclose(reader);
 	R_SetExternalPtrAddr(pReader,NULL);
-	Rprintf("[bamReader] closed.\n");
+	//Rprintf("[bamReader] closed.\n");
 	return R_NilValue;
 }
 
@@ -944,8 +947,8 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 	PROTECT(nlstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 	// Column 10: sum_left_cigar
-	SEXP qmm;
-	PROTECT(qmm=allocVector(INTSXP,nRows));
+	SEXP qsm_vector;
+	PROTECT(qsm_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 	// Column 11: lcs
 	SEXP nmcs_vector;
@@ -976,8 +979,8 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 		INTEGER(nAligns_vector)		        [i]=el->nAligns;
 		INTEGER(nProbes_vector)             [i]=el->nProbes;
 		INTEGER(nlstart_vector)	            [i]=bitmask_nPos(el->lcs);
-		INTEGER(qmm)      [i]=bitmask_sumPos(el->lcs);
-		INTEGER(nmcs_vector)					[i]=el->lcs;
+		INTEGER(qsm_vector)					[i]=bitmask_sumPos(el->lcs);
+		INTEGER(nmcs_vector)				[i]=el->lcs;
 		INTEGER(mcs_vector)					[i]=el->mcs;
 	}
 	// Reset curr position
@@ -993,7 +996,7 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 	SET_VECTOR_ELT(dflist,7,nAligns_vector);
 	SET_VECTOR_ELT(dflist,8,nProbes_vector);
 	SET_VECTOR_ELT(dflist,9,nlstart_vector);
-	SET_VECTOR_ELT(dflist,10,qmm);
+	SET_VECTOR_ELT(dflist,10,qsm_vector);
 	SET_VECTOR_ELT(dflist,11,nmcs_vector);
 	SET_VECTOR_ELT(dflist,12,mcs_vector);
 
@@ -1024,11 +1027,11 @@ SEXP gap_site_list_get_df(SEXP pGapList)
     PROTECT(row_names=allocVector(STRSXP,nRows));
     ++nProtected;
 
-	int buf_size=128;
-	char *buf=(char*) calloc(buf_size,sizeof(char));
+    int buf_size=128;
+    char *buf=(char*) calloc(buf_size,sizeof(char));
     for(i=0;i<nRows;++i)
     {
-    	sprintf(buf,"%i",i);
+    	sprintf(buf,"%i",i+1);
     	SET_STRING_ELT(row_names,i,mkChar(buf));
     }
     free(buf);
@@ -1465,11 +1468,12 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	PROTECT(nlstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 10: qmm=Quadrupel mcs mean; mcs contains minimum cigar size values
-	// (of flanking left and right M=match segment)
-	// Mean of Quadrupel of rightmost values (=4 largest values) in mcs
-	SEXP qmm_vector;
-	PROTECT(qmm_vector=allocVector(INTSXP,nRows));
+
+	// Column 10: qsm=Quadrupel mcs sum of minimal cigar size
+	// mcs contains minimum cigar size values (of flanking left and right M=match segment)
+	// Sum of Quadrupel of rightmost values (=4 largest values) in mcs
+	SEXP qsm_vector;
+	PROTECT(qsm_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
 	// Column 11: nMcs
@@ -1489,6 +1493,10 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 
 	site_ll_set_curr_first(sll);
 	unsigned i,j,k=0;
+
+	// Scaling factor: Maximum value for gqs is read-length
+	unsigned smcs_denom=bitmap_size*smcs_len/2;
+
 	for(i=0;i<nRefs;++i)
 	{
 		l=site_ll_get_curr_site_list_pp(sll);
@@ -1506,9 +1514,9 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 			INTEGER(nAligns_vector)		        [k]=el->nAligns;
 			INTEGER(nProbes_vector)             [k]=el->nProbes;
 			INTEGER(nlstart_vector)	            [k]=bitmask_nPos(el->lcs);
-			INTEGER(qmm_vector)					[k]=getQmean(el->mcs);
+			INTEGER(qsm_vector)					[k]=getSmcs(el->mcs); // smcs = sum of minimal cigar size
 			INTEGER(nmcs_vector)				[k]=bitmask_nPos(el->mcs);
-			INTEGER(gqs_vector)                 [k]=INTEGER(nlstart_vector)[k]*INTEGER(qmm_vector)[k];
+			INTEGER(gqs_vector)                 [k]=INTEGER(nlstart_vector)[k]*INTEGER(qsm_vector)[k]*10/smcs_denom;
 		}
 	}
 
@@ -1542,7 +1550,7 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	SET_VECTOR_ELT(dflist,7,nAligns_vector);
 	SET_VECTOR_ELT(dflist,8,nProbes_vector);
 	SET_VECTOR_ELT(dflist,9,nlstart_vector);
-	SET_VECTOR_ELT(dflist,10,qmm_vector);
+	SET_VECTOR_ELT(dflist,10,qsm_vector);
 	SET_VECTOR_ELT(dflist,11,nmcs_vector);
 	SET_VECTOR_ELT(dflist,12,gqs_vector);
 
@@ -1562,7 +1570,7 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	SET_STRING_ELT(col_names, 7,mkChar("nAligns"));
 	SET_STRING_ELT(col_names, 8,mkChar("nProbes"));
 	SET_STRING_ELT(col_names, 9,mkChar("nlstart"));
-	SET_STRING_ELT(col_names,10,mkChar("qmm"));
+	SET_STRING_ELT(col_names,10,mkChar("qsm"));
 	SET_STRING_ELT(col_names,11,mkChar("nMcs"));
 	SET_STRING_ELT(col_names,12,mkChar("gqs"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
@@ -1622,50 +1630,6 @@ SEXP gap_site_ll_get_nGapAligns(SEXP pGapList)
 	return ans;
 }
 
-
-/*
-
-
-
-SEXP gap_site_list_get_size(SEXP pGapList)
-{
-	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[gap_site_list_get_size] No external pointer!");
-
-	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
-	SEXP ans;
-	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->size);
-	UNPROTECT(1);
-	return ans;
-}
-
-SEXP gap_site_list_get_nAligns(SEXP pGapList)
-{
-	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[gap_site_list_get_nAligns] No external pointer!");
-
-	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
-	SEXP ans;
-	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nAligns);
-	UNPROTECT(1);
-	return ans;
-}
-
-SEXP gap_site_list_get_nGapAligns(SEXP pGapList)
-{
-	if(TYPEOF(pGapList)!=EXTPTRSXP)
-		error("[gap_site_list_get_nGapAligns] No external pointer!");
-
-	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
-	SEXP ans;
-	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nGapAligns);
-	UNPROTECT(1);
-	return ans;
-}
-*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // BamRange

@@ -31,9 +31,9 @@ size(range)
 
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #  
-# createIndex(reader,idx)
+# create.index(reader,idx)
 # Load BAM index file
-loadIndex(reader,idx)
+load.index(reader,idx)
 index.initialized(reader)   # Should return 'TRUE'
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #  Find appropriate refid (=ID)

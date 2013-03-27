@@ -14,6 +14,7 @@
 #define BITMASK_H_
 
 // This checks whether this is compiled in 64 bit
+#include <R.h>
 #include <stdint.h>
 #if UINTPTR_MAX == 0xffffffffffffffff
 #define BM_64
@@ -69,51 +70,54 @@ const unsigned max_bitmap_index=3;
 typedef unsigned int       index_type;
 typedef unsigned char      value_type;
 
+const unsigned smcs_len=4;
 
-inline value_type getByte(const bitmap_type val,const index_type i) {return (value_type) (val>>idx[i])&0xFF;}
+value_type getByte(const bitmap_type val,const index_type i) {return (value_type) (val>>idx[i])&0xFF;}
 
-inline index_type bitmask_nPos(const bitmap_type val)
+index_type bitmask_nPos(const bitmap_type val)
 {
 	index_type res=0;
 	unsigned i;
 	for(i=0;i<bitmap_size;++i)
 	{
-		if(getByte(val,i))
+		// getByte
+		if((val>>idx[i])&0xFF)
 			++res;
 	}
 	return res;
 }
 
-inline index_type bitmask_sumPos(const bitmap_type val)
+index_type bitmask_sumPos(const bitmap_type val)
 {
 	index_type res=0;
 	unsigned i;
 	for(i=0;i<bitmap_size;++i)
-		res+=getByte(val,i);
+		res+=(val>>idx[i])&0xFF;
 	return res;
 }
 
 // Calculates mean of four rightmost values
 // (= largest values when r_type is used)
-inline unsigned getQmean(const bitmap_type val)
+// This value is not monotone increasing on adding aligns
+unsigned getQmean(const bitmap_type val)
 {
 	unsigned res,gb,n;
-	res =(unsigned)getByte(val,0);
+	res=(unsigned)(val>>idx[0])&0xFF;
 	n=1;
 
-	gb=(unsigned)getByte(val,1);
+	gb=(unsigned)(val>>idx[1])&0xFF;
 	if(gb>0)
 	{
 		res+=gb;
 		++n;
 	}
-	gb=(unsigned)getByte(val,2);
+	gb=(unsigned)(val>>idx[2])&0xFF;
 	if(gb>0)
 	{
 		res+=gb;
 		++n;
 	}
-	gb=(unsigned)getByte(val,3);
+	gb=(unsigned)(val>>idx[3])&0xFF;
 	if(gb>0)
 	{
 		res+=gb;
@@ -122,8 +126,18 @@ inline unsigned getQmean(const bitmap_type val)
 	return res/n;
 }
 
+// Sums up nr of matching positions
+// smcs = sum of minimal cigar size
+unsigned getSmcs(const bitmap_type val)
+{
+	unsigned res=0,i;
+	for(i=0;i<smcs_len;++i)
+		res+=(unsigned)(val>>idx[i])&0xFF;
+	return res;
+}
 
-inline void setByte(bitmap_type *val,const value_type ins,const index_type i)
+/*
+static _inline_ void setByte(bitmap_type *val,const value_type ins,const index_type i)
 {
 	// reset byte
 	*val&= ~pat[i];
@@ -132,6 +146,7 @@ inline void setByte(bitmap_type *val,const value_type ins,const index_type i)
 	// = copy into larger sized variable
 	*val|= (((bitmap_type)ins)<<idx[i]);
 }
+*/
 
 void r_insByte(bitmap_type *map,const value_type val, const index_type block)
 {
@@ -151,7 +166,7 @@ void r_addVal(bitmap_type *map,const value_type val)
 	// right add Value: l -> r ascending values
 	// block values: 0-based
 	index_type block=0;
-	value_type byte_val=getByte(*map,block);
+	value_type byte_val=(value_type)((*map)>>idx[block])&0xFF; // getByte(*map,block);
 	while(block<bitmap_size)
 	{
 		if(val==byte_val)
@@ -162,7 +177,7 @@ void r_addVal(bitmap_type *map,const value_type val)
 			return;
 		}
 		++block;
-		byte_val=getByte(*map,block);
+		byte_val=(value_type) ((*map)>>idx[block])&0xFF; //getByte(*map,block);
 	}
 	//setByte(map,val,bitmap_size-1);
 }
@@ -190,7 +205,7 @@ void l_addVal(bitmap_type *map,const value_type val)
 	value_type byte_val;
 	while(block>=0)
 	{
-		byte_val=getByte(*map,block);
+		byte_val=(value_type) ((*map)>>idx[block])&0xFF; //getByte(*map,block);
 		if(val==byte_val)
 			return;
 		if(val>byte_val)
@@ -210,8 +225,8 @@ void r_zip(bitmap_type lhs, bitmap_type rhs,bitmap_type *res)
 	index_type lblock,rblock,res_block=1;
 	value_type lByte,rByte;
 
-	lByte=getByte(lhs,0);
-	rByte=getByte(rhs,0);
+	lByte=(value_type)(lhs>>idx[0])&0xFF; //getByte(lhs,0);
+	rByte=(value_type)(rhs>>idx[0])&0xFF; //getByte(rhs,0);
 	if(lByte>rByte)
 	{
 		*res=lByte;
@@ -235,21 +250,27 @@ void r_zip(bitmap_type lhs, bitmap_type rhs,bitmap_type *res)
 	{
 		//printf("[r_zip] lblock: %u\trblock: %u\tres_block: %u\n",lblock,rblock,res_block);
 		//print_bitmask_dec(res);
-		lByte=getByte(lhs,lblock);
-		rByte=getByte(rhs,rblock);
+		lByte=(value_type) (lhs>>idx[lblock])&0xFF; //getByte(lhs,lblock);
+		rByte=(value_type) (rhs>>idx[rblock])&0xFF; //getByte(rhs,rblock);
 		if(lByte>rByte)
 		{
-			setByte(res,lByte,res_block);
+			//setByte(res,lByte,res_block);
+			*res&=~pat[res_block];
+			*res|=(((bitmap_type)lByte)<<idx[res_block]);
 			++lblock;
 		}
 		else if(rByte>lByte)
 		{
-			setByte(res,rByte,res_block);
+			//setByte(res,rByte,res_block);
+			*res&=~pat[res_block];
+			*res|=(((bitmap_type)rByte)<<idx[res_block]);
 			++rblock;
 		}
 		else
 		{
-			setByte(res,lByte,res_block);
+			//setByte(res,lByte,res_block);
+			*res&=~pat[res_block];
+			*res|=(((bitmap_type)lByte)<<idx[res_block]);
 			++lblock;
 			++rblock;
 		}
@@ -267,8 +288,8 @@ bitmap_type r_zip_val(bitmap_type lhs, bitmap_type rhs)
 	value_type lByte,rByte;
 	bitmap_type res;
 
-	lByte=getByte(lhs,0);
-	rByte=getByte(rhs,0);
+	lByte=(value_type)(lhs>>idx[0])&0xFF; //getByte(lhs,0);
+	rByte=(value_type)(rhs>>idx[0])&0xFF; //getByte(rhs,0);
 	if(lByte>rByte)
 	{
 		res=lByte;
@@ -292,21 +313,28 @@ bitmap_type r_zip_val(bitmap_type lhs, bitmap_type rhs)
 	{
 		//printf("[r_zip] lblock: %u\trblock: %u\tres_block: %u\n",lblock,rblock,res_block);
 		//print_bitmask_dec(res);
-		lByte=getByte(lhs,lblock);
-		rByte=getByte(rhs,rblock);
+
+		lByte=(value_type)(lhs>>idx[lblock])&0xFF; //getByte(lhs,lblock);
+		rByte=(value_type)(rhs>>idx[rblock])&0xFF; //getByte(rhs,rblock);
 		if(lByte>rByte)
 		{
-			setByte(&res,lByte,res_block);
+			//setByte(&res,lByte,res_block);
+			res&=~pat[res_block];
+			res|=(((bitmap_type)lByte)<<idx[res_block]);
 			++lblock;
 		}
 		else if(rByte>lByte)
 		{
-			setByte(&res,rByte,res_block);
+			//setByte(&res,rByte,res_block);
+			res&=~pat[res_block];
+			res|=(((bitmap_type)rByte)<<idx[res_block]);
 			++rblock;
 		}
 		else
 		{
-			setByte(&res,lByte,res_block);
+			//setByte(&res,lByte,res_block);
+			res&=~pat[res_block];
+			res|=(((bitmap_type)lByte)<<idx[res_block]);
 			++lblock;
 			++rblock;
 		}
@@ -316,7 +344,7 @@ bitmap_type r_zip_val(bitmap_type lhs, bitmap_type rhs)
 }
 
 
-inline void l_zip(bitmap_type lhs, bitmap_type rhs, bitmap_type *res)
+static R_INLINE void l_zip(bitmap_type lhs, bitmap_type rhs, bitmap_type *res)
 {
 	// merges two bitmap_types in order to get
 	// an ordered array of greatest values
@@ -324,8 +352,8 @@ inline void l_zip(bitmap_type lhs, bitmap_type rhs, bitmap_type *res)
 	int lblock,rblock,res_block=max_bitmap_index-1;
 	value_type lByte,rByte;
 
-	lByte=getByte(lhs,max_bitmap_index);
-	rByte=getByte(rhs,max_bitmap_index);
+	lByte=(value_type)(lhs>>idx[max_bitmap_index])&0xFF; //getByte(lhs,max_bitmap_index);
+	rByte=(value_type)(rhs>>idx[max_bitmap_index])&0xFF; //getByte(rhs,max_bitmap_index);
 	if(lByte>rByte)
 	{
 		l_insByte(res,lByte,bitmap_size-1);
@@ -349,21 +377,27 @@ inline void l_zip(bitmap_type lhs, bitmap_type rhs, bitmap_type *res)
 		//printf("[l_zip] lblock: %u\trblock: %u\tres_block: %u\n",lblock,rblock,res_block);
 		//print_bitmask_dec(res);
 
-		lByte=getByte(lhs,lblock);
-		rByte=getByte(rhs,rblock);
+		lByte=(value_type)(lhs>>idx[lblock])&0xFF; //getByte(lhs,lblock);
+		rByte=(value_type)(rhs>>idx[rblock])&0xFF; //getByte(rhs,rblock);
 		if(lByte>rByte)
 		{
-			setByte(res,lByte,res_block);
+			//setByte(res,lByte,res_block);
+			*res&=~pat[res_block];
+			*res|=(((bitmap_type)lByte)<<idx[res_block]);
 			--lblock;
 		}
 		else if(rByte>lByte)
 		{
-			setByte(res,rByte,res_block);
+			//setByte(res,rByte,res_block);
+			*res&=~pat[res_block];
+			*res|=(((bitmap_type)rByte)<<idx[res_block]);
 			--rblock;
 		}
 		else
 		{
-			setByte(res,lByte,res_block);
+			//setByte(res,lByte,res_block);
+			*res&=~pat[res_block];
+			*res|=(((bitmap_type)lByte)<<idx[res_block]);
 			--lblock;
 			--rblock;
 		}

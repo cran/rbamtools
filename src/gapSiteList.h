@@ -9,6 +9,7 @@
 #define GAPSITELIST_H_
 
 #include <stdlib.h>
+#include <R.h>
 #include "bitmask.h"
 #include "samtools/sam.h"
 #include "samtools/bam.h"
@@ -44,7 +45,7 @@ typedef struct site_list_element
 } site_list_element;
 
 
-inline int site_list_el_compare(site_list_element *lhs,site_list_element *rhs)
+static R_INLINE int site_list_el_compare(site_list_element *lhs,site_list_element *rhs)
 {
 	if(lhs->lend>rhs->lend || lhs->rstart>rhs->rstart)
 		return 1;
@@ -55,7 +56,7 @@ inline int site_list_el_compare(site_list_element *lhs,site_list_element *rhs)
 }
 
 
-inline site_list_element* site_list_el_init(pos_type lend, pos_type rstart,index_type gap_len,unsigned char lcs, index_type rcs, unsigned char mcs)
+static R_INLINE site_list_element* site_list_el_init(pos_type lend, pos_type rstart,index_type gap_len,unsigned char lcs, index_type rcs, unsigned char mcs)
 {
 	site_list_element *sle=calloc(sizeof(site_list_element),1);
 	sle->lend=lend;
@@ -70,7 +71,7 @@ inline site_list_element* site_list_el_init(pos_type lend, pos_type rstart,index
 	return sle;
 }
 
-inline site_list_element* copy_site_list_element(const site_list_element *in)
+static R_INLINE site_list_element* copy_site_list_element(const site_list_element *in)
 {
 	site_list_element *el=calloc(sizeof(site_list_element),1);
 	el->lend=in->lend;
@@ -84,7 +85,7 @@ inline site_list_element* copy_site_list_element(const site_list_element *in)
 	return el;
 }
 
-void inline site_list_add_cs(struct site_list_element* el,sle_type lcs,index_type rcs,sle_type mcs)
+void static R_INLINE site_list_add_cs(struct site_list_element* el,sle_type lcs,index_type rcs,sle_type mcs)
 {
 	++(el->nAligns);
 	// Maximum of right cigar size
@@ -94,7 +95,7 @@ void inline site_list_add_cs(struct site_list_element* el,sle_type lcs,index_typ
 	r_addVal(&(el->mcs),mcs);
 }
 
-inline void site_list_el_destroy(site_list_element* el) { free(el); }
+// static _inline_ void site_list_el_destroy(site_list_element* el) { free(el); }
 
 // + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 //
@@ -133,7 +134,8 @@ void site_list_destroy(site_list *l)
 		if(l->size>1)
 			l->first=l->first->next;
 		--(l->size);
-		site_list_el_destroy(el);
+		// Destroy element
+		free(el);
 	}
 	free(l);
 }
@@ -144,7 +146,7 @@ void site_list_destroy(site_list *l)
 void site_list_set_curr_last (site_list *l) { l->curr=l->last;  }
 void site_list_set_curr_first(site_list *l) { l->curr=l->first; }
 
-inline void site_list_insert_at_first(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_at_first(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
 {
 	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcs,rcs,mcs);
 	if(l->size==0)
@@ -162,7 +164,7 @@ inline void site_list_insert_at_first(site_list *l,pos_type lend,pos_type rstart
 	}
 }
 
-inline void site_list_insert_at_last(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_at_last(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
 {
 	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcs,rcs,mcs);
 	if(l->size==0)
@@ -180,7 +182,7 @@ inline void site_list_insert_at_last(site_list *l,pos_type lend,pos_type rstart,
 	}
 }
 
-inline void site_list_insert_el_at_last(site_list *l, site_list_element *el)
+static R_INLINE void site_list_insert_el_at_last(site_list *l, site_list_element *el)
 {
 	if(l->size==0)
 	{
@@ -197,7 +199,7 @@ inline void site_list_insert_el_at_last(site_list *l, site_list_element *el)
 	}
 }
 
-inline void site_list_copy_to_last(site_list *l, const site_list_element *in)
+static R_INLINE void site_list_copy_to_last(site_list *l, const site_list_element *in)
 {
 	site_list_element *el=copy_site_list_element(in);
 	if(l->size==0)
@@ -215,7 +217,7 @@ inline void site_list_copy_to_last(site_list *l, const site_list_element *in)
 	}
 }
 
-inline void site_list_insert_pre_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_pre_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
 {
 	if(l->curr==l->first)
 	{
@@ -231,7 +233,7 @@ inline void site_list_insert_pre_current(site_list *l,pos_type lend,pos_type rst
 	++(l->size);
 }
 
-inline void site_list_insert_post_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_post_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
 {
 	if(l->curr==l->last)
 	{
@@ -438,7 +440,7 @@ idx_type* site_list_get_max_match(site_list *l)
 	for(i=0;i<l->size;++i)
 	{
 		el=site_list_get_curr_pp(l);
-		res[i]=getByte(el->mcs,0);
+		res[i]=(idx_type) ((el->mcs)>>idx[0])&0xFF; //getByte(el->mcs,0);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -528,7 +530,7 @@ site_list* site_list_copy(site_list *l)
 //
 // + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 
-inline void list_gap_sites(site_list *l,const bam1_t* align)
+void list_gap_sites(site_list *l,const bam1_t* align)
 {
 	// Count total number of Aligns
 	++(l->nAligns);

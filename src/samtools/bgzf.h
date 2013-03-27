@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <zlib.h>
+#include <R.h>
 //#ifdef _USE_KNETFILE
 //#include "knetfile.h"
 //#endif
@@ -134,7 +135,7 @@ int bgzf_check_bgzf(const char *fn);
 }
 #endif
 
-static inline int bgzf_getc(BGZF *fp)
+static R_INLINE int bgzf_getc(BGZF *fp)
 {
 	int c;
 	if (fp->block_offset >= fp->block_length) {

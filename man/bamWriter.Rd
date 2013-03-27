@@ -20,7 +20,7 @@ idx<-paste(bam,"bai",sep=".")
 # +++++++++++++++++++++++++++++++++++++++++++++++
 # Open BAM file and read complex aligns from chr1
 reader<-bamReader(bam)
-loadIndex(reader,idx)
+load.index(reader,idx)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords,complex=TRUE)
 bamClose(reader)

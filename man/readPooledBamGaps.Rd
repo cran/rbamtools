@@ -1,7 +1,7 @@
 \name{readPooledBamGaps}
 \alias{readPooledBamGaps}
 \title{readPooledBamGaps}
-\description{The function takes vectors of BAM-file names (plus accompanying names of BAM-index-files) and return a bamSiteList object. The bamSiteList object can be merged with other bamSiteList objects and data can be extracted with the 'as.data.frame' method.}
+\description{The function takes vectors of BAM-file names (plus accompanying names of BAM-index-files) and return a bamGapList object. The bamGapList object can be merged with other bamGapList objects and data can be extracted with the 'as.data.frame' method.}
 \usage{readPooledBamGaps(infiles,idxInfiles=paste(infiles,".bai",sep=""))}
 \arguments{
   \item{infiles}{Filenames of BAM-files to be opened for data extraction.}

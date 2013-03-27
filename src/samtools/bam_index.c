@@ -72,7 +72,7 @@ struct __bam_index_t {
 };
 
 // requirement: len <= LEN_MASK
-static inline void insert_offset(khash_t(i) *h, int bin, uint64_t beg, uint64_t end)
+static R_INLINE void insert_offset(khash_t(i) *h, int bin, uint64_t beg, uint64_t end)
 {
 	khint_t k;
 	bam_binlist_t *l;
@@ -90,7 +90,7 @@ static inline void insert_offset(khash_t(i) *h, int bin, uint64_t beg, uint64_t 
 	l->list[l->n].u = beg; l->list[l->n++].v = end;
 }
 
-static inline void insert_offset2(bam_lidx_t *index2, bam1_t *b, uint64_t offset)
+static R_INLINE void insert_offset2(bam_lidx_t *index2, bam1_t *b, uint64_t offset)
 {
 	int i, beg, end;
 	beg = b->core.pos >> BAM_LIDX_SHIFT;
@@ -560,7 +560,7 @@ int bam_idxstats(int argc, char *argv[])
 	return 0;
 }
 
-static inline int reg2bins(uint32_t beg, uint32_t end, uint16_t list[BAM_MAX_BIN])
+static R_INLINE int reg2bins(uint32_t beg, uint32_t end, uint16_t list[BAM_MAX_BIN])
 {
 	int i = 0, k;
 	if (beg >= end) return 0;
@@ -575,7 +575,7 @@ static inline int reg2bins(uint32_t beg, uint32_t end, uint16_t list[BAM_MAX_BIN
 	return i;
 }
 
-static inline int is_overlap(uint32_t beg, uint32_t end, const bam1_t *b)
+static R_INLINE int is_overlap(uint32_t beg, uint32_t end, const bam1_t *b)
 {
 	uint32_t rbeg = b->core.pos;
 	uint32_t rend = b->core.n_cigar? bam_calend(&b->core, bam1_cigar(b)) : b->core.pos + 1;

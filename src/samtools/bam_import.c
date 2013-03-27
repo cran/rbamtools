@@ -155,7 +155,7 @@ bam_header_t *sam_header_read2(const char *fn)
 	kh_destroy(ref, hash);
 	return header;
 }
-static inline uint8_t *alloc_data(bam1_t *b, int size)
+static R_INLINE uint8_t *alloc_data(bam1_t *b, int size)
 {
 	if (b->m_data < size) {
 		b->m_data = size;
@@ -164,13 +164,13 @@ static inline uint8_t *alloc_data(bam1_t *b, int size)
 	}
 	return b->data;
 }
-static inline void parse_error(int64_t n_lines, const char * __restrict msg)
+static R_INLINE void parse_error(int64_t n_lines, const char * __restrict msg)
 {
 	error("Parse error at line %lld: %s\n", (long long)n_lines, msg);
 	//fprintf(stderr, "Parse error at line %lld: %s\n", (long long)n_lines, msg);
 	//abort();
 }
-static inline void append_text(bam_header_t *header, kstring_t *str)
+static R_INLINE void append_text(bam_header_t *header, kstring_t *str)
 {
 	size_t x = header->l_text, y = header->l_text + str->l + 2; // 2 = 1 byte dret + 1 byte null
 	kroundup32(x); kroundup32(y);

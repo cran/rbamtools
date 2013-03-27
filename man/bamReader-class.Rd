@@ -8,9 +8,9 @@
 \alias{bamCopy,bamReader-method}
 \alias{bamSave,bamReader-method}
 \alias{bamSort}
-\alias{createIndex}
-\alias{createIndex-methods}
-\alias{createIndex,bamReader-method}
+\alias{create.index}
+\alias{create.index-methods}
+\alias{create.index,bamReader-method}
 \alias{getHeader,bamReader-method}
 \alias{getHeaderText,bamReader-method}
 \alias{getNextAlign,bamReader-method}
@@ -25,8 +25,8 @@
 \alias{getRefData,bamReader-method}
 \alias{filename,bamReader-method}
 \alias{bamSort,bamReader-method}
-\alias{loadIndex}
-\alias{loadIndex,bamReader-method}
+\alias{load.index}
+\alias{load.index,bamReader-method}
 \alias{initialize,bamReader-method}
 \alias{index.initialized}
 \alias{index.initialized-methods}
@@ -37,7 +37,7 @@
 \alias{rewind,bamReader-method}
 
 \title{Class \code{"bamReader"}}
-\description{A bamReader object encapulates functionality for reading of bamAligns from a BAM-file. It optionally contains a pointer to a bam-index structure which allows fast access to aligns that overlap a specified region (random access). The index is loaded via the loadIndex function.}
+\description{A bamReader object encapulates functionality for reading of bamAligns from a BAM-file. It optionally contains a pointer to a bam-index structure which allows fast access to aligns that overlap a specified region (random access). The index is loaded via the load.index function.}
 \section{Objects from the Class}{Objects can be created by calls of the form \code{reader<-bamReader(filename)}.}
 \section{Slots}{
   \describe{
@@ -52,7 +52,7 @@
     \item{bamClose}{\code{signature(object = "bamReader")}: Closes connection to BAM-file. }
     \item{bamCopy}{\code{signature(object = "bamReader",writer="bamWriter",refids,verbose)}: Copies all aligns for given refids from reader to writer. When no refids are given, aligns for all refids are copied. refids refer to Reference-ID's returned by 'getRefData' (ID column). Missing matches (from refids into Reference-ID's) will terminate the function with an error.}
     \item{bamSave}{\code{signature(object = "bamReader",writer="bamWriter")}: Copies all aligns from reader to writer.}
-    \item{createIndex}{\code{signature(object = "bamReader", filename="character")}: Creates an index file for opened BAM-file. Therfore the BAM-file must be position-sorted. filename determines the name of the new BAM-Index-file (usually bam_filename.bam.idx) }
+    \item{create.index}{\code{signature(object = "bamReader", filename="character")}: Creates an index file for opened BAM-file. Therfore the BAM-file must be position-sorted. filename determines the name of the new BAM-Index-file (usually bam_filename.bam.idx) }
     \item{filename}{\code{signature(object = "bamReader")}: Returns filename of opened BAM-file. }
     \item{getHeader}{\code{signature(object = "bamReader")}: Returns object of class bamHeader which contains binary representation of bam-header data. }
     \item{getHeaderText}{\code{signature(object = "bamReader")}: Returns object of class bamHeaderText which contains textual representation of bam-header data. }
@@ -88,11 +88,11 @@ getNextAlign(reader)
 isOpen(reader)
 # Create and load new index
 idx<-"index.bam.bai"
-createIndex(reader,idx)
-loadIndex(reader,idx)
+create.index(reader,idx)
+load.index(reader,idx)
 index.initialized(reader)
 # Load package provided index
-loadIndex(reader,idx)
+load.index(reader,idx)
 index.initialized(reader)
 # Read align
 align<-getNextAlign(reader)
