@@ -36,8 +36,8 @@ typedef struct site_list_element
 
 	idx_type nAligns;
 	idx_type nProbes;
-	sle_type lcs; 		// left    cigar size
-	sle_type mcs;           // minimal cigar size
+	sle_type lcl; 		// left    cigar length
+	sle_type mcl;           // minimal cigar length
 
 	// List
 	struct site_list_element *next;
@@ -56,7 +56,7 @@ static R_INLINE int site_list_el_compare(site_list_element *lhs,site_list_elemen
 }
 
 
-static R_INLINE site_list_element* site_list_el_init(pos_type lend, pos_type rstart,index_type gap_len,unsigned char lcs, index_type rcs, unsigned char mcs)
+static R_INLINE site_list_element* site_list_el_init(pos_type lend, pos_type rstart,index_type gap_len,unsigned char lcl, index_type rcs, unsigned char mcl)
 {
 	site_list_element *sle=calloc(sizeof(site_list_element),1);
 	sle->lend=lend;
@@ -66,8 +66,8 @@ static R_INLINE site_list_element* site_list_el_init(pos_type lend, pos_type rst
 	sle->nAligns=1;
 	sle->nProbes=1;
 
-	sle->lcs=(sle_type) lcs;
-	sle->mcs=(sle_type) mcs;
+	sle->lcl=(sle_type) lcl;
+	sle->mcl=(sle_type) mcl;
 	return sle;
 }
 
@@ -80,19 +80,19 @@ static R_INLINE site_list_element* copy_site_list_element(const site_list_elemen
 	el->r_cigar_size=in->r_cigar_size;
 	el->nAligns=in->nAligns;
 	el->nProbes=in->nProbes;
-	el->lcs=in->lcs;
-        el->mcs=in->mcs;
+	el->lcl=in->lcl;
+        el->mcl=in->mcl;
 	return el;
 }
 
-void static R_INLINE site_list_add_cs(struct site_list_element* el,sle_type lcs,index_type rcs,sle_type mcs)
+void static R_INLINE site_list_add_cs(struct site_list_element* el,sle_type lcl,index_type rcs,sle_type mcl)
 {
 	++(el->nAligns);
 	// Maximum of right cigar size
 	if(el->r_cigar_size<rcs)
 		el->r_cigar_size=rcs;
-	r_addVal(&(el->lcs),lcs);
-	r_addVal(&(el->mcs),mcs);
+	r_addVal(&(el->lcl),lcl);
+	r_addVal_f(&(el->mcl),mcl);
 }
 
 // static _inline_ void site_list_el_destroy(site_list_element* el) { free(el); }
@@ -146,9 +146,9 @@ void site_list_destroy(site_list *l)
 void site_list_set_curr_last (site_list *l) { l->curr=l->last;  }
 void site_list_set_curr_first(site_list *l) { l->curr=l->first; }
 
-static R_INLINE void site_list_insert_at_first(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_at_first(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcl,index_type rcs,unsigned char mcl)
 {
-	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcs,rcs,mcs);
+	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcl,rcs,mcl);
 	if(l->size==0)
 	{
 		l->first=el;
@@ -164,9 +164,9 @@ static R_INLINE void site_list_insert_at_first(site_list *l,pos_type lend,pos_ty
 	}
 }
 
-static R_INLINE void site_list_insert_at_last(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_at_last(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcl,index_type rcs,unsigned char mcl)
 {
-	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcs,rcs,mcs);
+	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcl,rcs,mcl);
 	if(l->size==0)
 	{
 		l->first=el;
@@ -217,15 +217,15 @@ static R_INLINE void site_list_copy_to_last(site_list *l, const site_list_elemen
 	}
 }
 
-static R_INLINE void site_list_insert_pre_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_pre_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcl,index_type rcs,unsigned char mcl)
 {
 	if(l->curr==l->first)
 	{
-		site_list_insert_at_first(l,lend,rstart,gap_len,lcs,rcs,mcs);
+		site_list_insert_at_first(l,lend,rstart,gap_len,lcl,rcs,mcl);
 		return;
 	}
 
-	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcs,rcs,mcs);
+	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcl,rcs,mcl);
 	el->last=l->curr->last;
 	el->next=l->curr;
 	l->curr->last->next=el;
@@ -233,14 +233,14 @@ static R_INLINE void site_list_insert_pre_current(site_list *l,pos_type lend,pos
 	++(l->size);
 }
 
-static R_INLINE void site_list_insert_post_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+static R_INLINE void site_list_insert_post_current(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcl,index_type rcs,unsigned char mcl)
 {
 	if(l->curr==l->last)
 	{
-		site_list_insert_at_last(l,lend,rstart,gap_len,lcs,rcs,mcs);
+		site_list_insert_at_last(l,lend,rstart,gap_len,lcl,rcs,mcl);
 		return;
 	}
-	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcs,rcs,mcs);
+	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcl,rcs,mcl);
 	el->last=l->curr;
 	el->next=l->curr->next;
 	l->curr->next=el;
@@ -267,14 +267,14 @@ site_list_element* site_list_get_curr_pp(site_list *l)
 // + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 // Higher level functions
 
-void site_list_add_element(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcs,index_type rcs,unsigned char mcs)
+void site_list_add_element(site_list *l,pos_type lend,pos_type rstart,index_type gap_len,unsigned char lcl,index_type rcs,unsigned char mcl)
 {
-	//printf("[site_list_add_element] lcs: %u\trcs: %u\n",lcs,rcs);
+	//printf("[site_list_add_element] lcl: %u\trcs: %u\n",lcl,rcs);
 	site_list_element *el;
 	// + + + Empty List + + +
 	if(l->size==0)
 	{
-		el=site_list_el_init(lend,rstart,gap_len,lcs,rcs,mcs);
+		el=site_list_el_init(lend,rstart,gap_len,lcl,rcs,mcl);
 		l->first=el;
 		l->last=el;
 		l->size=1;
@@ -284,7 +284,7 @@ void site_list_add_element(site_list *l,pos_type lend,pos_type rstart,index_type
 	// + + + New Element is last element
 	if(lend>l->last->lend)
 	{
-		site_list_insert_at_last(l,lend,rstart,gap_len,lcs,rcs,mcs);
+		site_list_insert_at_last(l,lend,rstart,gap_len,lcl,rcs,mcl);
 		return;
 	}
 
@@ -295,21 +295,21 @@ void site_list_add_element(site_list *l,pos_type lend,pos_type rstart,index_type
 		{
 			if(rstart>l->first->rstart)
 			{
-				site_list_insert_at_last(l,lend,rstart,gap_len,lcs,rcs,mcs);
+				site_list_insert_at_last(l,lend,rstart,gap_len,lcl,rcs,mcl);
 				return;
 			}
 			if(rstart==l->first->rstart)
 			{
-				site_list_add_cs(l->first,lcs,rcs,mcs);
+				site_list_add_cs(l->first,lcl,rcs,mcl);
 				return;
 			}
 		}
 		if(lend>l->first->lend)
 		{
-			site_list_insert_at_last(l,lend,rstart,gap_len,lcs,rcs,mcs);
+			site_list_insert_at_last(l,lend,rstart,gap_len,lcl,rcs,mcl);
 			return;
 		}
-		site_list_insert_at_first(l,lend,rstart,gap_len,lcs,rcs,mcs);
+		site_list_insert_at_first(l,lend,rstart,gap_len,lcl,rcs,mcl);
 		return;
 	}
 
@@ -327,7 +327,7 @@ void site_list_add_element(site_list *l,pos_type lend,pos_type rstart,index_type
 
 	if(lend>el->lend)
 	{
-		site_list_insert_post_current(l,lend,rstart,gap_len,lcs,rcs,mcs);
+		site_list_insert_post_current(l,lend,rstart,gap_len,lcl,rcs,mcl);
 		return;
 	}
 	if(lend==el->lend)
@@ -335,19 +335,19 @@ void site_list_add_element(site_list *l,pos_type lend,pos_type rstart,index_type
 
 		if(rstart>el->rstart)
 		{
-			site_list_insert_post_current(l,lend,rstart,gap_len,lcs,rcs,mcs);
+			site_list_insert_post_current(l,lend,rstart,gap_len,lcl,rcs,mcl);
 			return;
 		}
 		if(rstart==el->rstart)
 		{
 			// No new site is inserted but instead information
-			// added to existing sitesiteList_add_llcs
-			site_list_add_cs(l->curr,lcs,rcs,mcs);
+			// added to existing sitesiteList_add_llcl
+			site_list_add_cs(l->curr,lcl,rcs,mcl);
 			return;
 		}
 	}
 	// lend < el->lend or rstart < el->rstart
-	site_list_insert_pre_current(l,lend,rstart,gap_len,lcs,rcs,mcs);
+	site_list_insert_pre_current(l,lend,rstart,gap_len,lcl,rcs,mcl);
 }
 
 // args can't be const because *curr* values are intermediately changed
@@ -413,8 +413,8 @@ site_list* site_list_merge(site_list *lhs, site_list *rhs,unsigned refid)
 				// This is the important part
 				// where the code departs from standard merging:
 				ins=copy_site_list_element(le);
-				r_zip(le->lcs,re->lcs,&(ins->lcs));
-				r_zip(le->mcs,re->mcs,&(ins->mcs));
+				r_zip(le->lcl,re->lcl,&(ins->lcl));
+				r_zip_f(le->mcl,re->mcl,&(ins->mcl));
 				ins->nProbes+=re->nProbes;
 				ins->nAligns+=re->nAligns;
 				site_list_insert_el_at_last(res,ins);
@@ -440,7 +440,7 @@ idx_type* site_list_get_max_match(site_list *l)
 	for(i=0;i<l->size;++i)
 	{
 		el=site_list_get_curr_pp(l);
-		res[i]=(idx_type) ((el->mcs)>>idx[0])&0xFF; //getByte(el->mcs,0);
+		res[i]=(idx_type) ((el->mcl)>>idx[0])&0xFF; //getByte(el->mcl,0);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -459,7 +459,7 @@ idx_type* site_list_get_n_lpos(site_list *l)
 	for(i=0;i<l->size;++i)
 	{
 		el=site_list_get_curr_pp(l);
-		res[i]=bitmask_nPos(el->lcs);
+		res[i]=bitmask_nPos(el->lcl);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -478,7 +478,7 @@ idx_type* site_list_get_n_match(site_list *l)
 	for(i=0;i<l->size;++i)
 	{
 		el=site_list_get_curr_pp(l);
-		res[i]=bitmask_nPos(el->mcs);
+		res[i]=bitmask_nPos(el->mcl);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -497,7 +497,7 @@ idx_type* site_list_get_sum_match(site_list *l)
 	for(i=0;i<l->size;++i)
 	{
 		el=site_list_get_curr_pp(l);
-		res[i]=bitmask_sumPos(el->mcs);
+		res[i]=bitmask_sumPos(el->mcl);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -616,9 +616,9 @@ void list_gap_sites(site_list *l,const bam1_t* align)
 						lend,							// lend
 						rstart,							// rstart
 						gap_len,						// gap_len
-						left_len,						// lcs
+						left_len,						// lcl
 						right_len,						// rcs
-						min_mtc                         // mcs
+						min_mtc                         // mcl
 						);
 
 				// next cigar can also be processed because we know it's an M

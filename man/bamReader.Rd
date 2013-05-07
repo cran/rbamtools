@@ -1,7 +1,7 @@
 \name{bamReader}
 \alias{bamReader}
 \title{bamReader}
-\description{The bamReader function returns an object of class bamReader. The bamReader object represents a connection to an opened BAM-file. When an indexname is given or idx=TRUE, the function tries to load an existing BAM-index. }
+\description{The bamReader function constructs and returns an S4 object of class bamReader. The bamReader object represents a connection to an opened BAM-file. When an indexname is given or idx=TRUE, the function tries to load an existing BAM-index.}
 \usage{bamReader(filename,indexname,idx=FALSE,verbose=0)}
 \arguments{
   \item{filename}{Filename of BAM-file to be opened for reading.}
