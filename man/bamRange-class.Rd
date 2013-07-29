@@ -5,6 +5,21 @@
 \alias{as.data.frame.bamRange}
 \alias{getNextAlign,bamRange-method}
 \alias{coerce,bamRange,data.frame-method}
+\alias{getAlignRange}
+\alias{getAlignRange-methods}
+\alias{getAlignRange,bamRange-method}
+\alias{getCoords}
+\alias{getCoords-methods}
+\alias{getCoords,bamRange-method}
+\alias{getParams}
+\alias{getParams-methods}
+\alias{getParams,bamRange-method}
+\alias{getRefName}
+\alias{getRefName-methods}
+\alias{getRefName,bamRange-method}
+\alias{getSeqLen}
+\alias{getSeqLen-methods}
+\alias{getSeqLen,bamRange-method}
 \alias{getPrevAlign}
 \alias{getPrevAlign-methods}
 \alias{getPrevAlign,bamRange-method}
@@ -44,26 +59,36 @@
 \alias{writeCurrentAlign-methods}
 \alias{writeCurrentAlign,bamRange-method}
 \title{Class \code{"bamRange"}}
-\description{bamRange represents a double linked list of bamAlign objects which overlap with a defined region in a BAM-file. The bamRange-function retrieves all alignments in the depicted Range from BAM-File into a bamRange object. A bamRange object maintains a double-linked list of aligns and a pointer to a current align.
-
-rewind shifts the current align before the first align (=past the last align). When there is no align, nothing happens. The functions writeCurrentAlign, insertPreCurrent, insertPastCurrent can be used to write bamAlign data to bamRange object. The function writeCurrentAlign overwrites the data of the current bamRange align. When no current align is set (i.e. ==NULL), nothing is written. The functions insertPreCurrent and insertPastCurrent insert an bamAlign object into the bamRange list. When no current align is set, insertPreCurrent inserts the object as the last object and insertPastCurrent inserts the object as the first align object in the bamRange list.
-
-push_back (push_front) appends a bamAlign before the first (or behind the last) element of bamRange. pop_front (pop_back) removes the first (last) bamAlign from bamRange.
+\description{bamRange represents a double linked list of bamAlign objects which overlap with a defined region in a BAM-file. The bamRange-function retrieves all alignments in the depicted Range from BAM-File into a bamRange object. A bamRange object maintains a double-linked list of aligns. The list keeps a pointer to a current align structure for iteration purposes. Addidionally there are some summarizing values stored (which are displayed by \code{show}) which describe the range inside the reference from which the \code{bamRange} object was read (seqid,qrBegin,qrEnd,complex) and some statistis (size,qSeqMinLen,qSeqMaxLen).
 }
 \section{Objects from the Class}{
 Objects can be created by calls of the form \code{range<-bamRange(reader, coords)}.}
 \section{Slots}{
   \describe{
-    \item{\code{range}:}{External pointer to double linked list of bamAligns.}
+    \item{\code{range}:}{External pointer. Points to double linked list of bamAligns.}
   }
+}
+\details{\code{bamRange} objects internally keep the following values:
+\tabular{rll}{
+  1 \tab seqid      \tab 0-based index of reference sequence\cr
+  2 \tab qrBegin    \tab 0-based left boundary of query region (query range begin)\cr
+  3 \tab qrEnd      \tab 0-based right boundary of query region (query range end)\cr
+  4 \tab complex    \tab 0= all aligns included, 1= only aligns with n_cigar > 1 included \cr
+  5 \tab rSeqLen    \tab Length of reference sequence\cr
+  6 \tab qSeqMinLen \tab Minimum of query sequence length (= read length)\cr
+  7 \tab qSeqMaxLen \tab Maximum of query sequence length (= read length)
+}
 }
 \section{Methods}{
   \describe{
     \item{as.data.frame}{\code{signature(x = "bamRange")}: Returns data.frame representation of aligns. }
     \item{coerce}{\code{signature(from = "bamRange", to = "data.frame")}: Coercion of bamRange to data.frame.}
     \item{bamSave}{\code{signature(object = "bamRange")}: Saves aligns stored in this list to BAM-file via a bamWriter object. }
+    \item{getAlignRange}{\code{signature(object = "bamRange")}: Iterates through the list and returns 0-based position of the leftmost and rightmost matching nucleotide in range.}
     \item{getNextAlign}{\code{signature(object = "bamRange")}: Returns next align from current position and shifts current position to next one. }
+    \item{getParams}{\code{signature(object = "bamRange")}: Returns named vector of stored parameters}
     \item{getPrevAlign}{\code{signature(object = "bamRange")}: Returns previous align from current position and shifts current position to previous one. }
+    \item{getRefName}{\code{signature(.Object = "bamRange")}: Returns the reference sequence name from which the range was retrieved. }
     \item{initialize}{\code{signature(.Object = "bamRange")}: Initializes bamRange object. }
     \item{insertPastCurrent}{\code{signature(object = "bamRange")}: Inserts align past current position into list. }
     \item{insertPreCurrent}{\code{signature(object = "bamRange")}: Insert align before current position into list. }
@@ -119,6 +144,15 @@ rewind(range)
 #   align<-getNextAlign(range)
 # }
 bamClose(reader)
+
+# +++++++++++++++++++++++++++++++++++++++++++++++
+# Get print message and some other values
+range
+getCoords(range)
+getSeqLen(range)
+getParams(range)
+getRefName(range)
+getAlignRange(range)
 }
 \keyword{classes}
 \keyword{bamReader}

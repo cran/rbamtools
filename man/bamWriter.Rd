@@ -33,12 +33,11 @@ headl<-new("headerLine")
 setVal(headl,"SO","coordinate")
 dict<-new("refSeqDict")
 addSeq(dict,SN="chr1",LN=249250621)
-addSeq(dict,SN="chr10",LN=135534747)
 dict
 prog<-new("headerProgram")
 setVal(prog,"ID","1")
 setVal(prog,"PN","tophat")
-setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hsucsc_bowtie2_index/hs_ucsc grs033.fq")
+setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hs_ucsc rna033.fastq")
 setVal(prog,"VN","2.0.0")
 bh<-bamHeaderText(head=headl,dict=dict,prog=prog)
 #getHeaderText(bh)
@@ -48,7 +47,7 @@ header<-bamHeader(bh)
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #  Copy aligns in range into new BAM file
 writer<-bamWriter(header,"chr1_complex.bam")
-bamSave(writer,range)
+bamSave(writer,range,refid=0)
 bamClose(writer)
 # +++++++++++++++++++++++++++++++++++++++++++++++
 }

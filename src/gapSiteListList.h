@@ -125,18 +125,18 @@ pos_type get_nAligns(const site_ll *l)
 	return nAligns;
 }
 
-pos_type get_nGapAligns(const site_ll *l)
+pos_type get_nAlignGaps(const site_ll *l)
 {
-	pos_type nGapAligns=0;
+	pos_type nAlignGaps=0;
 	unsigned i;
 	site_ll_element *el=l->first;
-	nGapAligns=el->l->nGapAligns;
+	nAlignGaps=el->l->nAlignGaps;
 	for(i=1;i<l->size;++i)
 	{
 		el=el->next;
-		nGapAligns+=el->l->nGapAligns;
+		nAlignGaps+=el->l->nAlignGaps;
 	}
-	return nGapAligns;
+	return nAlignGaps;
 }
 
 

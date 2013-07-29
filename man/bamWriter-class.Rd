@@ -25,7 +25,7 @@ Objects can be created by calls of the form \code{writer<-bamWriter(reader,filen
 \section{Methods}{
   \describe{
     \item{bamClose}{\code{signature(object = "bamWriter")}: Closes BAM file. }
-    \item{bamSave}{\code{signature(object = "bamWriter")}: Saves bamAlign or bamRange object to BAM-file. }
+    \item{bamSave}{\code{signature(object = "bamWriter",value = "bamAlign" or "bamRange",refid = "numeric")}: Saves bamAlign or bamRange object to BAM-file. refid will be overwritten in all written aligns. }
     \item{filename}{\code{signature(object = "bamWriter")}: Returns filename of opened BAM-file. }
     \item{initialize}{\code{signature(.Object = "bamWriter")}: Opens BAM file for writing.}
     \item{isOpen}{\code{signature(object = "bamWriter")}: Returns TRUE when file connection is open. }
@@ -64,7 +64,7 @@ dict
 prog<-new("headerProgram")
 setVal(prog,"ID","1")
 setVal(prog,"PN","tophat")
-setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hsucsc_bowtie2_index/hs_ucsc grs033.fq")
+setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hs_ucsc test.fq")
 setVal(prog,"VN","2.0.0")
 bh<-bamHeaderText(head=headl,dict=dict,prog=prog)
 #getHeaderText(bh)
@@ -74,7 +74,7 @@ header<-bamHeader(bh)
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #  Copy aligns in range into new BAM file
 writer<-bamWriter(header,"chr1_complex.bam")
-bamSave(writer,range)
+bamSave(writer,range,refid=0)
 bamClose(writer)
 # +++++++++++++++++++++++++++++++++++++++++++++++
 }

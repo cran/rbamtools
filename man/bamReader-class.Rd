@@ -7,7 +7,6 @@
 \alias{bamCopy-methods}
 \alias{bamCopy,bamReader-method}
 \alias{bamSave,bamReader-method}
-\alias{bamSort}
 \alias{create.index}
 \alias{create.index-methods}
 \alias{create.index,bamReader-method}
@@ -52,7 +51,8 @@
     \item{bamClose}{\code{signature(object = "bamReader")}: Closes connection to BAM-file. }
     \item{bamCopy}{\code{signature(object = "bamReader",writer="bamWriter",refids,verbose)}: Copies all aligns for given refids from reader to writer. When no refids are given, aligns for all refids are copied. refids refer to Reference-ID's returned by 'getRefData' (ID column). Missing matches (from refids into Reference-ID's) will terminate the function with an error.}
     \item{bamSave}{\code{signature(object = "bamReader",writer="bamWriter")}: Copies all aligns from reader to writer.}
-    \item{create.index}{\code{signature(object = "bamReader", filename="character")}: Creates an index file for opened BAM-file. Therfore the BAM-file must be position-sorted. filename determines the name of the new BAM-Index-file (usually bam_filename.bam.idx) }
+    \item{bamSort}{\code{signature(object = "bamReader",prefix="character",byName=FALSE,maxmem=1e+9)}: Sorting an existing BAM-file. }
+    \item{create.index}{\code{signature(object = "bamReader", idx_filename="character")}: Creates an index file for opened BAM-file. Therefore the BAM-file must be position-sorted. \code{idx_filename} will be the name of the new BAM-index file. \code{idx_filename} is an optional argument. The standard value is "bam_filename.bam".bai. }
     \item{filename}{\code{signature(object = "bamReader")}: Returns filename of opened BAM-file. }
     \item{getHeader}{\code{signature(object = "bamReader")}: Returns object of class bamHeader which contains binary representation of bam-header data. }
     \item{getHeaderText}{\code{signature(object = "bamReader")}: Returns object of class bamHeaderText which contains textual representation of bam-header data. }
@@ -63,10 +63,6 @@
 }
     \item{isOpen}{\code{signature(object = "bamReader")}: Returns TRUE when file connection is open. }
     \item{rewind}{\code{signature(object = "bamReader")}: Resets current file position. The subsequent call to getNextAlign will return the first align in the BAM-file.}
-    \item{bamSort}{\code{signature(object = "bamReader",prefix="character",byName=FALSE,maxmem=1e+9)}: BAM-files must be sorted before an index can be created. During this routine, some content of the source file is copied into the working memory, sorted and written into temporary files. Finally, the sorted files are merged into a single target. The name of the sorted BAM-file will be [prefix].bam.
-Number and size of temporary files depend on source file size and used working memory (maxmem). Small
-maxmem values result in large numbers of temporary files. The minimum maxmem value is 100000000. Smaller maxmem
-values cause an error. }
     \item{initialize}{\code{signature(.Object = "bamReader")}: Initializes object and opens BAM-file for reading. }
 	 }
 }
@@ -106,7 +102,7 @@ bamClose(writer)
 # bamSort(reader,"newFile1s")
 # Copy align for Reference-ID '0'
 writer<-bamWriter(getHeader(reader),"newFile2.bam")
-bamCopy(reader,writer,0)
+bamCopy(reader,writer,refid=0)
 bamClose(writer)
 # Closing reader
 bamClose(reader)
