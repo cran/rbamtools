@@ -41,17 +41,12 @@ The Sequence alignment/map (SAM) format and SAMtools.
 Bioinformatics, 25, 2078-9.
 }
 }
-
 \keyword{package}
 \examples{
-library(rbamtools)
 bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
-idx <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
-reader<-bamReader(bam)
+reader<-bamReader(bam,idx=TRUE)
 isOpen(reader)
 align<-getNextAlign(reader)
-load.index(reader,idx)
-index.initialized(reader)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
 align<-getNextAlign(range)

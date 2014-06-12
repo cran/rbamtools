@@ -3,7 +3,6 @@
 #include "faidx.h"
 #include "sam.h"
 #include "bam.h"
-#include <R.h>
 
 #define TYPE_BAM  1
 #define TYPE_READ 2
@@ -12,6 +11,8 @@ bam_header_t *bam_header_dup(const bam_header_t *h0)
 {
 	bam_header_t *h;
 	int i;
+	size_t len;
+
 	h = bam_header_init();
 	*h = *h0;
 	h->hash = h->dict = h->rg2lib = 0;
@@ -21,7 +22,11 @@ bam_header_t *bam_header_dup(const bam_header_t *h0)
 	h->target_name = (char**)calloc(h->n_targets, sizeof(void*));
 	for (i = 0; i < h->n_targets; ++i) {
 		h->target_len[i] = h0->target_len[i];
-		h->target_name[i] = strdup(h0->target_name[i]);
+
+		//h->target_name[i] = str_dup(h0->target_name[i]);
+		len = strlen(h0->target_name[i]) + 1;
+		h->target_name[i] = malloc(len);
+		memcpy(h->target_name[i],h0->target_name[i],len);
 	}
 	return h;
 }
@@ -46,8 +51,6 @@ samfile_t *samopen(const char *fn, const char *mode, const void *aux)
 		fp->type |= TYPE_READ;
 		if (strchr(mode, 'b')) { // binary
 			fp->type |= TYPE_BAM;
-			//REP: fp->x.bam = strcmp(fn, "-")? bam_open(fn, "r") : bam_dopen(fileno(stdin), "r");
-			// Instead:
 			fp->x.bam = bam_open(fn, "r");
 			if (fp->x.bam == 0) goto open_err_ret;
 			fp->header = bam_header_read(fp->x.bam);
@@ -66,9 +69,6 @@ samfile_t *samopen(const char *fn, const char *mode, const void *aux)
 				if (fp->header->n_targets == 0 && bam_verbose >= 1)
 					Rprintf("[samopen] no @SQ lines in the header.\n");
 			} else if (bam_verbose >= 2) Rprintf("[samopen] SAM header is present: %d sequences.\n", fp->header->n_targets);
-//			if (fp->header->n_targets == 0 && bam_verbose >= 1)
-//				fprintf(stderr, "[samopen] no @SQ lines in the header.\n");
-//		} else if (bam_verbose >= 2) fprintf(stderr, "[samopen] SAM header is present: %d sequences.\n", fp->header->n_targets);
 		}
 	} else if (strchr(mode, 'w')) { // write
 		fp->header = bam_header_dup((const bam_header_t*)aux);
@@ -80,15 +80,11 @@ samfile_t *samopen(const char *fn, const char *mode, const void *aux)
 			if (strchr(mode, 'u')) compress_level = 0;
 			bmode[0] = 'w'; bmode[1] = compress_level < 0? 0 : compress_level + '0'; bmode[2] = 0;
 			fp->type |= TYPE_BAM;
-// REP:		fp->x.bam = strcmp(fn, "-")? bam_open(fn, bmode) : bam_dopen(fileno(stdout), bmode);
-// Instead:
 			fp->x.bam = bam_open(fn, bmode);
 			if (fp->x.bam == 0) goto open_err_ret;
 			bam_header_write(fp->x.bam, fp->header);
 		} else { // text
 			// open file
-// REP:		fp->x.tamw = strcmp(fn, "-")? fopen(fn, "w") : stdout;
-// Instead:
 			fp->x.tamw = fopen(fn, "w");
 			if (fp->x.tamr == 0) goto open_err_ret;
 			if (strchr(mode, 'X')) fp->type |= BAM_OFSTR<<2;
@@ -108,7 +104,6 @@ samfile_t *samopen(const char *fn, const char *mode, const void *aux)
 				if (alt->n_targets) { // then write the header text without dumping ->target_{name,len}
 					if (alt->n_targets != fp->header->n_targets && bam_verbose >= 1)
 						Rprintf("[samopen] inconsistent number of target sequences. Output the text header.\n");
-						// REP: fprintf(stderr, "[samopen] inconsistent number of target sequences. Output the text header.\n");
 				} else { // then dump ->target_{name,len}
 					for (i = 0; i < fp->header->n_targets; ++i)
 						fprintf(fp->x.tamw, "@SQ\tSN:%s\tLN:%d\n", fp->header->target_name[i], fp->header->target_len[i]);
@@ -180,13 +175,10 @@ char *samfaipath(const char *fn_ref)
 	strcat(strcpy(fn_list, fn_ref), ".fai");
 	if (access(fn_list, R_OK) == -1) { // fn_list is unreadable
 		if (access(fn_ref, R_OK) == -1) {
-			// REP: fprintf(stderr, "[samfaipath] fail to read file %s.\n", fn_ref);
 			Rprintf("[samfaipath] fail to read file %s.\n", fn_ref);
 		} else {
-			//REP: if (bam_verbose >= 3) fprintf(stderr, "[samfaipath] build FASTA index...\n");
 			if (bam_verbose >= 3) Rprintf("[samfaipath] build FASTA index...\n");
 			if (fai_build(fn_ref) == -1) {
-				//REP: fprintf(stderr, "[samfaipath] fail to build FASTA index.\n");
 				Rprintf("[samfaipath] fail to build FASTA index.\n");
 				free(fn_list); fn_list = 0;
 			}

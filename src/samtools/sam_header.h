@@ -1,6 +1,9 @@
 #ifndef __SAM_HEADER_H__
 #define __SAM_HEADER_H__
 
+/* Settings for optional embedding into R*/
+#include "rdef.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

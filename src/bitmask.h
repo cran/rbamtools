@@ -8,14 +8,23 @@
  *
  *	Changelog 	: 05.02.2013 Corrected bitmask_nPos (max_bitmap_index to bitmap_size) so that all fields are counted.
  *				: 06.02.2013 Added detection of 64bit size and getQmean function.
+ *				: 25.11.2013 Corrected r_addVal and r_addVal_f (CRAN Address sanitizer complained)
  */
 
 #ifndef BITMASK_H_
 #define BITMASK_H_
 
-// This checks whether this is compiled in 64 bit
+#include "samtools/rdef.h"
+#ifdef R_CRAN
 #include <R.h>
+#else
+#define R_INLINE inline
+#define Rprintf printf
+#endif
+
 #include <stdint.h>
+
+// This checks whether this is compiled in 64 bit
 #if UINTPTR_MAX == 0xffffffffffffffff
 #define BM_64
 #endif
@@ -27,7 +36,7 @@
 // 8 byte-sized fields are used
 // (Also used by gapSiteList)
 typedef unsigned long long  bitmap_type; 							// Size at least 64 bits (C99)
-const unsigned idx[]      ={0,8,16,24,32,40,48,56};
+const unsigned long long idx[]      ={0,8,16,24,32,40,48,56};
 const unsigned long  pat[]={
                            0xFF             , 0xFF00              , 0xFF0000          , 0xFF000000        ,
                            0xFF00000000     , 0xFF0000000000      , 0xFF000000000000  , 0xFF00000000000000
@@ -42,7 +51,7 @@ const unsigned long rpat[]={
                            };
 
 const unsigned bitmap_size=8;
-const unsigned max_bitmap_index=7;
+const int max_bitmap_index=7;
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #else
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -50,7 +59,7 @@ const unsigned max_bitmap_index=7;
 // 4 byte-sized fields are used
 // (Also used by gapSiteList)
 typedef unsigned long       bitmap_type;							// Size at least 32 bits (C99)
-const unsigned idx[]      ={0,8,16,24};
+const unsigned long idx[]      ={0,8,16,24};
 
 const unsigned long  pat[]={
                            0xFF             , 0xFF00              , 0xFF0000          , 0xFF000000
@@ -63,7 +72,7 @@ const unsigned long rpat[]={
                            };
 
 const unsigned bitmap_size=4;
-const unsigned max_bitmap_index=3;
+const int max_bitmap_index=3;
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 #endif
 
@@ -92,7 +101,7 @@ index_type bitmask_sumPos(const bitmap_type val)
 	index_type res=0;
 	unsigned i;
 	for(i=0;i<bitmap_size;++i)
-		res+=(val>>idx[i])&0xFF;
+		res+=(index_type)(val>>idx[i])&0xFF;
 	return res;
 }
 
@@ -136,18 +145,6 @@ unsigned getSmcl(const bitmap_type val)
 	return res;
 }
 
-/*
-static _inline_ void setByte(bitmap_type *val,const value_type ins,const index_type i)
-{
-	// reset byte
-	*val&= ~pat[i];
-	// set new value
-	// does not work without type conversion
-	// = copy into larger sized variable
-	*val|= (((bitmap_type)ins)<<idx[i]);
-}
-*/
-
 void r_insByte(bitmap_type *map,const value_type val, const index_type block)
 {
 	// left insert Byte: Creates l -> r ascending values
@@ -167,9 +164,10 @@ void r_addVal(bitmap_type *map,const value_type val)
 	// when val is equal to some found value, the function returns without insert
 	// block values: 0-based
 	index_type block=0;
-	value_type byte_val=(value_type)((*map)>>idx[block])&0xFF; // getByte(*map,block);
+	value_type byte_val;
 	while(block<bitmap_size)
 	{
+		byte_val=(value_type) ((*map)>>idx[block])&0xFF; //getByte(*map,block);
 		if(val==byte_val)
 			return;
 		if(val>byte_val)
@@ -178,9 +176,7 @@ void r_addVal(bitmap_type *map,const value_type val)
 			return;
 		}
 		++block;
-		byte_val=(value_type) ((*map)>>idx[block])&0xFF; //getByte(*map,block);
 	}
-	//setByte(map,val,bitmap_size-1);
 }
 
 void r_addVal_f(bitmap_type *map,const value_type val) // force version
@@ -189,18 +185,17 @@ void r_addVal_f(bitmap_type *map,const value_type val) // force version
 	// the function also inserts, when val is equal to some found value
 	// block values: 0-based
 	index_type block=0;
-	value_type byte_val=(value_type)((*map)>>idx[block])&0xFF; // getByte(*map,block);
+	value_type byte_val;
 	while(block<bitmap_size)
 	{
+		byte_val=(value_type) ((*map)>>idx[block])&0xFF; //getByte(*map,block);
 		if(val>=byte_val)
 		{
 			r_insByte(map,val,block);
 			return;
 		}
 		++block;
-		byte_val=(value_type) ((*map)>>idx[block])&0xFF; //getByte(*map,block);
 	}
-	//setByte(map,val,bitmap_size-1);
 }
 
 void l_insByte(bitmap_type *map,const value_type val, const index_type block)
@@ -231,7 +226,7 @@ void l_addVal(bitmap_type *map,const value_type val)
 			return;
 		if(val>byte_val)
 		{
-			l_insByte(map,val,block);
+			l_insByte(map,val,(index_type)block);
 			return;
 		}
 		--block;
@@ -545,13 +540,13 @@ static R_INLINE void l_zip(bitmap_type lhs, bitmap_type rhs, bitmap_type *res)
 	{
 		l_insByte(res,lByte,bitmap_size-1);
 		lblock=max_bitmap_index-1;
-		rblock=max_bitmap_index;
+		rblock=(int)max_bitmap_index;
 	}
 	else if(lByte<rByte)
 	{
 		l_insByte(res,rByte,bitmap_size-1);
 		rblock=max_bitmap_index-1;
-		lblock=max_bitmap_index;
+		lblock=(int)max_bitmap_index;
 	}
 	else
 	{

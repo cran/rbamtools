@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <R.h>
+
 //#include <assert.h>
 #ifdef _WIN32
 #include <fcntl.h>
@@ -16,6 +16,7 @@
 #include "khash.h"
 
 KSTREAM_INIT(gzFile, gzread, 16384)
+/* Defines kh_ref_t */
 KHASH_MAP_INIT_STR(ref, uint64_t)
 
 //void bam_init_header_hash(bam_header_t *header);
@@ -74,7 +75,7 @@ char **__bam_get_lines(const char *fn, int *_n) // for bam_plcmd.c only
 {
 	char **list = 0, *s;
 	int n = 0, dret, m = 0;
-	gzFile fp = (strcmp(fn, "-") == 0)? gzdopen(fileno(stdin), "r") : gzopen(fn, "r");
+	gzFile fp = gzopen(fn, "r");
 	kstream_t *ks;
 	kstring_t *str;
 	str = (kstring_t*)calloc(1, sizeof(kstring_t));
@@ -82,7 +83,7 @@ char **__bam_get_lines(const char *fn, int *_n) // for bam_plcmd.c only
 	while (ks_getuntil(ks, '\n', str, &dret) > 0) {
 		if (n == m) {
 			m = m? m << 1 : 16;
-			list = (char**)realloc(list, m * sizeof(char*));
+			list = (char**)realloc(list, ((size_t)m) * sizeof(char*));
 		}
 		if (str->s[str->l-1] == '\r')
 			str->s[--str->l] = '\0';
@@ -108,7 +109,7 @@ static bam_header_t *hash2header(const kh_ref_t *hash)
 		if (kh_exist(hash, k)) {
 			int i = (int)kh_value(hash, k);
 			header->target_name[i] = (char*)kh_key(hash, k);
-			header->target_len[i] = kh_value(hash, k)>>32;
+			header->target_len[i] = (uint32_t)(kh_value(hash, k)>>32);
 		}
 	}
 	bam_init_header_hash(header);
@@ -118,37 +119,41 @@ bam_header_t *sam_header_read2(const char *fn)
 {
 	bam_header_t *header;
 	int c, dret, ret, error = 0;
+	size_t len;
 	gzFile fp;
 	kstream_t *ks;
 	kstring_t *str;
 	kh_ref_t *hash;
 	khiter_t k;
 	if (fn == 0) return 0;
-	fp = (strcmp(fn, "-") == 0)? gzdopen(fileno(stdin), "r") : gzopen(fn, "r");
+	fp = gzopen(fn, "r");
 	if (fp == 0) return 0;
 	hash = kh_init(ref);
 	ks = ks_init(fp);
 	str = (kstring_t*)calloc(1, sizeof(kstring_t));
 	while (ks_getuntil(ks, 0, str, &dret) > 0) {
-		char *s = strdup(str->s);
+
+		//char *s = str_dup(str->s);
+		len=strlen(str->s) + 1;
+		char *s = malloc(len);
+		memcpy (s, str->s, len);
+
 		int len, i;
-		i = kh_size(hash);
+		i = hash->size;
 		ks_getuntil(ks, 0, str, &dret);
 		len = atoi(str->s);
 		k = kh_put(ref, hash, s, &ret);
 		if (ret == 0) {
-			// REP: fprintf(stderr, "[sam_header_read2] duplicated sequence name: %s\n", s);
 			Rprintf("[sam_header_read2] duplicated sequence name: %s\n", s);
 			error = 1;
 		}
-		kh_value(hash, k) = (uint64_t)len<<32 | i;
+		kh_value(hash, k) = ((uint64_t)len)<<32 | ((uint64_t)i);
 		if (dret != '\n')
 			while ((c = ks_getc(ks)) != '\n' && c != -1);
 	}
 	ks_destroy(ks);
 	gzclose(fp);
 	free(str->s); free(str);
-	// REP: fprintf(stderr, "[sam_header_read2] %d sequences loaded.\n", kh_size(hash));
 	Rprintf("[sam_header_read2] %d sequences loaded.\n", kh_size(hash));
 	if (error) return 0;
 	header = hash2header(hash);
@@ -160,15 +165,13 @@ static R_INLINE uint8_t *alloc_data(bam1_t *b, int size)
 	if (b->m_data < size) {
 		b->m_data = size;
 		kroundup32(b->m_data);
-		b->data = (uint8_t*)realloc(b->data, b->m_data);
+		b->data = (uint8_t*)realloc(b->data, (size_t)(b->m_data));
 	}
 	return b->data;
 }
 static R_INLINE void parse_error(int64_t n_lines, const char * __restrict msg)
 {
-	error("Parse error at line %lld: %s\n", (long long)n_lines, msg);
-	//fprintf(stderr, "Parse error at line %lld: %s\n", (long long)n_lines, msg);
-	//abort();
+	error("[parse_error] Parse error at line %lld: %s\n", (long long)n_lines, msg);
 }
 static R_INLINE void append_text(bam_header_t *header, kstring_t *str)
 {
@@ -180,17 +183,13 @@ static R_INLINE void append_text(bam_header_t *header, kstring_t *str)
         header->text = (char*)realloc(header->text, y);
         if ( !header->text ) 
         {
-        	error("realloc failed to alloc %ld bytes\n", y);
-            //fprintf(stderr,"realloc failed to alloc %ld bytes\n", y);
-            //abort();
+        	error("[append_text] Realloc failed to alloc %ld bytes\n", y);
         }
     }
     // Sanity check
     if ( header->l_text+str->l+1 >= header->n_text )
     {
-    	error("append_text FIXME: %ld>=%ld, x=%ld,y=%ld\n",  header->l_text+str->l+1,header->n_text,x,y);
-        //fprintf(stderr,"append_text FIXME: %ld>=%ld, x=%ld,y=%ld\n",  header->l_text+str->l+1,header->n_text,x,y);
-        //abort();
+    	error("[append_text] Error: %ld>=%ld, x=%ld,y=%ld\n",  header->l_text+str->l+1,header->n_text,x,y);
     }
 	strncpy(header->text + header->l_text, str->s, str->l+1); // we cannot use strcpy() here.
 	header->l_text += str->l + 1;
@@ -201,20 +200,27 @@ int sam_header_parse(bam_header_t *h)
 {
 	char **tmp;
 	int i;
+	size_t len;
+
 	free(h->target_len); free(h->target_name);
 	h->n_targets = 0; h->target_len = 0; h->target_name = 0;
 	if (h->l_text < 3) return 0;
 	if (h->dict == 0) h->dict = sam_header_parse2(h->text);
 	tmp = sam_header2list(h->dict, "SQ", "SN", &h->n_targets);
 	if (h->n_targets == 0) return 0;
-	h->target_name = calloc(h->n_targets, sizeof(void*));
+	h->target_name = calloc((size_t)h->n_targets, sizeof(void*));
 	for (i = 0; i < h->n_targets; ++i)
-		h->target_name[i] = strdup(tmp[i]);
+	{
+		//h->target_name[i] = str_dup(tmp[i]);
+		len=strlen(tmp[i]) + 1;
+		h->target_name[i] = malloc(len);
+		memcpy (h->target_name[i], tmp[i], len);
+	}
 	free(tmp);
 	tmp = sam_header2list(h->dict, "SQ", "LN", &h->n_targets);
-	h->target_len = calloc(h->n_targets, 4);
+	h->target_len = calloc((size_t)h->n_targets, 4);
 	for (i = 0; i < h->n_targets; ++i)
-		h->target_len[i] = atoi(tmp[i]);
+		h->target_len[i] = (uint32_t) atoi(tmp[i]);
 	free(tmp);
 	return h->n_targets;
 }
@@ -225,7 +231,7 @@ bam_header_t *sam_header_read(tamFile fp)
 	bam_header_t *header = bam_header_init();
 	kstring_t *str = fp->str;
 	while ((ret = ks_getuntil(fp->ks, KS_SEP_TAB, str, &dret)) >= 0 && str->s[0] == '@') { // skip header
-		str->s[str->l] = dret; // note that str->s is NOT null terminated!!
+		str->s[str->l] = (char) dret; // note that str->s is NOT null terminated!!
 		append_text(header, str);
 		if (dret != '\n') {
 			ret = ks_getuntil(fp->ks, '\n', str, &dret);
@@ -249,11 +255,11 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 
 	if (fp->is_first) {
 		fp->is_first = 0;
-		ret = str->l;
+		ret = (int) str->l;
 	} else {
 		do { // special consideration for empty lines
 			ret = ks_getuntil(fp->ks, KS_SEP_TAB, str, &dret);
-			if (ret >= 0) z += str->l + 1;
+			if (ret >= 0) z += (int) str->l + 1;
 		} while (ret == 0);
 	}
 	if (ret < 0) return -1;
@@ -261,34 +267,33 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 	doff = 0;
 
 	{ // name
-		c->l_qname = strlen(str->s) + 1;
+		c->l_qname = (unsigned char) (strlen(str->s) + 1);
 		memcpy(alloc_data(b, doff + c->l_qname) + doff, str->s, c->l_qname);
 		doff += c->l_qname;
 	}
 	{ // flag
 		long flag;
 		char *s;
-		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1;
+		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += (int) str->l + 1;
 		flag = strtol((char*)str->s, &s, 0);
 		if (*s) { // not the end of the string
 			flag = 0;
 			for (s = str->s; *s; ++s)
 				flag |= bam_char2flag_table[(int)*s];
 		}
-		c->flag = flag;
+		c->flag = (short unsigned int) flag;
 	}
 	{ // tid, pos, qual
-		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1; c->tid = bam_get_tid(header, str->s);
+		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += (int) str->l + 1; c->tid = bam_get_tid(header, str->s);
 		if (c->tid < 0 && strcmp(str->s, "*")) {
 			if (header->n_targets == 0) {
 				error("[sam_read1] missing header? Abort!\n");
-				//fprintf(stderr, "[sam_read1] missing header? Abort!\n");
-				//exit(1);
-			// REP: } else fprintf(stderr, "[sam_read1] reference '%s' is recognized as '*'.\n", str->s);
-			} else Rprintf("[sam_read1] reference '%s' is recognized as '*'.\n", str->s);
+			}
+			else
+				Rprintf("[sam_read1] reference '%s' is recognized as '*'.\n", str->s);
 		}
-		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1; c->pos = isdigit(str->s[0])? atoi(str->s) - 1 : -1;
-		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1; c->qual = isdigit(str->s[0])? atoi(str->s) : 0;
+		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += (int) str->l + 1; c->pos  = isdigit(str->s[0])? (unsigned char) atoi(str->s) - 1 : -1;
+		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += (int) str->l + 1; c->qual = isdigit(str->s[0])? (unsigned char) atoi(str->s) : 0;
 		if (ret < 0) return -2;
 	}
 	{ // cigar
@@ -297,11 +302,11 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 		long x;
 		c->n_cigar = 0;
 		if (ks_getuntil(ks, KS_SEP_TAB, str, &dret) < 0) return -3;
-		z += str->l + 1;
+		z += (int) (str->l + 1);
 		if (str->s[0] != '*') {
 			for (s = str->s; *s; ++s) {
 				if ((isalpha(*s)) || (*s=='=')) ++c->n_cigar;
-				else if (!isdigit(*s)) parse_error(fp->n_lines, "invalid CIGAR character");
+				else if (!isdigit(*s)) parse_error((int64_t) fp->n_lines, "invalid CIGAR character");
 			}
 			b->data = alloc_data(b, doff + c->n_cigar * 4);
 			for (i = 0, s = str->s; i != c->n_cigar; ++i) {
@@ -316,28 +321,27 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 				else if (op == 'P') op = BAM_CPAD;
 				else if (op == '=') op = BAM_CEQUAL;
 				else if (op == 'X') op = BAM_CDIFF;
-				else parse_error(fp->n_lines, "invalid CIGAR operation");
+				else parse_error((int64_t)fp->n_lines, "invalid CIGAR operation");
 				s = t + 1;
-				bam1_cigar(b)[i] = x << BAM_CIGAR_SHIFT | op;
+				bam1_cigar(b)[i] = (uint32_t) (x << BAM_CIGAR_SHIFT | ((long)op));
 			}
-			if (*s) parse_error(fp->n_lines, "unmatched CIGAR operation");
-			c->bin = bam_reg2bin(c->pos, bam_calend(c, bam1_cigar(b)));
+			if (*s) parse_error((int64_t) fp->n_lines, "unmatched CIGAR operation");
+			c->bin = (short unsigned int) bam_reg2bin( (uint32_t) c->pos, bam_calend(c, bam1_cigar(b)));
 			doff += c->n_cigar * 4;
 		} else {
 			if (!(c->flag&BAM_FUNMAP)) {
-				// REP: fprintf(stderr, "Parse warning at line %lld: mapped sequence without CIGAR\n", (long long)fp->n_lines);
 				Rprintf("Parse warning at line %lld: mapped sequence without CIGAR\n", (long long)fp->n_lines);
 				c->flag |= BAM_FUNMAP;
 			}
-			c->bin = bam_reg2bin(c->pos, c->pos + 1);
+			c->bin = (short unsigned int) bam_reg2bin((uint32_t) c->pos, (uint32_t) (c->pos + 1));
 		}
 	}
 	{ // mtid, mpos, isize
-		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1;
+		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += (int) (str->l + 1);
 		c->mtid = strcmp(str->s, "=")? bam_get_tid(header, str->s) : c->tid;
-		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1;
+		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += (int) (str->l + 1);
 		c->mpos = isdigit(str->s[0])? atoi(str->s) - 1 : -1;
-		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1;
+		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += (int) (str->l + 1);
 		c->isize = (str->s[0] == '-' || isdigit(str->s[0]))? atoi(str->s) : 0;
 		if (ret < 0) return -4;
 	}
@@ -345,42 +349,41 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 		int i;
 		uint8_t *p = 0;
 		if (ks_getuntil(ks, KS_SEP_TAB, str, &dret) < 0) return -5; // seq
-		z += str->l + 1;
+		z += (int) (str->l + 1);
 		if (strcmp(str->s, "*")) {
-			c->l_qseq = strlen(str->s);
+			c->l_qseq = (int32_t) strlen(str->s);
 			if (c->n_cigar && c->l_qseq != (int32_t)bam_cigar2qlen(c, bam1_cigar(b))) {
-			  // REP: fprintf(stderr, "Line %ld, sequence length %i vs %i from CIGAR\n",(long)fp->n_lines, c->l_qseq, (int32_t)bam_cigar2qlen(c, bam1_cigar(b)));
-				Rprintf("Line %ld, sequence length %i vs %i from CIGAR\n",(long)fp->n_lines, c->l_qseq, (int32_t)bam_cigar2qlen(c, bam1_cigar(b)));
-			  parse_error(fp->n_lines, "CIGAR and sequence length are inconsistent");
+			  Rprintf("Line %ld, sequence length %i vs %i from CIGAR\n",(long)fp->n_lines, c->l_qseq, (int32_t)bam_cigar2qlen(c, bam1_cigar(b)));
+			  parse_error((int64_t) fp->n_lines, "CIGAR and sequence length are inconsistent");
 			}
 			p = (uint8_t*)alloc_data(b, doff + c->l_qseq + (c->l_qseq+1)/2) + doff;
-			memset(p, 0, (c->l_qseq+1)/2);
+			memset(p, 0, (size_t) (c->l_qseq+1)/2);
 			for (i = 0; i < c->l_qseq; ++i)
-				p[i/2] |= bam_nt16_table[(int)str->s[i]] << 4*(1-i%2);
+				p[i/2] |= (uint8_t) (bam_nt16_table[(int)str->s[i]] << ((uint8_t)4*(1-i%2)) );
 		} else c->l_qseq = 0;
 		if (ks_getuntil(ks, KS_SEP_TAB, str, &dret) < 0) return -6; // qual
-		z += str->l + 1;
-		if (strcmp(str->s, "*") && c->l_qseq != strlen(str->s))
-			parse_error(fp->n_lines, "sequence and quality are inconsistent");
+		z += (int) (str->l + 1);
+		if (strcmp(str->s, "*") && c->l_qseq != (int64_t) strlen(str->s))
+			parse_error((int64_t) fp->n_lines, "sequence and quality are inconsistent");
 		p += (c->l_qseq+1)/2;
 		if (strcmp(str->s, "*") == 0) for (i = 0; i < c->l_qseq; ++i) p[i] = 0xff;
-		else for (i = 0; i < c->l_qseq; ++i) p[i] = str->s[i] - 33;
+		else for (i = 0; i < c->l_qseq; ++i) p[i] = (uint8_t) (str->s[i] - 33);
 		doff += c->l_qseq + (c->l_qseq+1)/2;
 	}
 	doff0 = doff;
 	if (dret != '\n' && dret != '\r') { // aux
 		while (ks_getuntil(ks, KS_SEP_TAB, str, &dret) >= 0) {
 			uint8_t *s, type, key[2];
-			z += str->l + 1;
+			z += (int) str->l + 1;
 			if (str->l < 6 || str->s[2] != ':' || str->s[4] != ':')
-				parse_error(fp->n_lines, "missing colon in auxiliary data");
-			key[0] = str->s[0]; key[1] = str->s[1];
-			type = str->s[3];
+				parse_error((int64_t) fp->n_lines, "missing colon in auxiliary data");
+			key[0] = (uint8_t) str->s[0]; key[1] = (uint8_t) str->s[1];
+			type = (uint8_t) str->s[3];
 			s = alloc_data(b, doff + 3) + doff;
 			s[0] = key[0]; s[1] = key[1]; s += 2; doff += 2;
 			if (type == 'A' || type == 'a' || type == 'c' || type == 'C') { // c and C for backward compatibility
 				s = alloc_data(b, doff + 2) + doff;
-				*s++ = 'A'; *s = str->s[5];
+				*s++ = 'A'; *s = (uint8_t) str->s[5];
 				doff += 2;
 			} else if (type == 'I' || type == 'i') {
 				long long x;
@@ -397,7 +400,6 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 						*s++ = 'i'; *(int32_t*)s = (int32_t)x;
 						s += 4; doff += 5;
 						if (x < -2147483648ll)
-							// REP: fprintf(stderr, "Parse warning at line %lld: integer %lld is out of range.",(long long)fp->n_lines, x);
 							Rprintf("Parse warning at line %lld: integer %lld is out of range.",(long long)fp->n_lines, x);
 					}
 				} else {
@@ -411,7 +413,6 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 						*s++ = 'I'; *(uint32_t*)s = (uint32_t)x;
 						s += 4; doff += 5;
 						if (x > 4294967295ll)
-							// REP: fprintf(stderr, "Parse warning at line %lld: integer %lld is out of range.",(long long)fp->n_lines, x);
 							Rprintf("Parse warning at line %lld: integer %lld is out of range.",(long long)fp->n_lines, x);
 					}
 				}
@@ -426,14 +427,14 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 				*(float*)s = (float)atof(str->s + 9);
 				s += 8; doff += 9;
 			} else if (type == 'Z' || type == 'H') {
-				int size = 1 + (str->l - 5) + 1;
+				int size = 1 + ((int)str->l - 5) + 1;
 				if (type == 'H') { // check whether the hex string is valid
 					int i;
-					if ((str->l - 5) % 2 == 1) parse_error(fp->n_lines, "length of the hex string not even");
-					for (i = 0; i < str->l - 5; ++i) {
+					if ((str->l - 5) % 2 == 1) parse_error((int64_t)fp->n_lines, "length of the hex string not even");
+					for (i = 0; i < (int) str->l - 5; ++i) {
 						int c = toupper(str->s[5 + i]);
 						if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F')))
-							parse_error(fp->n_lines, "invalid hex character");
+							parse_error((int64_t) fp->n_lines, "invalid hex character");
 					}
 				}
 				s = alloc_data(b, doff + size) + doff;
@@ -444,14 +445,14 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 			} else if (type == 'B') {
 				int32_t n = 0, Bsize, k = 0, size;
 				char *p;
-				if (str->l < 8) parse_error(fp->n_lines, "too few values in aux type B");
+				if (str->l < 8) parse_error((int64_t) fp->n_lines, "too few values in aux type B");
 				Bsize = bam_aux_type2size(str->s[5]); // the size of each element
 				for (p = (char*)str->s + 6; *p; ++p) // count the number of elements in the array
 					if (*p == ',') ++n;
 				p = str->s + 7; // now p points to the first number in the array
 				size = 6 + Bsize * n; // total number of bytes allocated to this tag
 				s = alloc_data(b, doff + 6 * Bsize * n) + doff; // allocate memory
-				*s++ = 'B'; *s++ = str->s[5];
+				*s++ = 'B'; *s++ = (uint8_t) str->s[5];
 				memcpy(s, &n, 4); s += 4; // write the number of elements
 				if (str->s[5] == 'c')      while (p < str->s + str->l) ((int8_t*)s)[k++]   = (int8_t)strtol(p, &p, 0),   ++p;
 				else if (str->s[5] == 'C') while (p < str->s + str->l) ((uint8_t*)s)[k++]  = (uint8_t)strtol(p, &p, 0),  ++p;
@@ -460,21 +461,32 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 				else if (str->s[5] == 'i') while (p < str->s + str->l) ((int32_t*)s)[k++]  = (int32_t)strtol(p, &p, 0),  ++p;
 				else if (str->s[5] == 'I') while (p < str->s + str->l) ((uint32_t*)s)[k++] = (uint32_t)strtol(p, &p, 0), ++p;
 				else if (str->s[5] == 'f') while (p < str->s + str->l) ((float*)s)[k++]    = (float)strtod(p, &p),       ++p;
-				else parse_error(fp->n_lines, "unrecognized array type");
+				else parse_error((int64_t)fp->n_lines, "unrecognized array type");
 				s += Bsize * n; doff += size;
-			} else parse_error(fp->n_lines, "unrecognized type");
+			} else parse_error((int64_t)fp->n_lines, "unrecognized type");
 			if (dret == '\n' || dret == '\r') break;
 		}
 	}
 	b->l_aux = doff - doff0;
 	b->data_len = doff;
+
+
+#ifdef BAM1_ADD_CIGAR
+	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
+	// Fill additional cigar field with copy of cigar data
+	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
+	COPY_CIGAR_VALUES(b);
+	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
+#endif
+
+
 	return z;
 }
 
 tamFile sam_open(const char *fn)
 {
 	tamFile fp;
-	gzFile gzfp = (strcmp(fn, "-") == 0)? gzdopen(fileno(stdin), "rb") : gzopen(fn, "rb");
+	gzFile gzfp = gzopen(fn, "rb");
 	if (gzfp == 0) return 0;
 	fp = (tamFile)calloc(1, sizeof(struct __tamFile_t));
 	fp->str = (kstring_t*)calloc(1, sizeof(kstring_t));

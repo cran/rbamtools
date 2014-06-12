@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <R.h>
+/* Settings for optional embedding into R*/
+#include "rdef.h"
+
 
 #ifndef kroundup32
 #define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))

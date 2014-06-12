@@ -13,7 +13,6 @@
 \details{The method returns a data.frame. Each row contains count data for one reference sequence. Each column contains the counts for one CIGAR-OP type ("M", "I","N","S","H","P","=","X"). Columns with the total number of aligns, the refid (ID) and the length of the reference sequence (LN), as retrieved by 'getRefData' are added.
 }
 \examples{
-library(rbamtools)
 bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 count<-bamCountAll(reader,verbose=TRUE)

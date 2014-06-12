@@ -16,11 +16,87 @@
 #define rbamtools_c
 #include "rbamtools.h"
 
-static const int buf_size=2048; // buffer size for printing ints into chars
+/* buffer size for printing ints into chars */
+static const size_t  buf_size=2048;
+/* Same buffer size for fgets */
+static const int    ibuf_size=2048;
 
-static R_INLINE void clear_buf(char *c,unsigned n)
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * Character encoding for letters which might occur in BAM file sequence segments
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+# define a_val 0
+# define c_val 1
+# define g_val 2
+# define t_val 3
+# define zvl   4
+
+static const unsigned char bam_nt16_dna_table[16] = {
+/*		=    A      C      M    G  	   R	S    V    T      W    Y    H    K    D    B    N 	*/
+		zvl, a_val, c_val, zvl, g_val, zvl, zvl, zvl, t_val, zvl, zvl, zvl,	zvl, zvl, zvl, zvl
+};
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * Character encoding for letters which might occur in FASTQ files
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+# define a_fq 0
+# define c_fq 1
+# define g_fq 2
+# define t_fq 3
+# define m_fq 4
+# define r_fq 5
+# define w_fq 6
+# define s_fq 7
+# define y_fq 8
+# define k_fq 9
+# define v_fq 10
+# define h_fq 11
+# define d_fq 12
+# define b_fq 13
+# define n_fq 14
+# define plfq 15
+# define mnfq 16
+# define eqfq 17
+# define zvfq 18
+static const int nFastq=19;
+
+
+static const unsigned char FASTQ_LETTERS[256] = {
+		/* 64 - block																					 start index */
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 0	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 16	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,plfq,	zvfq,mnfq,zvfq,zvfq,	/* 32	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,eqfq,zvfq,zvfq,	/* 48	*/
+
+		zvfq,a_fq,b_fq,c_fq,	d_fq,zvfq,zvfq,g_fq,	h_fq,zvfq,zvfq,k_fq,	zvfq,m_fq,n_fq,zvfq,	/* 64	*/
+		zvfq,s_fq,r_fq,zvfq,	t_fq,zvfq,v_fq,w_fq,	zvfq,y_fq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 80	*/
+		zvfq,a_fq,b_fq,c_fq,	d_fq,zvfq,zvfq,g_fq,	h_fq,zvfq,zvfq,k_fq,	zvfq,m_fq,n_fq,zvfq,	/* 96	*/
+		zvfq,s_fq,r_fq,zvfq,	t_fq,zvfq,v_fq,w_fq,	zvfq,y_fq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 112	*/
+
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 128	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 144	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 160	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 176	*/
+
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 192	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 208	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	/* 224	*/
+		zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq,	zvfq,zvfq,zvfq,zvfq	    /* 240	*/
+};
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+
+static R_INLINE void clear_buf(char *c,size_t n)
 {
-	int i;
+	size_t i;
 	for(i=0;i<n;++i)
 		c[i]=(char)0;
 }
@@ -28,19 +104,22 @@ static R_INLINE void clear_buf(char *c,unsigned n)
 static R_INLINE void set_flag(bam1_t *align,_Bool val,unsigned pattern)
 {
 	if(val)
-		align->core.flag=(align->core.flag) | pattern;
+		align->core.flag= (short unsigned int) ((align->core.flag) | pattern);
 	else
-		align->core.flag=(align->core.flag) & !pattern;
+		align->core.flag= (short unsigned int) ((align->core.flag) & !pattern);
 }
 
-static R_INLINE int cigar2str(char *c,const bam1_t *align)
+static R_INLINE size_t cigar2str(char *c,const bam1_t *align)
 {
+	uint32_t len, *cigar;
+	uint32_t i;
+	char buf[128];
+
 	if(align==NULL)
 		return 0;
 
-	uint32_t len=align->core.n_cigar;
-	uint32_t *cigar=bam1_cigar(align);
-	char buf[128];
+	len=align->core.n_cigar;
+	cigar=bam1_cigar(align);
 
 	sprintf(buf,"%lu",(unsigned long) (cigar[0] >> BAM_CIGAR_SHIFT));
 	strcpy(c,buf);
@@ -49,7 +128,6 @@ static R_INLINE int cigar2str(char *c,const bam1_t *align)
 	strncat(c,&(CIGAR_TYPES[cigar[0] & BAM_CIGAR_MASK]),1);
 
 
-	uint32_t i;
 	for(i=1;i<len;++i)
 	{
 		sprintf(buf,"%lu",(unsigned long) (cigar[i] >> BAM_CIGAR_SHIFT));
@@ -68,25 +146,29 @@ static R_INLINE uint8_t *alloc_align_data(bam1_t *b, int size)
 	if (b->m_data < size) {
 		b->m_data = size;
 		kroundup32(b->m_data);
-		b->data = (uint8_t*)realloc(b->data, b->m_data);
+		b->data = (uint8_t*)realloc(b->data, (size_t) b->m_data);
 	}
 	return b->data;
 }
 
 void print_bitmask_dec(bitmap_type *value)
 {
-	int i,last_block;
+	int i;
+	unsigned last_block;
+
 	last_block=bitmap_size-1;
-	Rprintf("%3u",getByte(*value,last_block));
-	for(i=last_block-1;i>=0;--i)
-		Rprintf(" | %3u",getByte(*value,i));
+	Rprintf("%3u",(unsigned) getByte(*value,last_block));
+	for(i=((int)last_block)-1;i>=0;--i)
+		Rprintf(" | %3u",(unsigned) getByte(*value,(unsigned)i));
 	Rprintf("\n");
 }
 
 
 bam_header_t* clone_bam_header(bam_header_t *h)
 {
-	bam_header_t *ans=(bam_header_t*)calloc(1, sizeof(bam_header_t));
+	bam_header_t *ans;
+
+	ans=(bam_header_t*)calloc(1, sizeof(bam_header_t));
 	ans->n_targets=h->n_targets;
 	ans->l_text=h->l_text;
 	ans->n_text=h->n_text;
@@ -101,41 +183,47 @@ bam_header_t* clone_bam_header(bam_header_t *h)
 
 SEXP is_nil_externalptr(SEXP ptr)
 {
+	SEXP ans;
+
 	if(TYPEOF(ptr)!=EXTPTRSXP)
 		error("[is_nil_externalptr] No external pointer");
 
-	SEXP ans;
 	PROTECT(ans=allocVector(LGLSXP,1));
 	LOGICAL(ans)[0]=(R_ExternalPtrAddr(ptr)==NULL);
 	UNPROTECT(1);
 	return ans;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-// bam_reader
-///////////////////////////////////////////////////////////////////////////////////////////////
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * bam_reader
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 static void finalize_bam_reader(SEXP ptr)
 {
+	samfile_t *reader;
+
 	if(TYPEOF(ptr)!=EXTPTRSXP)
 		error("[finalize_bam_reader] No external pointer!");
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(ptr));
-	samclose(reader);	// checks for 0
+	reader=(samfile_t*)(R_ExternalPtrAddr(ptr));
+	samclose(reader);	/* checks for 0 */
 	R_SetExternalPtrAddr(ptr,NULL);
 }
 
 SEXP bam_reader_open(SEXP filename)
 {
+	const char* _filename;
+	samfile_t *reader;
+	SEXP pReader;
+
 	if(TYPEOF(filename)!=STRSXP)
 		error("[bam_reader_open] Filename must be a string.\n");
 
-	const char* _filename=CHAR(STRING_ELT(filename,0));
-	samfile_t *reader=samopen(_filename,"rb",0);
+	_filename=CHAR(STRING_ELT(filename,0));
+	reader=samopen(_filename,"rb",0);
 	if(!reader)
 		error("[bam_reader_open] Opening bam_file \"%s\" failed!",_filename);
-	//else
-	//	Rprintf("[bamReader] Opened file \"%s\"\n",_filename);
 
-	SEXP pReader;
 	PROTECT(pReader=R_MakeExternalPtr( (void*)(reader),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(pReader,finalize_bam_reader);
 	UNPROTECT(1);
@@ -144,13 +232,14 @@ SEXP bam_reader_open(SEXP filename)
 
 SEXP bam_reader_close(SEXP pReader)
 {
+	samfile_t *reader;
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_close] No external pointer!");
 
-	samfile_t *reader=(samfile_t*) (R_ExternalPtrAddr(pReader));
+	reader=(samfile_t*) (R_ExternalPtrAddr(pReader));
 	samclose(reader);
 	R_SetExternalPtrAddr(pReader,NULL);
-	//Rprintf("[bamReader] closed.\n");
 	return R_NilValue;
 }
 
@@ -170,11 +259,14 @@ SEXP bam_reader_get_header_text(SEXP pReader)
 
 SEXP bam_reader_get_ref_count(SEXP pReader)
 {
+	samfile_t *reader;
+	SEXP ans;
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_get_ref_count] No external pointer!");
 
-	samfile_t *reader=(samfile_t*) (R_ExternalPtrAddr(pReader));
-	SEXP ans;
+	reader=(samfile_t*) (R_ExternalPtrAddr(pReader));
+
 	PROTECT(ans=Rf_allocVector(INTSXP,1));
 	INTEGER(ans)[0]=reader->header->n_targets;
 	UNPROTECT(1);
@@ -183,19 +275,23 @@ SEXP bam_reader_get_ref_count(SEXP pReader)
 
 SEXP bam_reader_get_target_name(SEXP pReader, SEXP pSeqid)
 {
+	samfile_t *reader;
+	bam_header_t* header;
+	int seqid;
+	SEXP res;
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_get_target_name] No external pointer!");
 	if(TYPEOF(pSeqid)!=INTSXP)
 		error("[bam_reader_get_target_name] pSeqid must be INT!");
 
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	bam_header_t* header=reader->header;
+	reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	header=reader->header;
 
-	int seqid=INTEGER(pSeqid)[0];
+	seqid=INTEGER(pSeqid)[0];
 	if((seqid<0) | (seqid >=header->n_targets))
 		error("[bam_reader_get_target_name] pSeqid out of range!");
 
-	SEXP res;
 	PROTECT(res=allocVector(STRSXP,1));
 	SET_STRING_ELT(res,0,mkChar(header->target_name[seqid]));
 	UNPROTECT(1);
@@ -204,48 +300,49 @@ SEXP bam_reader_get_target_name(SEXP pReader, SEXP pSeqid)
 
 SEXP bam_reader_get_ref_data(SEXP pReader)
 {
+	samfile_t *reader;
+	bam_header_t *header;
+	int nProtected, nCols, nRows, i;
+	SEXP dflist, RefID_vector, RefName_vector, RefLength_vector;
+	SEXP col_names, row_names;
+    char c[20];
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_get_ref_data] No external pointer!");
 
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	bam_header_t* header=reader->header;
+	reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	header=reader->header;
 
 	// create data.frame
-	int nProtected=0;
-	int nCols=3;
-	SEXP dflist;
+	nProtected=0;
+	nCols=3;
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
-	int nRows=header->n_targets;
+	nRows=header->n_targets;
 
 	// Column 0: ID (RefID)
-	SEXP RefID_vector;
 	PROTECT(RefID_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
 	// Column 1: SN (RefName)
-	SEXP RefName_vector;
 	PROTECT(RefName_vector=allocVector(STRSXP,nRows));
 	++nProtected;
 
 	// Column 2: LN (RefLength)
-	SEXP RefLength_vector;
 	PROTECT(RefLength_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	int i;
 	for(i=0;i<nRows;++i)
 	{
 		INTEGER(RefID_vector)[i]=i;
 		SET_STRING_ELT(RefName_vector,i,mkChar(header->target_name[i]));
-		INTEGER(RefLength_vector)[i]=header->target_len[i];
+		INTEGER(RefLength_vector)[i]=(int) header->target_len[i];
 	}
 	SET_VECTOR_ELT(dflist,0,RefID_vector);
 	SET_VECTOR_ELT(dflist,1,RefName_vector);
 	SET_VECTOR_ELT(dflist,2,RefLength_vector);
 
 	// Column Names
-	SEXP col_names;
 	PROTECT(col_names=allocVector(STRSXP,nCols));
 	++nProtected;
 	SET_STRING_ELT(col_names,0,mkChar("ID"));
@@ -253,10 +350,8 @@ SEXP bam_reader_get_ref_data(SEXP pReader)
 	SET_STRING_ELT(col_names,2,mkChar("LN"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
-	SEXP row_names;
     PROTECT(row_names=allocVector(STRSXP,nRows));
     ++nProtected;
-    char c[20];
     for(i=1;i<=nRows;++i)
     {
     	sprintf(c,"%i",i);
@@ -270,14 +365,17 @@ SEXP bam_reader_get_ref_data(SEXP pReader)
 
 SEXP bam_reader_create_index(SEXP pBamFile,SEXP pIdxFile)
 {
+	const char *bamFile, *idxFile;
+	SEXP ans;
+
 	if(TYPEOF(pBamFile)!=STRSXP)
 		error("[bam_reader_create_index] BamFile must be a string!\n");
 	if(TYPEOF(pIdxFile)!=STRSXP)
 		error("[bam_reader_create_index] IndexFile must be a string!\n");
 
-	const char *bamFile=CHAR(STRING_ELT(pBamFile,0));
-	const char *idxFile=CHAR(STRING_ELT(pIdxFile,0));
-	SEXP ans;
+	bamFile=CHAR(STRING_ELT(pBamFile,0));
+	idxFile=CHAR(STRING_ELT(pIdxFile,0));
+
 	PROTECT(ans=Rf_allocVector(INTSXP,1));
 	INTEGER(ans)[0]=bam_index_build2(bamFile,idxFile);
 	UNPROTECT(1);
@@ -286,25 +384,31 @@ SEXP bam_reader_create_index(SEXP pBamFile,SEXP pIdxFile)
 
 static void finalize_bam_index(SEXP ptr)
 {
+	bam_index_t *index;
+
 	if(TYPEOF(ptr)!=EXTPTRSXP)
 		error("[finalize_bam_index] No external pointer!");
 
-	bam_index_t *index=(bam_index_t *)(R_ExternalPtrAddr(ptr));
-	bam_index_destroy(index);	// checks for zero
+	index=(bam_index_t *)(R_ExternalPtrAddr(ptr));
+	bam_index_destroy(index);	/* checks for zero */
 	R_SetExternalPtrAddr(ptr,NULL);
 }
 
 SEXP bam_reader_load_index(SEXP pIdxFile)
 {
+	const char *idxFile;
+	FILE *f;
+	bam_index_t *index;
+	SEXP idx;
+
 	if(TYPEOF(pIdxFile)!=STRSXP)
 		error("[bam_reader_load_index] pIdxFile must be a string!\n");
 
-	const char *idxFile=CHAR(STRING_ELT(pIdxFile,0));
-	FILE *f=fopen(idxFile,"rb");
-	bam_index_t *index = bam_index_load_core(f);
+	idxFile=CHAR(STRING_ELT(pIdxFile,0));
+	f=fopen(idxFile,"rb");
+	index = bam_index_load_core(f);
 	fclose(f);
 
-	SEXP idx;
 	PROTECT(idx=R_MakeExternalPtr( (void*)(index),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(idx,finalize_bam_index);
 	UNPROTECT(1);
@@ -313,10 +417,12 @@ SEXP bam_reader_load_index(SEXP pIdxFile)
 
 SEXP bam_reader_unload_index(SEXP pIdx)
 {
+	bam_index_t *idx;
+
 	if(TYPEOF(pIdx)!=EXTPTRSXP)
 		error("[bam_reader_unload_index] No external pointer!\n");
 
-	bam_index_t *idx=(bam_index_t *)(R_ExternalPtrAddr(pIdx));
+	idx=(bam_index_t *)(R_ExternalPtrAddr(pIdx));
 	bam_index_destroy(idx);
 	R_SetExternalPtrAddr(pIdx,NULL);
 	return R_NilValue;
@@ -324,12 +430,18 @@ SEXP bam_reader_unload_index(SEXP pIdx)
 
 SEXP bam_reader_get_next_align(SEXP pReader)
 {
+	samfile_t *reader;
+	bam1_t *align;
+	int res;
+	SEXP ptr;
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_get_next_align] No external pointer!\n");
 
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	bam1_t *align=bam_init1();
-	int res=samread(reader,align);
+	reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	align=bam_init1();
+
+	res=samread(reader,align);
 	if(res==-1)
 	{
 		Rprintf("[getNextAlign] samread found EOF.\n");
@@ -338,8 +450,6 @@ SEXP bam_reader_get_next_align(SEXP pReader)
 	if(res==-2)
 		error("[getNextAlign] samread found truncated BAM-file.\n");
 
-
-	SEXP ptr;
 	PROTECT(ptr=R_MakeExternalPtr((void*)(align),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(ptr,finalize_bam_align);
 	UNPROTECT(1);
@@ -348,25 +458,30 @@ SEXP bam_reader_get_next_align(SEXP pReader)
 
 SEXP bam_reader_save_aligns(SEXP pReader,SEXP pWriter)
 {
+	samfile_t *reader, *writer;
+	bam1_t *align;
+	int res, nAligns;
+	SEXP ans;
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_save_aligns] pReader: No external pointer!\n");
 	if(TYPEOF(pWriter)!=EXTPTRSXP)
 		error("[bam_reader_save_aligns] pWriter: No external pointer!\n");
 
 	// reader
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
 	if (reader == 0 || !(reader->type & SAM_TYPE_READ))
 		error("[bam_reader_save_aligns] Reader not open for reading!");
 
 	// writer
-	samfile_t *writer=(samfile_t*)R_ExternalPtrAddr(pWriter);
+	writer=(samfile_t*)R_ExternalPtrAddr(pWriter);
 	if (writer == 0 || (writer->type & SAM_TYPE_READ))
 		error("[bam_reader_save_aligns] Writer not open for writing!");
 
 
-	bam1_t *align=bam_init1();
-	unsigned long nAligns=0;
-	int res=samread(reader,align);
+	align=bam_init1();
+	nAligns=0;
+	res=samread(reader,align);
 	while(res>0)
 	{
 		samwrite(writer,align);
@@ -381,7 +496,6 @@ SEXP bam_reader_save_aligns(SEXP pReader,SEXP pWriter)
 		error("[bam_reader_save_aligns] samread found truncated BAM-file.\n");
 
 
-	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
 	INTEGER(ans)[0]=nAligns;
 	UNPROTECT(1);
@@ -390,6 +504,10 @@ SEXP bam_reader_save_aligns(SEXP pReader,SEXP pWriter)
 
 SEXP bam_reader_sort_file(SEXP pFilename,SEXP pPrefix,SEXP pMaxMem,SEXP pByName)
 {
+	const char *filename, *prefix;
+	size_t max_mem;
+	_Bool sort_by_name;
+
 	if(TYPEOF(pFilename)!=STRSXP)
 		error("[bam_writer_sort_file] Filename must be a string\n");
 	if(TYPEOF(pPrefix)!=STRSXP)
@@ -399,10 +517,10 @@ SEXP bam_reader_sort_file(SEXP pFilename,SEXP pPrefix,SEXP pMaxMem,SEXP pByName)
 	if(TYPEOF(pByName)!=LGLSXP)
 		error("[bam_writer_sort_file] ByName must be bool value!\n");
 
-	const char *filename=CHAR(STRING_ELT(pFilename,0));
-	const char *prefix=CHAR(STRING_ELT(pPrefix,0));
-	size_t max_mem=*REAL(pMaxMem);
-	_Bool sort_by_name =*(LOGICAL(AS_LOGICAL(pByName)));
+	filename=CHAR(STRING_ELT(pFilename,0));
+	prefix=CHAR(STRING_ELT(pPrefix,0));
+	max_mem=(size_t) *REAL(pMaxMem);
+	sort_by_name =*(LOGICAL(AS_LOGICAL(pByName)));
 	if(sort_by_name)
 	{
 		bam_sort_core_ext(1, filename, prefix, max_mem, 0);
@@ -417,11 +535,13 @@ SEXP bam_reader_sort_file(SEXP pFilename,SEXP pPrefix,SEXP pMaxMem,SEXP pByName)
 
 SEXP bam_reader_get_header(SEXP pReader)
 {
+	samfile_t *reader;
+	SEXP ptr;
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_get_header] No external pointer!\n");
 
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	SEXP ptr;
+	reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
 	PROTECT(ptr=R_MakeExternalPtr((void*)clone_bam_header(reader->header),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(ptr,finalize_bam_header);
 	UNPROTECT(1);
@@ -437,6 +557,10 @@ SEXP bam_reader_tell(SEXP pReader)
 
 SEXP bam_reader_seek(SEXP pReader, SEXP pPos)
 {
+	samfile_t *reader;
+	double *pos;
+	int64_t res;
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[bam_reader_seek] No external pointer!\n");
 	if(TYPEOF(pPos)!=REALSXP)
@@ -444,9 +568,9 @@ SEXP bam_reader_seek(SEXP pReader, SEXP pPos)
 	if(LENGTH(pPos)>1)
 		error("[bam_reader_seek] Length of position must be 1!\n");
 
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	double *pos=REAL(pPos);
-    int64_t res=bam_seek(reader->x.bam,(int64_t)*pos,SEEK_SET);
+	reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	pos=REAL(pPos);
+    res=bam_seek(reader->x.bam,(int64_t)*pos,SEEK_SET);
     if(res<0)
     	Rprintf("[bam_reader_seek] bam_seek fails!\n");
 	return R_NilValue;
@@ -462,105 +586,126 @@ SEXP bam_reader_write_fastq(SEXP pReader,SEXP pFilename,SEXP pAppend)
 		error("[bam_reader_write_fastq] pAppend must be logical!\n");
 
 	_Bool append =*(LOGICAL(AS_LOGICAL(pAppend)));
-	FILE *f;
+
+	gzFile gz;
 	if(append)
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"a+");
+		gz =gzopen(CHAR(STRING_ELT(pFilename,0)),"ab");
 	else
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"w");
+		gz =gzopen(CHAR(STRING_ELT(pFilename,0)),"wb");
+	if(!gz)
+		error("[bam_reader_write_fastq] Cannot open file '%s'!",CHAR(STRING_ELT(pFilename,0)));
 
-	///////////////////////////////////////////////////////
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 	unsigned char *raw_seq;
-	int32_t seq_len;
-	int buf_size=2048;
-	char *buf=(char*) calloc(buf_size,sizeof(char));
+	int nuc_val;
+	char *buf=R_alloc(buf_size,sizeof(char));
 	uint8_t *quals;
-	unsigned i=0,j;
+	unsigned i=0;
 
-	///////////////////////////////////////////////////////
+	size_t j,seq_len, buf_size=2048; /* Redefinition because of resizing */
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
 	bam1_t *align=bam_init1();
 	int res=samread(reader,align);
 
 	while(res>=0)
 	{
-		// Print header line
-		//fprintf(f,"@%s\n",bam1_qname(align));
-
 		// Read Sequence
-		seq_len=align->core.l_qseq;
+		seq_len=(size_t) align->core.l_qseq;
 		if(seq_len>buf_size)
 		{
-			buf_size=2*(seq_len+1);
-			free(buf);
-			buf= (char*) calloc(buf_size,sizeof(char));
+			buf_size=2*seq_len;
+			buf=R_alloc(buf_size,sizeof(char));
 		}
 		raw_seq=bam1_seq(align);
 		for(j=0;j<seq_len;++j)
-			buf[j]=bam_nt16_rev_table[bam1_seqi(raw_seq,j)];
-		buf[j]=0;
+		{
+			nuc_val=bam1_seqi(raw_seq,j);
+			if(nuc_val<0 || nuc_val>15)
+			{
+				Rprintf("[bam_reader_write_fastq] bam_seq out of range at align %u\n",i+1);
+				nuc_val=15;
+			}
+			buf[j]=bam_nt16_rev_table[nuc_val];
+		}
+		buf[j]='\0';
 
 		// Write header line and sequence
-		fprintf(f,"@%s\n%s\n+\n",bam1_qname(align),buf);
+		gzprintf(gz,"@%s\n%s\n+\n",bam1_qname(align),buf);
 
 		// Print quality string
 		quals=bam1_qual(align);
 		for(j=0;j<seq_len;++j)
+		{
+			// Ensure that printed character is in range
+			/* quals[j]= (quals[j]<0 ? 0 : quals[j]); // skipped because quals is unsigned */
+			quals[j]= (quals[j]>93 ? 93 : quals[j]);
 			buf[j]=(char) (quals[j]+33);
-		buf[j]=0;
-		fprintf(f,"%s\n",buf);
+		}
+		gzprintf(gz,"%s\n",buf);
 		++i;
 		res=samread(reader,align);
 	}
-	fclose(f);
+	gzclose(gz);
 	bam_destroy1(align);	// checks for >0!
-	free(buf);
-
 	if(res==-2)
 		error("[bam_reader_write_fastq] samread found truncated BAM-file.\n");
 
-
-	//Rprintf("[bam_reader_write_fastq] %u records written to file.\n",i);
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=i;
+	INTEGER(ans)[0]=(int) i;
 	UNPROTECT(1);
 	return ans;
 }
 
+
 SEXP bam_reader_write_fastq_index(SEXP pReader,SEXP pFilename,SEXP pWhichCopy,SEXP pAppend)
 {
 	if(TYPEOF(pReader)!=EXTPTRSXP)
-		error("[bam_reader_write_fastq] No external pointer!\n");
+		error("[bam_reader_write_fastq_index] No external pointer!\n");
 	if(TYPEOF(pFilename)!=STRSXP)
-		error("[bam_reader_write_fastq] Filename must be a string!\n");
+		error("[bam_reader_write_fastq_index] Filename must be a string!\n");
 	if(TYPEOF(pWhichCopy)!=INTSXP)
-		error("[bam_reader_write_fastq] pWichWrite must be integer!\n");
+		error("[bam_reader_write_fastq_index] pWichWrite must be integer!\n");
 	if(TYPEOF(pAppend)!=LGLSXP)
-		error("[bam_reader_write_fastq] pAppend must be logical!\n");
+		error("[bam_reader_write_fastq_index] pAppend must be logical!\n");
 
-	// The function reads remaining aligns from reader
-	// until EOF is reached or length(pWichWrite) aligns are checked.
-	// For each align, pWhichCopy[i] is checked.
-	// When TRUE, then align is written to file, otherwise skipped.
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *
+	 * The function reads remaining aligns from reader
+	 * until EOF is reached or length(pWichWrite) aligns are checked.
+	 * For each align, pWhichCopy[i] is checked.
+	 * When TRUE, then align is written to file, otherwise skipped.
+	 *
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-	unsigned nCheck=INTEGER(pWhichCopy)[LENGTH(pWhichCopy)-1];
+	int nCheck=INTEGER(pWhichCopy)[LENGTH(pWhichCopy)-1];
 	_Bool append =*(LOGICAL(AS_LOGICAL(pAppend)));
-	FILE *f;
+
+	gzFile gz;
 	if(append)
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"a+");
+		gz =gzopen(CHAR(STRING_ELT(pFilename,0)),"a+");
 	else
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"w");
+		gz =gzopen(CHAR(STRING_ELT(pFilename,0)),"w");
+	if(!gz)
+		error("[bam_reader_write_fastq_index] Cannot open file '%s'!",CHAR(STRING_ELT(pFilename,0)));
 
-	///////////////////////////////////////////////////////
-	// char buffer for copying sequence and qualities.
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * char buffer for copying sequence and qualities.
+	 */
 	unsigned char *raw_seq;
-	int32_t seq_len;
-	int buf_size=2048;
-	char *buf=(char*) calloc(buf_size,sizeof(char));
+	size_t seq_len,j;
+	int nuc_val;
+	char *buf=R_alloc(buf_size,sizeof(char));
 	uint8_t *quals;
-	unsigned nWritten=0,j,nChecked=0;
+	int nChecked=0;
+	unsigned nWritten=0;
+	size_t buf_size=2048; /* Redefinition because of possible resizing */
 
-	///////////////////////////////////////////////////////
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 */
 	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
 	bam1_t *align=bam_init1();
 	int res=samread(reader,align);
@@ -572,57 +717,71 @@ SEXP bam_reader_write_fastq_index(SEXP pReader,SEXP pFilename,SEXP pWhichCopy,SE
 		{
 
 			// read sequence
-			seq_len=align->core.l_qseq;
+			seq_len=(size_t) align->core.l_qseq;
 			if(seq_len>buf_size)
 			{
-				buf_size=2*(seq_len+1);
-				free(buf);
-				buf= (char*) calloc(buf_size,sizeof(char));
+				buf_size=2*seq_len;
+				buf= R_alloc(buf_size,sizeof(char));
 			}
 			raw_seq=bam1_seq(align);
 			for(j=0;j<seq_len;++j)
-				buf[j]=bam_nt16_rev_table[bam1_seqi(raw_seq,j)];
-			buf[j]=0;
+			{
+				nuc_val=bam1_seqi(raw_seq,j);
+				if(nuc_val<0 || nuc_val>15)
+				{
+					Rprintf("[bam_reader_write_fastq_index] bam_seq out of range at align %u\n",nChecked);
+					nuc_val=15;
+				}
+				buf[j]=bam_nt16_rev_table[nuc_val];
+			}
+			buf[j]='\0';
 
 			// write header line and sequence
-			fprintf(f,"@%s\n%s\n+\n",bam1_qname(align),buf);
+			gzprintf(gz,"@%s\n%s\n+\n",bam1_qname(align),buf);
 
 			// Print quality string
 			quals=bam1_qual(align);
 			for(j=0;j<seq_len;++j)
+			{
+				// Ensure that printed character is in range
+				/* quals[j]= (quals[j]<0 ? 0 : quals[j]); // skipped because quals is unsigned */
+				quals[j]= (quals[j]>93 ? 93 : quals[j]);
 				buf[j]=(char) (quals[j]+33);
-			buf[j]=0;
-			fprintf(f,"%s\n",buf);
+			}
+			gzprintf(gz,"%s\n",buf);
 			++nWritten;
 		}
 		res=samread(reader,align);
 	}
 
-	fclose(f);
+	gzclose(gz);
 	bam_destroy1(align);	// checks for >0!
-	free(buf);
+	align=0;
 
 	if(res==-2)
-		error("[bam_reader_write_fastq] samread found truncated BAM-file.\n");
+		error("[bam_reader_write_fastq_index] samread found truncated BAM-file.\n");
 
-
-	//Rprintf("[bam_reader_write_fastq_index] %u records checked, %u records written to file.\n",nChecked,nWritten);
 	SEXP ans;
-	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=nWritten;
+	PROTECT(ans=allocVector(INTSXP,2));
+	INTEGER(ans)[0]=(int) nWritten;
+	INTEGER(ans)[1]=(int) nChecked;
 	UNPROTECT(1);
 	return ans;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// GapList
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * GapList
+ *
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 static void finalize_gap_list(SEXP ptr)
 {
+	gap_list *l;
+
 	if(TYPEOF(ptr)!=EXTPTRSXP)
 		error("[finalize_gap_list] No external pointer!\n");
-	gap_list *l=(gap_list*)(R_ExternalPtrAddr(ptr));
+	l=(gap_list*)(R_ExternalPtrAddr(ptr));
 	destroy_gap_list(l);
 	l=NULL;
 	R_SetExternalPtrAddr(ptr,NULL);
@@ -630,8 +789,10 @@ static void finalize_gap_list(SEXP ptr)
 
 SEXP create_gap_list()
 {
-	gap_list *l=init_gap_list();
+	gap_list *l;
 	SEXP list;
+
+	l=init_gap_list();
 	PROTECT(list=R_MakeExternalPtr((void*)(l),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(list,finalize_gap_list);
 	UNPROTECT(1);
@@ -647,6 +808,19 @@ static int gap_fetch_func(const bam1_t *b, void *data)
 
 SEXP gap_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 {
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+	samfile_t *reader;
+	bam_index_t *index;
+
+	double *pi;
+	int refid;
+	int begin;
+	int end;
+
+	gap_list *l;
+    SEXP list;
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 	if(TYPEOF(pReader)!=EXTPTRSXP)
 		error("[gap_list_fetch] pReader is No external pointer!\n");
 	if(TYPEOF(pIndex)!=EXTPTRSXP)
@@ -656,32 +830,34 @@ SEXP gap_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 	if(LENGTH(pCoords)!=3)
 		error("[gap_list_fetch] pCoords must contain three values (refid,begin,end)!\n");
 
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	bam_index_t *index=(bam_index_t*)(R_ExternalPtrAddr(pIndex));
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+	reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
+	index=(bam_index_t*)(R_ExternalPtrAddr(pIndex));
 	if(reader==NULL)
 		error("[gap_list_fetch] Reader must not be NULL pointer!\n");
 
 	if(index==NULL)
 		error("[gap_list_fetch] Index must not be NULL pointer!\n");
 
-	double *pi=REAL(pCoords);
-	int refid=(int) pi[0];
-	int begin=(int) pi[1];
-	int end=(int) pi[2];
+	pi=REAL(pCoords);
+	refid=(int) pi[0];
+	begin=(int) pi[1];
+	end=(int) pi[2];
 
 	if(refid<0 || refid >=(reader->header->n_targets))
 		error("[gap_list_fetch] refid out of range!\n");
-	if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+	if(begin<0 || begin>=end || end>((int) (reader->header->target_len[refid])))
 		error("[gap_list_fetch] Begin or end out of range!\n");
 
 
-	gap_list *l=init_gap_list();
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+	l=init_gap_list();
     bam_fetch(reader->x.bam, index, refid, begin, end, (void*)l, gap_fetch_func);
-    SEXP list;
+
 	PROTECT(list=R_MakeExternalPtr( (void*)(l),R_NilValue,R_NilValue));
 	R_RegisterCFinalizer(list,finalize_gap_list);
 	UNPROTECT(1);
-	//Rprintf("[gap_list_fetch] Fetched list of size %i.\n",l->size);
 	return list;
 }
 
@@ -692,81 +868,82 @@ SEXP gap_list_get_df(SEXP pGapList)
 
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 
-	// create data.frame
+	/* create data.frame 									*/
 	int nProtected=0;
 	int nCols=9;
 	SEXP dflist;
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
-	int nRows=(l->size);
+	int nRows=(int) (l->size);
 	int i;
 	unsigned *pos_data;
 
-	// Column 0: refid
+	/* Column 0: refid 										*/
 	SEXP ref_vector;
 	PROTECT(ref_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 1: position
+	/* Column 1: position 									*/
 	SEXP pos_vector;
 	PROTECT(pos_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 2: left_cigar_len
+	/* Column 2: left_cigar_len								*/
 	SEXP left_cigar_len_vector;
 	PROTECT(left_cigar_len_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 3: left_cigar_type
+	/* Column 3: left_cigar_type							*/
 	SEXP left_cigar_type_vector;
 	PROTECT(left_cigar_type_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 4: left_stop
+	/* Column 4: left_stop									*/
 	SEXP left_stop_vector;
 	PROTECT(left_stop_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 5: gap_len
+	/* Column 5: gap_len									*/
 	SEXP gap_len_vector;
 	PROTECT(gap_len_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 6: right_start
+	/* Column 6: right_start								*/
 	SEXP right_start_vector;
 	PROTECT(right_start_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 7: right_cigar_len
+	/* Column 7: right_cigar_len							*/
 	SEXP right_cigar_len_vector;
 	PROTECT(right_cigar_len_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 8: right_cigar_type
+	/* Column 8: right_cigar_type							*/
 	SEXP right_cigar_type_vector;
 	PROTECT(right_cigar_type_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// start position
+	/* start position										*/
 	l->curr_el=l->first_el;
 
 	for(i=0;i<nRows;++i)
 	{
 		pos_data=l->curr_el->pos_data;
-		INTEGER(ref_vector)        		[i]=pos_data[0];
-		INTEGER(pos_vector)        		[i]=pos_data[1];
-		INTEGER(left_cigar_len_vector)	[i]=pos_data[2];
-		INTEGER(left_cigar_type_vector)	[i]=pos_data[3];
-		INTEGER(left_stop_vector)  		[i]=pos_data[4];
-		INTEGER(gap_len_vector)			[i]=pos_data[5];
-		INTEGER(right_start_vector)		[i]=pos_data[6];
-		INTEGER(right_cigar_len_vector)	[i]=pos_data[7];
-		INTEGER(right_cigar_type_vector)[i]=pos_data[8];
+		INTEGER(ref_vector)        		[i]=(int) pos_data[0];
+		INTEGER(pos_vector)        		[i]=(int) pos_data[1];
+		INTEGER(left_cigar_len_vector)	[i]=(int) pos_data[2];
+		INTEGER(left_cigar_type_vector)	[i]=(int) pos_data[3];
+		INTEGER(left_stop_vector)  		[i]=(int) pos_data[4];
+		INTEGER(gap_len_vector)			[i]=(int) pos_data[5];
+		INTEGER(right_start_vector)		[i]=(int) pos_data[6];
+		INTEGER(right_cigar_len_vector)	[i]=(int) pos_data[7];
+		INTEGER(right_cigar_type_vector)[i]=(int) pos_data[8];
 		l->curr_el=l->curr_el->next_el;
 	}
 
-	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	// Convert left_cigar_type to vector
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Convert left_cigar_type to vector
+	 */
 
 	SEXP levs;
 	int nLevels=9;
@@ -789,8 +966,9 @@ SEXP gap_list_get_df(SEXP pGapList)
 	++nProtected;
 	setAttrib(left_cigar_type_vector,R_ClassSymbol,csymb);
 
-	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	// Convert right_cigar_type_vector to vector
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Convert right_cigar_type_vector to vector
+	 */
 
 	nLevels=9;
 	PROTECT(levs=allocVector(STRSXP,nLevels));
@@ -810,7 +988,7 @@ SEXP gap_list_get_df(SEXP pGapList)
 	PROTECT(csymb=mkString("factor"));
 	++nProtected;
 	setAttrib(right_cigar_type_vector,R_ClassSymbol,csymb);
-	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 	SET_VECTOR_ELT(dflist,0,ref_vector);
 	SET_VECTOR_ELT(dflist,1,pos_vector);
@@ -822,8 +1000,9 @@ SEXP gap_list_get_df(SEXP pGapList)
 	SET_VECTOR_ELT(dflist,7,right_cigar_len_vector);
 	SET_VECTOR_ELT(dflist,8,right_cigar_type_vector);
 
-	///////////////////////////////////////////////////////////////////////////
-	// Column Names
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column Names
+	 */
 	SEXP col_names;
 	PROTECT(col_names=allocVector(STRSXP,nCols));
 	++nProtected;
@@ -839,12 +1018,13 @@ SEXP gap_list_get_df(SEXP pGapList)
 	SET_STRING_ELT(col_names,8,mkChar("right_cigar_type"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
-	// Row Names
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Row Names
+	 */
 	SEXP row_names;
     PROTECT(row_names=allocVector(STRSXP,nRows));
     ++nProtected;
 
-	int buf_size=128;
 	char *buf=(char*) calloc(buf_size,sizeof(char));
     for(i=0;i<nRows;++i)
     {
@@ -866,7 +1046,7 @@ SEXP gap_list_get_size(SEXP pGapList)
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->size);
+	INTEGER(ans)[0]=(int) (l->size);
 	UNPROTECT(1);
 	return ans;
 }
@@ -879,7 +1059,7 @@ SEXP gap_list_get_nAligns(SEXP pGapList)
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nAligns);
+	INTEGER(ans)[0]=(int) (l->nAligns);
 	UNPROTECT(1);
 	return ans;
 }
@@ -891,15 +1071,15 @@ SEXP gap_list_get_nAlignGaps(SEXP pGapList)
 	gap_list *l=(gap_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nAlignGaps);
+	INTEGER(ans)[0]=(int)(l->nAlignGaps);
 	UNPROTECT(1);
 	return ans;
 }
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// gap_site_list
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * gap_site_list
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 static void finalize_gap_site_list(SEXP ptr)
 {
@@ -953,11 +1133,11 @@ SEXP gap_site_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 
 	if(refid<0 || refid >=(reader->header->n_targets))
 		error("[gap_site_list_fetch] refid out of range!\n");
-	if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+	if(begin<0 || begin>=end || end>((int)(reader->header->target_len[refid])))
 		error("[gap_site_list_fetch] Begin or end out of range!\n");
 
 	site_list *l=site_list_init();
-	l->refid=refid;
+	l->refid=(unsigned) refid;
 	bam_fetch(reader->x.bam,index,refid,begin,end,(void*)l,gap_site_list_fetch_func);
 
 	SEXP list;
@@ -970,98 +1150,119 @@ SEXP gap_site_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 
 SEXP gap_site_list_get_df(SEXP pGapList)
 {
+	SEXP dflist;
+	SEXP row_names;
+	SEXP id_vector;
+	SEXP refid_vector;
+	SEXP lstart_vector;
+	SEXP lend_vector;
+	SEXP rstart_vector;
+	SEXP rend_vector;
+	SEXP gap_len_vector;
+	SEXP nAligns_vector;
+	SEXP nProbes_vector;
+	SEXP nlstart_vector;
+	SEXP qsm_vector;
+	SEXP nmcl_vector;
+	SEXP mcl_vector;
+
+	site_list *l;
+	site_list_element *el,*curr;
+
+	int nProtected;
+	int nCols;
+	int nRows;
+	int i;
+
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
 		error("[get_gap_list_df] No external pointer!");
 
-	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	l=(site_list*)(R_ExternalPtrAddr(pGapList));
 
 	// create data.frame
-	int nProtected=0;
-	int nCols=13;
-	SEXP dflist;
+	nProtected=0;
+	nCols=13;
+
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
-	int nRows=(l->size);
-	int i;
+	nRows=(int)(l->size);
 
-	// Column 0: id
-	SEXP id_vector;
+
+	/* Column 0: id												*/
 	PROTECT(id_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 1: refid
-	SEXP refid_vector;
+	// Column 1: refid											*/
+
 	PROTECT(refid_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 2: lstart
-	SEXP lstart_vector;
+	/* Column 2: lstart											*/
+
 	PROTECT(lstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 3: lend
-	SEXP lend_vector;
+	/* Column 3: lend											*/
+
 	PROTECT(lend_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 4: rstart
-	SEXP rstart_vector;
+	/* Column 4: rstart											*/
+
 	PROTECT(rstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 5: rend
-	SEXP rend_vector;
+	/* Column 5: rend											*/
+
 	PROTECT(rend_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 6: gap_len
-	SEXP gap_len_vector;
+	/* Column 6: gap_len										*/
+
 	PROTECT(gap_len_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 7: nAligns
-	SEXP nAligns_vector;
+	/* Column 7: nAligns										*/
+
 	PROTECT(nAligns_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 8: nProbes
-	SEXP nProbes_vector;
+	/* Column 8: nProbes										*/
+
 	PROTECT(nProbes_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 9: nlstart
-	SEXP nlstart_vector;
+	/* Column 9: nlstart										*/
+
 	PROTECT(nlstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 10: sum_left_cigar
-	SEXP qsm_vector;
+	/* Column 10: sum_left_cigar								*/
+
 	PROTECT(qsm_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 11: lcl
-	SEXP nmcl_vector;
+	/* Column 11: lcl											*/
+
 	PROTECT(nmcl_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 12: mcl
-	SEXP mcl_vector;
+	/* Column 12: mcl											*/
+
 	PROTECT(mcl_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-
-	// start position
-	site_list_element *el,*curr;
+	/* start position											*/
 	curr=l->curr;
 	site_list_set_curr_first(l);
 
 	for(i=0;i<nRows;++i)
 	{
 		el=site_list_get_curr_pp(l);
-		INTEGER(id_vector)                  [i]=i+1;
-		INTEGER(refid_vector)        		[i]=l->refid;
-		// lend - max(left_cigar_len)+1
-		INTEGER(lstart_vector)        		[i]=el->lend-getByte(el->lcl,0)+1;
-		INTEGER(lend_vector)	            [i]=el->lend;
-		INTEGER(rstart_vector)	            [i]=el->rstart;
-		INTEGER(rend_vector)  		        [i]=el->rstart+el->r_cigar_size-1;
-		INTEGER(gap_len_vector)			    [i]=el->gap_len;
-		INTEGER(nAligns_vector)		        [i]=el->nAligns;
-		INTEGER(nProbes_vector)             [i]=el->nProbes;
-		INTEGER(nlstart_vector)	            [i]=bitmask_nPos(el->lcl);
-		INTEGER(qsm_vector)					[i]=bitmask_sumPos(el->lcl);
-		INTEGER(nmcl_vector)				[i]=el->lcl;
-		INTEGER(mcl_vector)					[i]=el->mcl;
+		INTEGER(id_vector)                  [i]=(int) i+1;
+		INTEGER(refid_vector)        		[i]=(int) l->refid;
+		/* lend - max(left_cigar_len)+1							*/
+		INTEGER(lstart_vector)        		[i]=(int) el->lend-getByte(el->lcl,0)+1;
+		INTEGER(lend_vector)	            [i]=(int) el->lend;
+		INTEGER(rstart_vector)	            [i]=(int) el->rstart;
+		INTEGER(rend_vector)  		        [i]=(int) (((unsigned int)el->rstart)+el->r_cigar_size-1);
+		INTEGER(gap_len_vector)			    [i]=(int) el->gap_len;
+		INTEGER(nAligns_vector)		        [i]=(int) el->nAligns;
+		INTEGER(nProbes_vector)             [i]=(int) el->nProbes;
+		INTEGER(nlstart_vector)	            [i]=(int) bitmask_nPos(el->lcl);
+		INTEGER(qsm_vector)					[i]=(int) bitmask_sumPos(el->lcl);
+		INTEGER(nmcl_vector)				[i]=(int) el->lcl;
+		INTEGER(mcl_vector)					[i]=(int) el->mcl;
 	}
-	// Reset curr position
+	/* Reset curr position										*/
 	l->curr=curr;
 
 	SET_VECTOR_ELT(dflist,0,id_vector);
@@ -1078,8 +1279,9 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 	SET_VECTOR_ELT(dflist,11,nmcl_vector);
 	SET_VECTOR_ELT(dflist,12,mcl_vector);
 
-	///////////////////////////////////////////////////////////////////////////
-	// Column Names
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column Names
+	 */
 	SEXP col_names;
 	PROTECT(col_names=allocVector(STRSXP,nCols));
 	++nProtected;
@@ -1100,12 +1302,12 @@ SEXP gap_site_list_get_df(SEXP pGapList)
 	SET_STRING_ELT(col_names,12,mkChar("mcl"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
-	// Row Names
-	SEXP row_names;
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Row Names
+	 */
     PROTECT(row_names=allocVector(STRSXP,nRows));
     ++nProtected;
 
-    int buf_size=128;
     char *buf=(char*) calloc(buf_size,sizeof(char));
     for(i=0;i<nRows;++i)
     {
@@ -1127,7 +1329,7 @@ SEXP gap_site_list_get_ref_id(SEXP pGapList)
 	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->refid);
+	INTEGER(ans)[0]=(int)(l->refid);
 	UNPROTECT(1);
 	return ans;
 }
@@ -1140,7 +1342,7 @@ SEXP gap_site_list_get_size(SEXP pGapList)
 	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->size);
+	INTEGER(ans)[0]=(int)(l->size);
 	UNPROTECT(1);
 	return ans;
 }
@@ -1153,7 +1355,7 @@ SEXP gap_site_list_get_nAligns(SEXP pGapList)
 	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nAligns);
+	INTEGER(ans)[0]=(int)(l->nAligns);
 	UNPROTECT(1);
 	return ans;
 }
@@ -1166,7 +1368,7 @@ SEXP gap_site_list_get_nAlignGaps(SEXP pGapList)
 	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->nAlignGaps);
+	INTEGER(ans)[0]=(int)(l->nAlignGaps);
 	UNPROTECT(1);
 	return ans;
 }
@@ -1182,7 +1384,7 @@ SEXP gap_site_list_merge(SEXP pLhs, SEXP pRhs, SEXP pRef)
 
 	site_list *lhs=(site_list*)(R_ExternalPtrAddr(pLhs));
 	site_list *rhs=(site_list*)(R_ExternalPtrAddr(pRhs));
-	site_list *mrg=site_list_merge(lhs,rhs,INTEGER(pRef)[0]);
+	site_list *mrg=site_list_merge(lhs,rhs,(unsigned) INTEGER(pRef)[0]);
 
 	SEXP list;
 	PROTECT(list=R_MakeExternalPtr( (void*)(mrg),R_NilValue,R_NilValue));
@@ -1221,15 +1423,15 @@ SEXP bitmask_r_zip(SEXP lhs, SEXP rhs)
 	PROTECT(res=allocVector(INTSXP,len));
 	int i;
 	for(i=0;i<len;++i)
-		INTEGER(res)[i]=r_zip_val(INTEGER(lhs)[i],INTEGER(rhs)[i]);
+		INTEGER(res)[i]=(int) r_zip_val((bitmap_type) INTEGER(lhs)[i],(bitmap_type) INTEGER(rhs)[i]);
 
 	UNPROTECT(1);
 	return(res);
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// gap_site_ll
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * gap_site_ll
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 static void finialize_gap_site_ll(SEXP ptr)
 {
@@ -1250,6 +1452,7 @@ SEXP gap_site_ll_init()
 	UNPROTECT(1);
 	return list;
 }
+
 
 SEXP gap_site_ll_fetch(SEXP pReader, SEXP pIndex, SEXP pRefid, SEXP pStart, SEXP pEnd)
 {
@@ -1285,11 +1488,11 @@ SEXP gap_site_ll_fetch(SEXP pReader, SEXP pIndex, SEXP pRefid, SEXP pStart, SEXP
 		refid=INTEGER(pRefid)[i];
 		begin=INTEGER(pStart)[i];
 		end  =INTEGER(pEnd)  [i];
-		sl->refid=refid;
+		sl->refid= (unsigned) refid;
 
 		if(refid<0 || refid>=(reader->header->n_targets))
 			error("[gap_site_ll_fetch] refid out of range!");
-		if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+		if(begin<0 || begin>=end || end> (int)(reader->header->target_len[refid]))
 			error("[gap_site_ll_fetch] Begin or end out of range!");
 		bam_fetch(reader->x.bam,index,refid,begin,end,(void*)sl,gap_site_list_fetch_func);
 		if(sl->size>0)
@@ -1303,17 +1506,50 @@ SEXP gap_site_ll_fetch(SEXP pReader, SEXP pIndex, SEXP pRefid, SEXP pStart, SEXP
 	return list;
 }
 
+SEXP gap_site_ll_copy(SEXP pGapList)
+{
+	site_ll *src, *trg;
+	site_list *l, *ins;
+	SEXP list;
+
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_ll_copy] pGapList must be external pointer!");
+	src=(site_ll*)(R_ExternalPtrAddr(pGapList));
+	trg=site_ll_init();
+
+	if(src->size>0)
+	{
+		site_ll_set_curr_first(src);
+		l=site_ll_get_curr_site_list_pp(src);
+		while(l!=0)
+		{
+			ins=site_list_copy(l);
+			site_ll_add_site_list(trg,ins);
+			l=site_ll_get_curr_site_list_pp(src);
+		}
+	}
+
+	PROTECT(list=R_MakeExternalPtr( (void*)(trg),R_NilValue,R_NilValue));
+	R_RegisterCFinalizer(list,finialize_gap_site_ll);
+	UNPROTECT(1);
+	return list;
+}
+
 SEXP gap_site_ll_set_curr_first(SEXP pGapList)
 {
+	site_ll *sll;
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
 		error("[gap_site_ll_set_curr_first] pGapList must be external pointer!");
-	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
+	sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
 	site_ll_set_curr_first(sll);
 	return R_NilValue;
 }
 
 SEXP gap_site_ll_add_curr_pp(SEXP pSrc,SEXP pTrg,SEXP pRefid)
 {
+	site_ll *src, *trg;
+	site_list *l,*ins;
+
 	if(TYPEOF(pSrc)!=EXTPTRSXP)
 		error("[gap_site_ll_add_curr_pp] pSrc must be external pointer!");
 	if(TYPEOF(pTrg)!=EXTPTRSXP)
@@ -1321,12 +1557,12 @@ SEXP gap_site_ll_add_curr_pp(SEXP pSrc,SEXP pTrg,SEXP pRefid)
 	if(TYPEOF(pRefid)!=INTSXP)
 		error("[gap_site_ll_add_curr_pp] pRefid must be Integer!");
 
-	site_ll *src=(site_ll*)(R_ExternalPtrAddr(pSrc));
-	site_ll *trg=(site_ll*)(R_ExternalPtrAddr(pTrg));
-	site_list *l=site_ll_get_curr_site_list_pp(src);
+	src=(site_ll*)(R_ExternalPtrAddr(pSrc));
+	trg=(site_ll*)(R_ExternalPtrAddr(pTrg));
+	l=site_ll_get_curr_site_list_pp(src);
 
-	site_list *ins=site_list_copy(l);
-	ins->refid=INTEGER(pRefid)[0];
+	ins=site_list_copy(l);
+	ins->refid=(unsigned) INTEGER(pRefid)[0];
 	site_ll_add_site_list(trg,ins);
 
 	return R_NilValue;
@@ -1334,6 +1570,9 @@ SEXP gap_site_ll_add_curr_pp(SEXP pSrc,SEXP pTrg,SEXP pRefid)
 
 SEXP gap_site_ll_add_merge_pp(SEXP plSrc,SEXP prSrc,SEXP pTrg,SEXP pRefid)
 {
+	unsigned refid;
+	site_ll *l_src, *r_src, *trg;
+
 	if(TYPEOF(plSrc)!=EXTPTRSXP)
 		error("[gap_site_ll_add_merge_pp] plSrc must be external pointer!");
 	if(TYPEOF(prSrc)!=EXTPTRSXP)
@@ -1343,53 +1582,52 @@ SEXP gap_site_ll_add_merge_pp(SEXP plSrc,SEXP prSrc,SEXP pTrg,SEXP pRefid)
 	if(TYPEOF(pRefid)!=INTSXP)
 		error("[gap_site_ll_add_merge_pp] pRefid must be Integer!");
 
-	unsigned refid=INTEGER(pRefid)[0];
+	refid=(unsigned) INTEGER(pRefid)[0];
 
-	site_ll *l_src=(site_ll*)(R_ExternalPtrAddr(plSrc));
-	site_ll *r_src=(site_ll*)(R_ExternalPtrAddr(prSrc));
-	site_ll *trg  =(site_ll*)(R_ExternalPtrAddr(pTrg));
+	l_src=(site_ll*)(R_ExternalPtrAddr(plSrc));
+	r_src=(site_ll*)(R_ExternalPtrAddr(prSrc));
+	trg  =(site_ll*)(R_ExternalPtrAddr(pTrg));
 
-	//Rprintf("[gap_site_ll_add_merge_pp] plSrc size: %u\tprSrc size: %u\tpTrg size: %u\trefid: %u\n",l_src->size,r_src->size,trg->size,refid);
 
-	// Get pointer to current site_list
+	/* Get pointer to current site_list */
 	site_list *ls=site_ll_get_curr_site_list_pp(l_src);
 	if(ls==0)
 		error("[gap_site_ll_add_merge_pp] l_src curr returned 0! Use 'set_curr_first' or check size>0!");
-	//Rprintf("[gap_site_ll_add_merge_pp] l_src size: %u\n",ls->size);
 	site_list *rs=site_ll_get_curr_site_list_pp(r_src);
 	if(rs==0)
 		error("[gap_site_ll_add_merge_pp] r_src curr returned 0! Use 'set_curr_first' or check size>0!");
-	//Rprintf("[gap_site_ll_add_merge_pp] r_src size: %u\n",rs->size);
 
-	// Do merging and add to target list
+
+	/* Do merging and add to target list */
 	site_list *l=site_list_merge(ls,rs,refid);
 	l->nAligns=ls->nAligns+rs->nAligns;
 	l->nAlignGaps=ls->nAlignGaps+rs->nAlignGaps;
 
 	site_ll_add_site_list(trg,l);
-	//Rprintf("[gap_site_ll_add_merge_pp] Adding site_list of size: %u\trefid: %u\n",l->size,l->refid);
 	return R_NilValue;
 }
 
 
 SEXP gap_site_ll_reset_refid(SEXP pGapList)
 {
+	SEXP res;
+	site_ll *sll;
+	site_list *l;
+	unsigned size,i;
+
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
 		error("[gap_site_ll_reset_refid] No external pointer!");
-	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
+	sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
 
-	unsigned size=sll->size;
-	SEXP res;
+	size=sll->size;
 	PROTECT(res=allocVector(INTSXP,size));
 
-	site_list *l;
 	site_ll_set_curr_first(sll);
-	unsigned i;
 	for(i=0;i<size;++i)
 	{
 		l=site_ll_get_curr_site_list_pp(sll);
 		l->refid=i;
-		INTEGER(res)[i]=i;
+		INTEGER(res)[i]=(int)i;
 	}
 	UNPROTECT(1);
 	return(res);
@@ -1398,49 +1636,59 @@ SEXP gap_site_ll_reset_refid(SEXP pGapList)
 
 SEXP gap_site_ll_get_summary_df(SEXP pGapList)
 {
+	SEXP dflist;
+	SEXP refid_vector;
+	SEXP size_vector;
+	SEXP nalign_vector;
+	SEXP ngap_vector;
+	SEXP row_names;
+	SEXP col_names;
+
+	site_ll *sll;
+	site_list *l;
+
+	int nProtected;
+	unsigned nCols,nRows,i;
+	char *buf;
+
 	if(TYPEOF(pGapList)!=EXTPTRSXP)
 		error("[gap_site_ll_get_summary_df] No external pointer!");
-	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
+	sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
 
 	// create data.frame
-	unsigned nProtected=0;
-	unsigned nCols=4;
-	unsigned nRows=sll->size;
+	nProtected=0;
+	nCols=4;
+	nRows=sll->size;
 
-	SEXP dflist;
+
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
 
 	// Column 0: refid
-	SEXP refid_vector;
 	PROTECT(refid_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
 	// Column 1: size
-	SEXP size_vector;
 	PROTECT(size_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
 	// Column 2: nAligns
-	SEXP nalign_vector;
 	PROTECT(nalign_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
 	// Column 3: nAlignGaps
-	SEXP ngap_vector;
 	PROTECT(ngap_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	site_list *l;
+
 	site_ll_set_curr_first(sll);
-	unsigned i;
 	for(i=0;i<nRows;++i)
 	{
 		l=site_ll_get_curr_site_list_pp(sll);
-		INTEGER(refid_vector) [i]=l->refid;
-		INTEGER(size_vector)  [i]=l->size;
-		INTEGER(nalign_vector)[i]=l->nAligns;
-		INTEGER(ngap_vector)  [i]=l->nAlignGaps;
+		INTEGER(refid_vector) [i]=(int) l->refid;
+		INTEGER(size_vector)  [i]=(int) l->size;
+		INTEGER(nalign_vector)[i]=(int) l->nAligns;
+		INTEGER(ngap_vector)  [i]=(int) l->nAlignGaps;
 	}
 
 	SET_VECTOR_ELT(dflist, 0,refid_vector);
@@ -1448,9 +1696,9 @@ SEXP gap_site_ll_get_summary_df(SEXP pGapList)
 	SET_VECTOR_ELT(dflist, 2,nalign_vector);
 	SET_VECTOR_ELT(dflist, 3,ngap_vector);
 
-	///////////////////////////////////////////////////////////////////////////
-	// Column Names
-	SEXP col_names;
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column Names
+	 */
 	PROTECT(col_names=allocVector(STRSXP,nCols));
 	++nProtected;
 
@@ -1460,13 +1708,12 @@ SEXP gap_site_ll_get_summary_df(SEXP pGapList)
 	SET_STRING_ELT(col_names, 3,mkChar("nAlignGaps"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
-	// Row Names
-	SEXP row_names;
+	/* Row Names											*/
+
     PROTECT(row_names=allocVector(STRSXP,nRows));
     ++nProtected;
 
-	int buf_size=128;
-	char *buf=(char*) calloc(buf_size,sizeof(char));
+	buf=(char*) calloc(buf_size,sizeof(char));
     for(i=0;i<nRows;++i)
     {
     	sprintf(buf,"%i",i);
@@ -1489,21 +1736,21 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 
 	site_ll *sll=(site_ll*)(R_ExternalPtrAddr(pGapList));
 
-	// create data.frame
-	unsigned nProtected=0;
+	/* create data.frame											*/
+	int nProtected=0;
 	unsigned nCols=13;
 	unsigned nRefs=sll->size;
-	unsigned nRows=sum_ll_sizes(sll);
+	unsigned nRows=(unsigned) sum_ll_sizes(sll);
 
 	SEXP dflist;
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
 
-	// Column 0: id
+	/* Column 0: id													*/
 	SEXP id_vector;
 	PROTECT(id_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 1: refid
+	/* Column 1: refid												*/
 	SEXP refid_vector;
 	PROTECT(refid_vector=allocVector(INTSXP,nRows));
 	++nProtected;
@@ -1511,62 +1758,65 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	SEXP lstart_vector;
 	PROTECT(lstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 3: lend
+	/* Column 3: lend												*/
 	SEXP lend_vector;
 	PROTECT(lend_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 4: rstart
+	/* Column 4: rstart												*/
 	SEXP rstart_vector;
 	PROTECT(rstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 5: rend
+	/* Column 5: rend												*/
 	SEXP rend_vector;
 	PROTECT(rend_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 6: gap_len
+	/* Column 6: gap_len											*/
 	SEXP gap_len_vector;
 	PROTECT(gap_len_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 7: nAligns
+	/* Column 7: nAligns											*/
 	SEXP nAligns_vector;
 	PROTECT(nAligns_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 8: nAligns
+	/* Column 8: nAligns											*/
 	SEXP nProbes_vector;
 	PROTECT(nProbes_vector=allocVector(INTSXP,nRows));
 	++nProtected;
-	// Column 9: nlstart: number of different lstart positions on gap_site
+	/* Column 9: nlstart: number of different lstart positions on gap_site	*/
 	SEXP nlstart_vector;
 	PROTECT(nlstart_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-
-	// Column 10: qsm=Quadrupel mcl sum of minimal cigar size
-	// mcl contains minimum cigar size values (of flanking left and right M=match segment)
-	// Sum of Quadrupel of rightmost values (=4 largest values) in mcl
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *
+	 * Column 10: qsm=Quadrupel mcl sum of minimal cigar size
+	 * mcl contains minimum cigar size values (of flanking left and right M=match segment)
+	 * Sum of Quadrupel of rightmost values (=4 largest values) in mcl
+	 *
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 	SEXP qsm_vector;
 	PROTECT(qsm_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 11: nmcl
+	/* Column 11: nmcl												*/
 	SEXP nmcl_vector;
 	PROTECT(nmcl_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 12: gqs
+	/* Column 12: gqs												*/
 	SEXP gqs_vector;
 	PROTECT(gqs_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	//site_ll_element *ell;
+	/* site_ll_element *ell;										*/
 	site_list *l;
 	site_list_element *el;
 
 	site_ll_set_curr_first(sll);
 	unsigned i,j,k=0;
 
-	// Scaling factor: Maximum value for gqs is read-length
-	unsigned smcl_denom=bitmap_size*nQsm;
+	/* Scaling factor: Maximum value for gqs is read-length			*/
+	int smcl_denom=(int) (bitmap_size*nQsm);
 
 	for(i=0;i<nRefs;++i)
 	{
@@ -1575,27 +1825,28 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 		for(j=0;j<l->size;++j,++k)
 		{
 			el=site_list_get_curr_pp(l);
-			INTEGER(id_vector)                  [k]=k+1; // row-id: should start with 1
-			INTEGER(refid_vector)        		[k]=l->refid+1;
-			INTEGER(lstart_vector)        		[k]=el->lend-getByte(el->lcl,0)+1;
-			INTEGER(lend_vector)	            [k]=el->lend;
-			INTEGER(rstart_vector)	            [k]=el->rstart;
-			INTEGER(rend_vector)  		        [k]=el->rstart+el->r_cigar_size-1;
-			INTEGER(gap_len_vector)			    [k]=el->gap_len;
-			INTEGER(nAligns_vector)		        [k]=el->nAligns;
-			INTEGER(nProbes_vector)             [k]=el->nProbes;
-			INTEGER(nlstart_vector)	            [k]=bitmask_nPos(el->lcl);
-			INTEGER(qsm_vector)					[k]=getSmcl(el->mcl); // smcl = sum of minimal cigar size
-			INTEGER(nmcl_vector)				[k]=bitmask_nPos(el->mcl);
-			INTEGER(gqs_vector)                 [k]=INTEGER(nlstart_vector)[k]*INTEGER(qsm_vector)[k]*2*10/smcl_denom;
+			INTEGER(id_vector)                  [k]=(int) k+1; 						/* row-id: should start with 1	*/
+			INTEGER(refid_vector)        		[k]=(int) l->refid+1;
+			INTEGER(lstart_vector)        		[k]=(int) el->lend-getByte(el->lcl,0)+1;
+			INTEGER(lend_vector)	            [k]=(int) el->lend;
+			INTEGER(rstart_vector)	            [k]=(int) el->rstart;
+			INTEGER(rend_vector)  		        [k]=(int) (el->rstart+el->r_cigar_size-1);
+			INTEGER(gap_len_vector)			    [k]=(int) el->gap_len;
+			INTEGER(nAligns_vector)		        [k]=(int) el->nAligns;
+			INTEGER(nProbes_vector)             [k]=(int) el->nProbes;
+			INTEGER(nlstart_vector)	            [k]=(int) bitmask_nPos(el->lcl);
+			INTEGER(qsm_vector)					[k]=(int) getSmcl(el->mcl); 			/* smcl = sum of minimal cigar size	*/
+			INTEGER(nmcl_vector)				[k]=(int) bitmask_nPos(el->mcl);
+			INTEGER(gqs_vector)                 [k]=(int) (INTEGER(nlstart_vector)[k]*INTEGER(qsm_vector)[k]*2*10/smcl_denom);
 		}
 	}
 
-	// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	// Convert left_cigar_type to vector
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Convert left_cigar_type to vector
+	 */
 
 	SEXP levs;
-	int nLevels=LENGTH(pRefNames);
+	unsigned nLevels= (unsigned) LENGTH(pRefNames);
 	PROTECT(levs=allocVector(STRSXP,nLevels));
 	++nProtected;
 
@@ -1607,9 +1858,6 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	PROTECT(csymb=mkString("factor"));
 	++nProtected;
 	setAttrib(refid_vector,R_ClassSymbol,csymb);
-
-	//UNPROTECT(nProtected);
-	//return(refid_vector);
 
 	SET_VECTOR_ELT(dflist,0,id_vector);
 	SET_VECTOR_ELT(dflist,1,refid_vector);
@@ -1625,8 +1873,9 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	SET_VECTOR_ELT(dflist,11,nmcl_vector);
 	SET_VECTOR_ELT(dflist,12,gqs_vector);
 
-	///////////////////////////////////////////////////////////////////////////
-	// Column Names
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column Names
+	 */
 	SEXP col_names;
 	PROTECT(col_names=allocVector(STRSXP,nCols));
 	++nProtected;
@@ -1646,12 +1895,13 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	SET_STRING_ELT(col_names,12,mkChar("gqs"));
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
-	// Row Names
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Row Names
+	 */
 	SEXP row_names;
     PROTECT(row_names=allocVector(STRSXP,nRows));
     ++nProtected;
 
-	int buf_size=128;
 	char *buf=(char*) calloc(buf_size,sizeof(char));
     for(i=0;i<nRows;++i)
     {
@@ -1702,9 +1952,10 @@ SEXP gap_site_ll_get_nAlignGaps(SEXP pGapList)
 }
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// BamRange
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ *  BamRange
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 static void finalize_bam_range(SEXP ptr)
 {
@@ -1756,8 +2007,9 @@ SEXP bam_range_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pComplex)
 	if(TYPEOF(pComplex)!=LGLSXP)
 		error("[bam_range_fetch] pComplex must be logical!\n");
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Extract reader and index pointer
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Extract reader and index pointer
+	 */
 	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
 	bam_index_t *index=(bam_index_t*)(R_ExternalPtrAddr(pIndex));
 	if(reader==NULL)
@@ -1766,8 +2018,9 @@ SEXP bam_range_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pComplex)
 		error("[bam_range_fetch] Index must not be NULL pointer!\n");
 
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Get coordinates
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *  Get coordinates
+	 */
 	double *pi=REAL(pCoords);
 	int refid=(int) pi[0];
 	int begin=(int) pi[1];
@@ -1775,26 +2028,28 @@ SEXP bam_range_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pComplex)
 
 	if(refid<0 || refid >=(reader->header->n_targets))
 		error("[bam_range_fetch] refid out of range!\n");
-	if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+	if(begin<0 || begin>=end || end>((int)(reader->header->target_len[refid])))
 		error("[bam_range_fetch] Begin or end out of range!\n");
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Init align_list
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Init align_list
+	 */
 	align_list *l=init_align_list();
-	l->range_begin=begin;
-	l->range_end=end;
-	l->seqid=refid;
+	l->range_begin= (long unsigned int) begin;
+	l->range_end= (long unsigned int) end;
+	l->seqid= (unsigned int) refid;
 	l->complex= (LOGICAL(pComplex)[0]==TRUE) ? 1 : 0;
 	
-	// seqname and LN
+	/* seqname and LN												*/
 	bam_header_t* header=reader->header;
-	int nchar = strlen(header->target_name[refid]);
+	size_t nchar = (size_t) strlen(header->target_name[refid]);
 	l->refname=calloc(nchar+1,sizeof(char));
 	strcpy(l->refname,header->target_name[refid]);
 	l->seq_LN=header->target_len[refid];
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Fetch: Retrieve only complex aligns (nCigar>1) when pComplex is set:
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Fetch: Retrieve only complex aligns (nCigar>1) when pComplex is set:
+	 */
 	if(LOGICAL(pComplex)[0]==TRUE)
 		bam_fetch(reader->x.bam, index, refid, begin, end, (void*)l, range_fetch_complex_func);
 	else
@@ -1803,8 +2058,9 @@ SEXP bam_range_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pComplex)
 	// Wind back
     l->curr_el=NULL;
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-    // Create bamRange S4 object
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Create bamRange S4 object
+	 */
 	SEXP bam_range;
     PROTECT(bam_range = NEW_OBJECT(MAKE_CLASS("bamRange")));
 
@@ -1815,19 +2071,8 @@ SEXP bam_range_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pComplex)
 	PROTECT(list_name=Rf_mkString("range"));
     bam_range=SET_SLOT(bam_range,list_name,list);
 
-    /*
-    // copy??
-    SEXP coords_name;
-    PROTECT(coords_name=Rf_mkString("coords"));
-    bam_range=SET_SLOT(bam_range,coords_name,pCoords);
 
-    SEXP complex_name;
-    PROTECT(complex_name=Rf_mkString("complex"));
-    bam_range=SET_SLOT(bam_range,complex_name,pComplex);
-    */
-
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-    // Return
+    /* Return													*/
 	UNPROTECT(3);
 	return bam_range;
 }
@@ -1836,14 +2081,17 @@ SEXP bam_range_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pComplex)
 static int bam_count_fetch_func(const bam1_t *align, void *data)
 {
 	unsigned long * pCount=(unsigned long*) data;
-	// Total number of aligns
+	/* Total number of aligns									*/
 	++(pCount[9]);
 
 	uint32_t i;
 	uint32_t *cigar=bam1_cigar(align);
 
-	// Count number of aligns for each Cigar-OP type
-	// M=0, I=1, D=2, N=3, S=4, H=5, P=6, '='=7, X=8
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Count number of aligns for each Cigar-OP type
+	 * M=0, I=1, D=2, N=3, S=4, H=5, P=6, '='=7, X=8
+	 */
+	//
 	for(i=0;i<align->core.n_cigar;++i)
 		++(pCount[(cigar[i] & BAM_CIGAR_MASK)]);
 	return 0;
@@ -1874,7 +2122,7 @@ SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords)
 
 	if(refid<0 || refid >=(reader->header->n_targets))
 		error("[bam_count] refid out of range!\n");
-	if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+	if(begin<0 || begin>=end || end> ((int)(reader->header->target_len[refid])))
 		error("[bam_count] Begin or end out of range!\n");
 
 
@@ -1890,7 +2138,7 @@ SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords)
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,10));
 	for(i=0;i<10;++i)
-		INTEGER(ans)[i]=count[i];
+		INTEGER(ans)[i]=(int) count[i];
 	UNPROTECT(1);
 	return ans;
 }
@@ -1976,8 +2224,10 @@ SEXP bam_range_insert_pre_curr_align(SEXP pRange,SEXP pAlign)
 
 SEXP bam_range_mv_curr_align(SEXP pSrc, SEXP pTarget)
 {
-	// Moves current align in src to end of target list
-	// and Moves current align in src to next align
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Moves current align in src to end of target list
+	 * and moves current align in src to next align
+	 */
 	if(TYPEOF(pSrc)!=EXTPTRSXP)
 		error("[bam_range_mv_curr_align] pSrc is No external pointer!\n");
 	if(TYPEOF(pTarget)!=EXTPTRSXP)
@@ -1992,69 +2242,69 @@ SEXP bam_range_get_align_df(SEXP pRange)
 		error("[bam_range_get_align_df] No external pointer!");
 
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
-	// Read Adress of current align->for reconstitution at the end
+	/* Read Adress of current align->for reconstitution at the end			*/
 	align_element *e=l->curr_el;
 	wind_back(l);
 	const bam1_t *align;
 
-	// create data.frame
+	/* create data.frame									*/
 	int nProtected=0;
 	int nCols=9;
 	SEXP dflist;
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
-	int nRows=(l->size);
-	int i,j;
+	int nRows=(int) (l->size);
+	int i,nuc_val;
 
-	// Column 0: refid
+	/* Column 0: refid										*/
 	SEXP ref_vector;
 	PROTECT(ref_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 1: position
+	/* Column 1: position									*/
 	SEXP pos_vector;
 	PROTECT(pos_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 2: nCigar
+	/* Column 2: nCigar										*/
 	SEXP nCigar_vector;
 	PROTECT(nCigar_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 3: cigar
+	/* Column 3: cigar										*/
 	SEXP cig_vector;
 	PROTECT(cig_vector=allocVector(STRSXP,nRows));
 	++nProtected;
 
-	// Column 4: flag
+	/* Column 4: flag										*/
 	SEXP flag_vector;
 	PROTECT(flag_vector=allocVector(INTSXP,nRows));
 	++nProtected;
 
-	// Column 5: seq
+	/* Column 5: seq										*/
 	SEXP seq_vector;
 	PROTECT(seq_vector=allocVector(STRSXP,nRows));
 	++nProtected;
 
-	// Column 6: qual
+	/* Column 6: qual										*/
 	SEXP qual_vector;
 	PROTECT(qual_vector=allocVector(STRSXP,nRows));
 	++nProtected;
 
-	// Column 7: name
+	/* Column 7: name										*/
 	SEXP name_vector;
 	PROTECT(name_vector=allocVector(STRSXP,nRows));
 	++nProtected;
 
-	// Column 8: strand_reverse
+	/* Column 8: strand_reverse								*/
 	SEXP strev_vector;
 	PROTECT(strev_vector=allocVector(LGLSXP,nRows));
 	++nProtected;
 
-	// seq+cigar
+	/* seq+cigar											*/
 	unsigned char *raw_seq;
-	int32_t seq_len=l->max_seqlen+1;
-	char *buf=(char*) calloc(buf_size>seq_len ? buf_size : seq_len,sizeof(char));
+	size_t j,seq_len=((size_t)l->max_seqlen)+1;
+	char *buf=(char*) calloc( (buf_size>seq_len ? buf_size : seq_len) ,sizeof(char));
 
 	uint8_t *quals;
 
@@ -2065,44 +2315,57 @@ SEXP bam_range_get_align_df(SEXP pRange)
 		INTEGER(pos_vector)[i]=(align->core.pos);
 		INTEGER(nCigar_vector)[i]=(align->core.n_cigar);
 
-		/////////////////////////////////////////
-		// Cigar String
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * Cigar String
+		 */
 		if(cigar2str(buf,align)==0)
-			error("[bam_align_get_align_df] Cigar error!\n");
+			error("[bam_range_get_align_df] Cigar error!\n");
 
 		SET_STRING_ELT(cig_vector,i,mkChar(buf));
 		//Rprintf("%i\t%s\n",i,buf);
 		clear_buf(buf,buf_size);
-		/////////////////////////////////////////
+
 
 		INTEGER(flag_vector)[i]=(align->core.flag);
-		/////////////////////////////////////////
-		// seq
-		seq_len=align->core.l_qseq;
+		seq_len= (size_t) (align->core.l_qseq);
 		raw_seq=bam1_seq(align);
 		for(j=0;j<seq_len;++j)
-			buf[j]=bam_nt16_rev_table[bam1_seqi(raw_seq,j)];
+		{
+			nuc_val=bam1_seqi(raw_seq,j);
+			if(nuc_val<0 || nuc_val>15)
+			{
+				Rprintf("[bam_range_get_align_df] bam_seq out of range at align %u\n",i);
+				nuc_val=15;
+			}
+			buf[j]=bam_nt16_rev_table[nuc_val];
+		}
 		buf[j]=0;
 
 		SET_STRING_ELT(seq_vector,i,mkChar(buf));
-		////////////////////////////////////////
-		// quals
-			quals=bam1_qual(align);
-			for(j=0;j<seq_len;++j)
-				buf[j]=(char) (quals[j]+33);
-			buf[j]=0;
-			SET_STRING_ELT(qual_vector,i,mkChar(buf));
 
-		/////////////////////////////////////////
-		// read name
+		/* quals										*/
+		quals=bam1_qual(align);
+		for(j=0;j<seq_len;++j)
+		{
+			// Ensure that printed character is in range
+			/* quals[j]= (quals[j]<0 ? 0 : quals[j]); // skipped because quals is unsigned*/
+			quals[j]= (quals[j]>93 ? 93 : quals[j]);
+			buf[j]=(char) (quals[j]+33);
+		}
+
+		for(j=0;j<seq_len;++j)
+			buf[j]=(char) (quals[j]+33);
+		buf[j]=0;
+		SET_STRING_ELT(qual_vector,i,mkChar(buf));
+
+		/* read name									*/
 		SET_STRING_ELT(name_vector,i,mkChar(bam1_qname(align)));
 
-		////////////////////////////////////////
-		// strand_info
+		/* strand_info									*/
 		LOGICAL(strev_vector)[i]=bam1_strand(align);
 	}
 
-	// Restore curr_el pointer
+	/* Restore curr_el pointer							*/
 	l->curr_el=e;
 
 	SET_VECTOR_ELT(dflist,0,ref_vector);
@@ -2115,7 +2378,7 @@ SEXP bam_range_get_align_df(SEXP pRange)
 	SET_VECTOR_ELT(dflist,7,name_vector);
 	SET_VECTOR_ELT(dflist,8,strev_vector);
 
-	// Column Names
+	/* Column Names										*/
 	SEXP col_names;
 	PROTECT(col_names=allocVector(STRSXP,nCols));
 	++nProtected;
@@ -2164,7 +2427,8 @@ SEXP bam_range_write(SEXP pWriter,SEXP pRange,SEXP pRefid)
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
 
 	range_size=l->size;
-	// For restoration
+
+	/* For restoration										*/
 	align_element *e=l->curr_el;
 	wind_back(l);
 
@@ -2173,16 +2437,16 @@ SEXP bam_range_write(SEXP pWriter,SEXP pRange,SEXP pRefid)
 	{
 		align=get_next_align(l);
 		align->core.tid=INTEGER(pRefid)[0];
-		bytes_written+=samwrite(writer,align);
+		bytes_written+=(long unsigned int) samwrite(writer,align);
 		bam_destroy1(align);
 	}
 
-	// restore curr_el
+	/* restore curr_el										*/
 	l->curr_el=e;
 
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=bytes_written;
+	INTEGER(ans)[0]= (int) bytes_written;
 	UNPROTECT(1);
 	return ans;
 }
@@ -2203,7 +2467,7 @@ SEXP bam_range_get_size(SEXP pRange)
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=(l->size);
+	INTEGER(ans)[0]= (int) (l->size);
 	UNPROTECT(1);
 	return ans;
 }
@@ -2216,12 +2480,13 @@ SEXP bam_range_get_coords(SEXP pRange)
 
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,3));
-	INTEGER(ans)[0]=l->seqid;
-	INTEGER(ans)[1]=l->range_begin;
-	INTEGER(ans)[2]=l->range_end;
+	INTEGER(ans)[0]=(int) l->seqid;
+	INTEGER(ans)[1]=(int) l->range_begin;
+	INTEGER(ans)[2]=(int) l->range_end;
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Names
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Names
+	 */
 	SEXP names_vec;
 	PROTECT(names_vec=allocVector(STRSXP,3));
 
@@ -2242,16 +2507,15 @@ SEXP bam_range_get_params(SEXP pRange)
 
 	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,7));
-	INTEGER(ans)[0]=l->seqid;
-	INTEGER(ans)[1]=l->range_begin;
-	INTEGER(ans)[2]=l->range_end;
-	INTEGER(ans)[3]=l->complex;
-	INTEGER(ans)[4]=l->seq_LN;
-	INTEGER(ans)[5]=l->min_seqlen;
-	INTEGER(ans)[6]=l->max_seqlen;
+	INTEGER(ans)[0]=(int) l->seqid;
+	INTEGER(ans)[1]=(int) l->range_begin;
+	INTEGER(ans)[2]=(int) l->range_end;
+	INTEGER(ans)[3]=(int) l->complex;
+	INTEGER(ans)[4]=(int) l->seq_LN;
+	INTEGER(ans)[5]=(int) l->min_seqlen;
+	INTEGER(ans)[6]=(int) l->max_seqlen;
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Names
+	/* Names												*/
 	SEXP names_vec;
 	PROTECT(names_vec=allocVector(STRSXP,7));
 	SET_STRING_ELT(names_vec,0,mkChar("seqid"));
@@ -2293,9 +2557,12 @@ SEXP bam_range_get_align_range(SEXP pRange)
 		return R_NilValue;
 
 	const bam1_t * align;
-	unsigned long min_pos,max_end,i;
-	min_pos=0;
-	--(min_pos); // Create big number as start value
+	unsigned long i;
+	int32_t min_pos=0;
+	uint32_t max_end;
+
+
+	--(min_pos); /* Create big number as start value			*/
 	max_end=0;
 	uint32_t calend;
 
@@ -2312,15 +2579,19 @@ SEXP bam_range_get_align_range(SEXP pRange)
 	}
 	l->curr_el=curr_el;
 
-	SEXP ans;
 
+	SEXP ans;
 	PROTECT(ans=allocVector(INTSXP,2));
-	// Returns minimum of position= 0-based position of leftmost match nucleotide
-	INTEGER(ans)[0]=min_pos;
-	// calend adds cigar shifts to position and thereby returns the
-	// 0-based position of the first nucleotide after the last match
-	// Returns the 0-based position of the rightmost match nucleotide
-	INTEGER(ans)[1]=max_end-1;
+
+	/* Returns minimum of position= 0-based position of leftmost match nucleotide	*/
+	INTEGER(ans)[0]= (int) min_pos;
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * calend adds cigar shifts to position and thereby returns the
+	 * 0-based position of the first nucleotide after the last match
+	 * Returns the 0-based position of the rightmost match nucleotide
+	 */
+	INTEGER(ans)[1]= ((int)max_end) -1;
 
 	// + + + + + + + + + + + + + + + + + + + + + + + + + +
 	// Names
@@ -2373,6 +2644,8 @@ SEXP bam_range_pop_front(SEXP pRange)
 
 SEXP bam_range_write_fastq(SEXP pRange,SEXP pFilename,SEXP pAppend)
 {
+
+
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 		error("[bam_range_write_fastq] No external pointer!");
 	if(TYPEOF(pFilename)!=STRSXP)
@@ -2381,36 +2654,42 @@ SEXP bam_range_write_fastq(SEXP pRange,SEXP pFilename,SEXP pAppend)
 		error("[bam_range_write_fastq] pAppend must be logical!\n");
 
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
-	// Read Adress of current align->for reconstitution at the end
+
+	/* Read Adress of current align->for reconstitution at the end		*/
 	align_element *e=l->curr_el;
 	wind_back(l);
 	const bam1_t *align;
 
-	// Open file for ouptut
+	/* Open file for ouptut												*/
 	_Bool append =*(LOGICAL(AS_LOGICAL(pAppend)));
-	FILE *f;
+	gzFile gz;
 	if(append)
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"a+");
+		gz =gzopen(CHAR(STRING_ELT(pFilename,0)),"ba");
 	else
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"w");
+		gz =gzopen(CHAR(STRING_ELT(pFilename,0)),"bw");
 
-	///////////////////////////////////////////////////////
-	// create buffer for sequence and qualities
+	if(!gz)
+		error("[bam_range_write_fastq] File could not be opened!");
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * create buffer for sequence and qualities
+	 * buf_size redefined because possible resizing
+	 */
+	size_t seq_len,j,buf_size=2048;
+	unsigned long i,nRows;
+
 	unsigned char *raw_seq;
-	int32_t seq_len;
-	int buf_size=2048;
 	char *buf=(char*) calloc(buf_size,sizeof(char));
 	uint8_t *quals;
-	unsigned i=0,j;
-	int nRows=(l->size);
 
 
+	nRows=(l->size);
 	for(i=0;i<nRows;++i)
 	{
 		align=get_const_next_align(l);
 
-		// read sequence
-		seq_len=align->core.l_qseq;
+		/* read sequence									*/
+		seq_len=(size_t) align->core.l_qseq;
 		if(seq_len>buf_size)
 		{
 			buf_size=2*(seq_len+1);
@@ -2422,21 +2701,22 @@ SEXP bam_range_write_fastq(SEXP pRange,SEXP pFilename,SEXP pAppend)
 			buf[j]=bam_nt16_rev_table[bam1_seqi(raw_seq,j)];
 		buf[j]=0;
 
-		// write header line and sequence
-		fprintf(f,"@%s\n%s\n+\n",bam1_qname(align),buf);
+		/* write header line and sequence					*/
+		gzprintf(gz,"@%s\n%s\n+\n",bam1_qname(align),buf);
 
-		// write quality string
+		/* write quality string								*/
 		quals=bam1_qual(align);
 		for(j=0;j<seq_len;++j)
 			buf[j]=(char) (quals[j]+33);
 		buf[j]=0;
-		fprintf(f,"%s\n",buf);
+		gzprintf(gz,"%s\n",buf);
 
 	}
-	// Reset curr_el pointer
+	/* Reset curr_el pointer								*/
 	l->curr_el=e;
-	fclose(f);
+	gzclose(gz);
 	free(buf);
+
 	//Rprintf("[bam_range_write_fastq] %u records written to file '%s'.\n",i,CHAR(STRING_ELT(pFilename,0)));
 	return R_NilValue;
 }
@@ -2452,72 +2732,76 @@ SEXP bam_range_write_fastq_index(SEXP pRange,SEXP pFilename,SEXP pWhichCopy,SEXP
 	if(TYPEOF(pAppend)!=LGLSXP)
 		error("[bam_range_write_fastq_idx] pAppend must be logical!\n");
 
-	// The function reads aligns from range and checks for
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * The function reads aligns from range, checks pWichCopy and writes out to fastq file
+	 */
 
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
 
-	// Read Adress of current align->for reconstitution at the end
+	/* Read Adress of current align->for reconstitution at the end				*/
 	align_element *e=l->curr_el;
 	wind_back(l);
 	const bam1_t *align;
 
-	// Open file for ouptut
+	/* Open file for ouptut									*/
 	_Bool append =*(LOGICAL(AS_LOGICAL(pAppend)));
-	FILE *f;
+	gzFile gz;
 	if(append)
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"a+");
+		gz=gzopen(CHAR(STRING_ELT(pFilename,0)),"ba");
 	else
-		f =fopen(CHAR(STRING_ELT(pFilename,0)),"w");
+		gz=gzopen(CHAR(STRING_ELT(pFilename,0)),"bw");
 
-	if(!f)
+	if(!gz)
 		error("[bam_range_write_fastq_idx] File could not be opened!");
 
-	///////////////////////////////////////////////////////
-	// create buffer for sequence and qualities
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * create buffer for sequence and qualities
+	 */
 	unsigned char *raw_seq;
 	int32_t seq_len;
-	int buf_size=2048;
-	char *buf=(char*) calloc(buf_size,sizeof(char));
+
+	size_t bfs=buf_size;
+	char *buf=(char*) calloc(bfs,sizeof(char));
 	uint8_t *quals;
-	unsigned j;
 
-	unsigned i,nWritten=0;
-	unsigned nCheck=INTEGER(pWhichCopy)[LENGTH(pWhichCopy)-1];
 
-	nCheck= ((l->size)<nCheck) ? (l->size) : nCheck;
+	int i,j,nWritten=0;
+	int nCheck=INTEGER(pWhichCopy)[LENGTH(pWhichCopy)-1];
+
+	nCheck= (((int)(l->size)) < nCheck) ? ((int)(l->size)) : nCheck;
 	//Rprintf("[bam_range_write_fastq_idx] Checking %u records.\n",nCheck);
 	for(i=1;i<=nCheck;++i)
 	{
 		align=get_const_next_align(l);
 		if(i==(INTEGER(pWhichCopy)[nWritten]))
 		{
-			// read sequence
+			/* read sequence									*/
 			seq_len=align->core.l_qseq;
-			if(seq_len>buf_size)
+			if(seq_len> ((int32_t)bfs))
 			{
-				buf_size=2*(seq_len+1);
+				bfs=2*( ((size_t)seq_len)+1);
 				free(buf);
-				buf= (char*) calloc(buf_size,sizeof(char));
+				buf= (char*) calloc(bfs,sizeof(char));
 			}
 			raw_seq=bam1_seq(align);
 			for(j=0;j<seq_len;++j)
 				buf[j]=bam_nt16_rev_table[bam1_seqi(raw_seq,j)];
 			buf[j]=0;
 
-			// write header line and sequence
-			fprintf(f,"@%s\n%s\n+\n",bam1_qname(align),buf);
+			/* write header line and sequence					*/
+			gzprintf(gz,"@%s\n%s\n+\n",bam1_qname(align),buf);
 
-			// write quality string
+			/* write quality string								*/
 			quals=bam1_qual(align);
 			for(j=0;j<seq_len;++j)
 				buf[j]=(char) (quals[j]+33);
 			buf[j]=0;
-			fprintf(f,"%s\n",buf);
+			gzprintf(gz,"%s\n",buf);
 			++nWritten;
 		}
 	}
-	// Reset curr_el pointer
-	fclose(f);
+	/* Reset curr_el pointer									*/
+	gzclose(gz);
 	free(buf);
 	l->curr_el=e;
 	//Rprintf("[bam_range_write_fastq_idx] %u records written to file '%s'.\n",nWritten,CHAR(STRING_ELT(pFilename,0)));
@@ -2563,64 +2847,68 @@ SEXP bam_range_get_seqlen(SEXP pRange)
 
 SEXP bam_range_get_qual_df(SEXP pRange)
 {
-	// + + + + + + + + + + + + + + + + + + + + + + + +
-	// Count phred quality values of all aligns in range
-	// into data.frame
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Count phred quality values of all aligns in range
+	 * into data.frame
+	 */
+
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 		error("[bam_range_get_qual_df] No external pointer!");
 
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
+	int i,j,nCols=l->max_seqlen;
 
-	unsigned i,j,nCols=l->max_seqlen;
-	unsigned nRows=128, nProtected=0;
-	uint8_t *quals;
-	SEXP colvec;
-
-	SEXP dflist;
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * SAM Format (p.3)	: QUAL=ASCII of Phred + 33
+	 * Sanger FASTQ		: ASCII	33 - 126
+	 * 					: phred  0 -  93 (94 values)
+	 */
+	const int nRows=94;
+	unsigned char *quals;
+	SEXP dflist, column_vector;
 	PROTECT(dflist=allocVector(VECSXP,nCols));
-	++nProtected;
 
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column vectors: One for each position in sequence
+	 */
 	for(i=0;i<nCols;++i)
 	{
-		PROTECT(colvec=allocVector(INTSXP,nRows));
-		++nProtected;
-		SET_VECTOR_ELT(dflist,i,colvec);
-		// Initialize vector values
-		for(j=0;j<nRows;++j)
-			INTEGER(colvec)[j]=0;
+		PROTECT(column_vector=allocVector(INTSXP,nRows));
+		SET_VECTOR_ELT(dflist,i,column_vector);
+		memset(INTEGER(column_vector),0,sizeof(int)* ((size_t)nRows));
 	}
 
 	align_element *e=l->curr_el;
 	wind_back(l);
-	for(i=0;i<l->size;++i)
+	for(i=0;i<((int)l->size);++i)
 	{
 		const bam1_t *align=get_const_next_align(l);
 
-		// + + + + + + + + + + + + + + + + + + + + + + + +
-		// Count qual values for each
-		// position in 1 to seqlen
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * Count qual values for each
+		 * position in 1 to seqlen
+		 */
 		quals=bam1_qual(align);
 		for(j=0;j<(align->core.l_qseq);++j)
 		{
-			colvec=VECTOR_ELT(dflist,j);
+			column_vector=VECTOR_ELT(dflist,j);
 			// Counted values are truncated at nRows
 			// because of static array size
-			if(quals[i]<nRows)
-				++(INTEGER(colvec)[quals[j]]);
+			if(quals[j]<nRows)
+				++(INTEGER(column_vector)[quals[j]]);
 			else
-				++(INTEGER(colvec)[quals[nRows-1]]);
+				++(INTEGER(column_vector)[nRows-1]);
 		}
 	}
 	// Restore curr_el pointer
 	l->curr_el=e;
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Column Names
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column Names
+	 */
 	SEXP col_names;
 	PROTECT(col_names=allocVector(STRSXP,nCols));
-	++nProtected;
-
-	char *buf=(char*) calloc(buf_size,sizeof(char));
+	char *buf=R_alloc(buf_size,sizeof(char));
 	// 1-based (as indexing of sequences in R)
 	for(i=0;i<nCols;++i)
 	{
@@ -2629,44 +2917,45 @@ SEXP bam_range_get_qual_df(SEXP pRange)
 	}
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *  Row Names
+	 */
 	SEXP row_names;
     PROTECT(row_names=allocVector(STRSXP,nRows));
-    ++nProtected;
-
     for(i=0;i<nRows;++i)
     {
     	sprintf(buf,"%i",i);
     	SET_STRING_ELT(row_names,i,mkChar(buf));
     }
-    free(buf);
     setAttrib(dflist,R_RowNamesSymbol,row_names);
 
-    // + + + + + + + + + + + + + + + + + + + + + + + + + +
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Return
+	 */
 	setAttrib(dflist,R_ClassSymbol,mkString("data.frame"));
-	UNPROTECT(nProtected);
+	UNPROTECT(3+nCols);
 	return dflist;
 }
 
 SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 {
-	// + + + + + + + + + + + + + + + + + + + + + + + +
-	// Count align depth for given range
-	// into REAL vector
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Count align depth for given range
+	 * into REAL vector
+	 */
 	if(TYPEOF(pRange)!=EXTPTRSXP)
 		error("[bam_range_get_align_depth] No external pointer!");
 	if(TYPEOF(pGap)!=LGLSXP)
 		error("[bam_range_get_align_depth] pGap must be LGLSXP!");
 
 
-	unsigned nProtected=0;
+	int nProtected=0;
 	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
 	if(l->range_end==0)
 		error("[bam_range_get_align_depth] range_end=0!");
 	if(l->range_begin>=l->range_end)
 		error("[bam_range_get_align_depth] end>=begin!");
 
-	//Rprintf("[bam_range_get_align_depth] Range begin: %u, end: %u\n",l->range_begin,l->range_end);
 	unsigned long begin,end,range_len,i,j;
 	begin=l->range_begin;
 	end=l->range_end;
@@ -2686,34 +2975,39 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 		for(i=0;i<l->size;++i)
 			count_align_depth(c,begin,end,get_const_next_align(l));
 	}
-	// Reset current pointer in align_list
+	/* Reset current pointer in align_list		*/
 	l->curr_el=curr_el;
 
-	// + + + + + + + + + + + + + + + + + + + + + + + +
-	// alignDepth vector
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * alignDepth vector
+	 */
 	SEXP res;
-	PROTECT(res=allocVector(INTSXP,range_len));
+	PROTECT(res=allocVector(INTSXP,(R_xlen_t)range_len));
 	++nProtected;
 	for(i=0;i<range_len;++i)
 	{
-		INTEGER(res)[i]=c[i];
+		INTEGER(res)[i]=(int)c[i];
 	}
 	free(c);
 
-	// + + + + + + + + + + + + + + + + + + + + + + + +
-	// Position
-	// Directly passing res-INTEGER pointer:
-	// iteration for 0-initialization
-	// necessary
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Position
+	 * Directly passing res-INTEGER pointer:
+	 * iteration for 0-initialization
+	 * necessary
+	 */
+
 	SEXP pos_vector;
-	PROTECT(pos_vector=allocVector(INTSXP,range_len));
+	PROTECT(pos_vector=allocVector(INTSXP,(R_xlen_t)range_len));
 	++nProtected;
     for(i=0,j=begin+1;i<range_len;++i,++j)
-    	INTEGER(pos_vector)[i]=j;
+    	INTEGER(pos_vector)[i]=(int)j;
 
 
-	// + + + + + + + + + + + + + + + + + + + + + + + +
-	// Create S4 object
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Create S4 object
+	 */
+
     SEXP alignDepth,depth_name,pos_name,params,params_name,refname,refname_name;
     PROTECT(alignDepth=NEW_OBJECT(MAKE_CLASS("alignDepth")));
 	++nProtected;
@@ -2728,17 +3022,19 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 
     PROTECT(params=allocVector(INTSXP,8));
 	++nProtected;
-    INTEGER(params)[0]=l->seqid;
-    INTEGER(params)[1]=l->range_begin;
-    INTEGER(params)[2]=l->range_end;
-    INTEGER(params)[3]=l->complex;
-    INTEGER(params)[4]=l->seq_LN;
+    INTEGER(params)[0]=(int)l->seqid;
+    INTEGER(params)[1]=(int)l->range_begin;
+    INTEGER(params)[2]=(int)l->range_end;
+    INTEGER(params)[3]=(int)l->complex;
+    INTEGER(params)[4]=(int)l->seq_LN;
     INTEGER(params)[5]=l->min_seqlen;
     INTEGER(params)[6]=l->max_seqlen;
     INTEGER(params)[7]=LOGICAL(pGap)[0]==TRUE ? 1:0;
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Names for params
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *  Names for params
+	 */
+
 	SEXP names_vec;
 	PROTECT(names_vec=allocVector(STRSXP,8));
 	++nProtected;
@@ -2773,10 +3069,67 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 	return alignDepth;
 }
 
+SEXP bam_range_count_nucs(SEXP pRange)
+{
+	if(TYPEOF(pRange)!=EXTPTRSXP)
+		error("[bam_range_count_nucs] No external pointer!");
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-// bam_header
-///////////////////////////////////////////////////////////////////////////////////////////////
+	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Prepare counter
+	 */
+	const unsigned nCount=5;
+	SEXP pCount=PROTECT(allocVector(INTSXP,nCount));
+	int *count=INTEGER(pCount);
+	memset(count,0,nCount*sizeof(int));
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Prepare list
+	 */
+	int32_t seq_len,j;
+	align_element *e=l->curr_el;
+	const bam1_t *align;
+	unsigned char *raw_seq;
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Count nucleotides on align sequences
+	 */
+	wind_back(l);
+	unsigned long i;
+	for(i=0;i<l->size;++i)
+	{
+		align=get_const_next_align(l);
+		seq_len=align->core.l_qseq;
+		raw_seq=bam1_seq(align);
+		for(j=0;j<seq_len;++j)
+			++count[bam_nt16_dna_table[bam1_seqi(raw_seq,j)]];
+	}
+	/* Restore curr_el pointer								*/
+	l->curr_el=e;
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Names for pCount
+	 */
+	SEXP names_vec;
+	PROTECT(names_vec=allocVector(STRSXP,nCount));
+
+	SET_STRING_ELT(names_vec,0,mkChar("A"));
+	SET_STRING_ELT(names_vec,1,mkChar("C"));
+	SET_STRING_ELT(names_vec,2,mkChar("G"));
+	SET_STRING_ELT(names_vec,3,mkChar("T"));
+	SET_STRING_ELT(names_vec,4,mkChar("N"));
+	setAttrib(pCount,R_NamesSymbol,names_vec);
+
+	UNPROTECT(2);
+	return pCount;
+}
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * bam_header
+ */
+
 
 static void finalize_bam_header(SEXP ptr)
 {
@@ -2796,7 +3149,8 @@ SEXP init_bam_header(SEXP pHeaderText)
 		error("[init_bam_header] Header Text must be a string.\n");
 
 	bam_header_t *h=(bam_header_t*)calloc(1, sizeof(bam_header_t));
-	// Copy header text
+
+	/* Copy header text														*/
 	const char* header_text=CHAR(STRING_ELT(pHeaderText,0));
 	h->l_text=strlen(header_text);
 	char *txt=(char*) calloc(1,(h->l_text)+1);
@@ -2825,9 +3179,10 @@ SEXP bam_header_get_header_text(SEXP pHeader)
 	UNPROTECT(1);
 	return ans;
 }
-///////////////////////////////////////////////////////////////////////////////////////////////
-// bam_writer
-///////////////////////////////////////////////////////////////////////////////////////////////
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * bam_writer
+ */
 
 static void finalize_bam_writer(SEXP ptr)
 {
@@ -2911,9 +3266,10 @@ SEXP bam_writer_close(SEXP pWriter)
 	return R_NilValue;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-// bam_align
-///////////////////////////////////////////////////////////////////////////////////////////////
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * bam_align
+ */
+
 
 static void finalize_bam_align(SEXP pAlign)
 {
@@ -3001,10 +3357,14 @@ SEXP bam_align_get_cigar_df(SEXP pAlign)
 	uint32_t *cigar=bam1_cigar(align);
 	for(i=0;i<nRows;++i)
 	{
+		//Rprintf("[bam_align_getCigar_df] i: %i\tcigar[i]: \n",(cigar[i]&BAM_CIGAR_MASK));
 		if((cigar[i]&BAM_CIGAR_MASK)>=strlen(CIGAR_TYPES))
+		{
+			//Rprintf("[bam_align_getCigar_df] i: %i\tcigar[i]: \n",(cigar[i]&BAM_CIGAR_MASK));
 			error("[bam_align_getCigar_df] Cigar_type not in defined range!");
+		}
 
-		INTEGER(Length_vector)[i]=cigar[i] >> BAM_CIGAR_SHIFT;
+		INTEGER(Length_vector)[i]=(int)(cigar[i] >> BAM_CIGAR_SHIFT);
 		SET_STRING_ELT(Type_vector,i,mkCharLen(CIGAR_TYPES+(cigar[i]&BAM_CIGAR_MASK),1));
 	}
 
@@ -3094,10 +3454,10 @@ SEXP bam_align_get_segment_sequence(SEXP pAlign)
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
 		error("[bam_align_get_segment_sequence] No external pointer!");
 
-	// Extract char* sequence with samtools
+	/* Extract char* sequence with samtools						*/
 	bam1_t *align= (bam1_t*) (R_ExternalPtrAddr(pAlign));
 	int32_t seq_len=align->core.l_qseq;
-	char *seq= (char*) calloc(seq_len+1,sizeof(char));
+	char *seq= (char*) calloc((size_t)seq_len+1,sizeof(char));
 	unsigned char *raw_seq=bam1_seq(align);
 	int32_t i;
 	for(i=0;i<seq_len;++i)
@@ -3125,8 +3485,65 @@ SEXP bam_align_get_qualities(SEXP pAlign)
 	return ans;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-// Alignment flags
+SEXP bam_align_get_qual_values(SEXP pAlign)
+{
+	if(TYPEOF(pAlign)!=EXTPTRSXP)
+		error("[bam_align_get_qual_values] No external pointer!");
+	bam1_t *align= (bam1_t*) (R_ExternalPtrAddr(pAlign));
+
+	SEXP ans;
+	int32_t seq_len=align->core.l_qseq;
+	char *qual=(char*)bam1_qual(align);
+
+	PROTECT(ans=allocVector(INTSXP,seq_len));
+	int *ansval=INTEGER(ans);
+	memset(ansval,0,((size_t)seq_len)*sizeof(int));
+
+	int32_t i;
+	for(i=0;i<seq_len;++i)
+		INTEGER(ans)[i]=(int)qual[i];
+	UNPROTECT(1);
+	return ans;
+}
+
+SEXP bam_align_count_nucs(SEXP pAlign)
+{
+	if(TYPEOF(pAlign)!=EXTPTRSXP)
+		error("[bam_align_count_nucs] No external pointer!");
+
+	/* Prepare counter											*/
+	const unsigned nCount=5;
+	SEXP pCount=PROTECT(allocVector(INTSXP,nCount));
+	int *count=INTEGER(pCount);
+	memset(count,0,nCount*sizeof(int));
+
+	/* Extract char* sequence with samtools						*/
+	bam1_t *align= (bam1_t*) (R_ExternalPtrAddr(pAlign));
+	int32_t seq_len=align->core.l_qseq;
+	unsigned char *raw_seq=bam1_seq(align);
+	int32_t i;
+	for(i=0;i<seq_len;++i)
+		++count[bam_nt16_dna_table[bam1_seqi(raw_seq,i)]];
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Names for pCount
+	 */
+	SEXP names_vec;
+	PROTECT(names_vec=allocVector(STRSXP,nCount));
+
+	SET_STRING_ELT(names_vec,0,mkChar("A"));
+	SET_STRING_ELT(names_vec,1,mkChar("C"));
+	SET_STRING_ELT(names_vec,2,mkChar("G"));
+	SET_STRING_ELT(names_vec,3,mkChar("T"));
+	SET_STRING_ELT(names_vec,4,mkChar("N"));
+	setAttrib(pCount,R_NamesSymbol,names_vec);
+	UNPROTECT(2);
+	return pCount;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Alignment flags
+ */
 
 SEXP bam_align_is_paired(SEXP pAlign)
 {
@@ -3285,8 +3702,9 @@ SEXP bam_align_get_flag(SEXP pAlign)
 	return ans;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////
-// Writing accessors
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *  Writing accessors
+ */
 
 SEXP bam_align_set_refid(SEXP pAlign,SEXP pRefid)
 {
@@ -3438,110 +3856,14 @@ SEXP bam_align_set_flag(SEXP pAlign, SEXP val)
 	if(TYPEOF(val)!=INTSXP)
 		error("[bam_align_set_flag] No integer value!");
 
+	if(INTEGER(val)[0]<0)
+		error("[bam_align_set_flag] No negative values allowed (uint8_t type)!");
+	if(INTEGER(val)[0]>255)
+		error("[bam_align_set_flag] No values >255 allowed (uint8_t type)!");
+
 	bam1_t *align=(bam1_t*)(R_ExternalPtrAddr(pAlign));
-	align->core.flag=*INTEGER(val);
+	align->core.flag=(uint8_t)INTEGER(val)[0];
 	return R_NilValue;
-}
-
-SEXP copy_fastq_records(SEXP pInfile,SEXP pOutfile,SEXP pWhichCopy,SEXP pAppend)
-{
-	if(TYPEOF(pInfile)!=STRSXP)
-		error("[copy_fastq_records] pInfile must be a string!");
-	if(TYPEOF(pOutfile)!=STRSXP)
-		error("[copy_fastq_records] pOutfile must be a string!\n");
-	if(TYPEOF(pWhichCopy)!=INTSXP)
-		error("[copy_fastq_records] pWhichCopy must be integer!\n");
-	if(TYPEOF(pAppend)!=LGLSXP)
-		error("[copy_fastq_records] pAppend must be logical!\n");
-
-
-	FILE *fin=fopen(CHAR(STRING_ELT(pInfile,0)),"r");
-	if(fin==NULL)
-		error("[copy_fastq_records] Infile does not exist!");
-
-	// Open file for ouptut
-	_Bool append =*(LOGICAL(AS_LOGICAL(pAppend)));
-	FILE *fout;
-	if(append)
-		fout =fopen(CHAR(STRING_ELT(pOutfile,0)),"a+");
-	else
-		fout =fopen(CHAR(STRING_ELT(pOutfile,0)),"w");
-
-	///////////////////////////////////////////////////////
-	// create buffer for sequence and qualities
-	unsigned buf_size=2048;
-	char *head,*seq,*qual,*buf;
-	head=(char*) calloc(buf_size,sizeof(char));
-	seq =(char*) calloc(buf_size,sizeof(char));
-	qual=(char*) calloc(buf_size,sizeof(char));
-	buf =(char*) calloc(buf_size,sizeof(char));
-
-	//uint8_t *quals;
-	unsigned nCheck=INTEGER(pWhichCopy)[LENGTH(pWhichCopy)-1];
-	Rprintf("[copy_fastq_records] Checking %u records\n",nCheck);
-	unsigned nWritten=0;
-	rewind(fin);
-
-	int c;
-	unsigned i=0,ma=0,mp=0;
-	while(!feof(fin) && i<nCheck)
-	{
-			c=fgetc(fin);
-			if(c=='@')
-			{
-				// Number of identified fastq items
-				++i;
-				// read head and seq
-				fgets(head,buf_size,fin);
-				fgets(seq,buf_size,fin);
-				c=fgetc(fin);
-				if(c!='+')
-				{
-					++mp;
-					// skip following text until next @
-					while(!feof(fin) && c!='@')
-						c=fgetc(fin);
-					if(!feof(fin))
-						ungetc('@',fin);
-				}
-				// This should eat the '\n' after the '+'
-				c=fgetc(fin);
-				fgets(qual,buf_size,fin);
-
-				// check and eventually write item to outfile
-				if(i==(INTEGER(pWhichCopy)[nWritten]))
-				{
-					fprintf(fout,"@%s%s+\n%s",head,seq,qual);
-					++nWritten;
-				}
-			}
-			else
-			{
-				if(!feof(fin))
-					++ma;
-
-				// skip following text until next @
-				while(!feof(fin) && c!='@')
-					c=fgetc(fin);
-				if(!feof(fin))
-					ungetc('@',fin);
-			}
-	}
-	Rprintf("[copy_fastq_records] Nr of '@' found: %u\tNr of missing '+': %u\tNr of missing '@': %u\n",i,mp,ma);
-
-	fclose(fin);
-	fclose(fout);
-	free(head);
-	free(seq);
-	free(buf);
-	free(qual);
-	Rprintf("[copy_fastq_records] %u records written to file '%s'.\n",nWritten,CHAR(STRING_ELT(pOutfile,0)));
-
-	SEXP ans;
-	PROTECT(ans=allocVector(INTSXP,1));
-	INTEGER(ans)[0]=nWritten;
-	UNPROTECT(1);
-	return ans;
 }
 
 SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals)
@@ -3592,6 +3914,9 @@ SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals)
 	bam1_core_t *c = &align->core;
 	uint8_t *p = 0;
 
+#ifndef BAM1_ADD_CIGAR
+	uint32_t *cigar_data;
+#endif
 
 	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 	// query name
@@ -3635,6 +3960,12 @@ SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals)
 
 			align->data = alloc_align_data(align, doff + c->n_cigar * 4);
 
+#ifdef BAM1_ADD_CIGAR
+			align->cigar=calloc(c->n_cigar,sizeof(uint32_t));
+#else
+			cigar_data=calloc(c->n_cigar,sizeof(uint32_t));
+#endif
+
 			for (i=0, s= (char*)cigar; i != c->n_cigar; ++i)
 			{
 				// convert string to integer
@@ -3654,7 +3985,19 @@ SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals)
 
 				// goto next
 				s = t + 1;
-				bam1_cigar(align)[i] = x << BAM_CIGAR_SHIFT | op;
+#ifdef BAM1_ADD_CIGAR
+				// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
+				// Additional cigar field present
+				// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
+				bam1_cigar(align)[i]=(uint32_t) ((x << BAM_CIGAR_SHIFT) | ((long)op));
+#else
+				//Rprintf("[bam_align_create] len: %i\t op: %i\t cigar: %i\n",x,i,x << BAM_CIGAR_SHIFT | op);
+				//Rprintf("[bam_align_create] a) i: %i\tcigar: %u\tcigar[i]: %u\n",i,bam1_cigar(align),bam1_cigar(align)[i]);
+				//bam1_cigar(align)[i] = (x << BAM_CIGAR_SHIFT) | ((long)op);
+				cigar_data[i] = (x << BAM_CIGAR_SHIFT) | ((long)op);
+				//Rprintf("[bam_align_create]    i: %i\tcigar_data[i]: %u\n",i,cigar_data[i]);
+				//Rprintf("[bam_align_create] b) i: %i\tcigar: %u\tcigar[i]: %u\n",i,bam1_cigar(align),bam1_cigar(align)[i]);
+#endif
 			}
 			if(*s)
 				error("[bam_align_create] Unmatched CIGAR operation");
@@ -3672,15 +4015,25 @@ SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals)
 		}
 	}
 
+#ifdef BAM1_ADD_CIGAR
+	memcpy(((align)->data + c->l_qname),bam1_cigar(align),c->n_cigar*sizeof(uint32_t));
+#else
+	memcpy(((align)->data + c->l_qname),cigar_data,c->n_cigar*sizeof(uint32_t));
+#endif
 
 	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 	// Sequence and qualities
 	c->l_qseq = strlen(seq);
+	//Rprintf("[bam_align_create] strlen(seq): %i\tn_cigar: %u\tcigar qlen: %i\n",c->l_qseq,c->n_cigar,bam_cigar2qlen(c, (uint32_t*) bam1_cigar(align)));
 
 	if(strcmp(qual,"*"))
 	{
-		if (c->n_cigar && c->l_qseq != (int32_t)bam_cigar2qlen(c, bam1_cigar(align)))
-			error("[bam_align_set_seq] cigar does not match sequence length.");
+		if (c->n_cigar && (c->l_qseq != bam_cigar2qlen(c, (uint32_t*) bam1_cigar(align))))
+		{
+			Rprintf("[bam_align_create] strlen(seq): %i\tn_cigar: %u\tcigar qlen: %i\n",c->l_qseq,c->n_cigar,bam_cigar2qlen(c, (uint32_t*) bam1_cigar(align)));
+			Rprintf("[bam_align_create] cigar: %u\n",bam1_cigar(align));
+			error("[bam_align_create] cigar does not match sequence length.");
+		}
 		p = (uint8_t*)alloc_align_data(align, doff + c->l_qseq + (c->l_qseq+1)/2) + doff;
 		memset(p, 0, (c->l_qseq+1)/2);
 		for (i = 0; i < c->l_qseq; ++i)
@@ -3715,43 +4068,401 @@ SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals)
 	return ptr;
 }
 
-// Expects a vector of quantiles (pQuant) and
-// data.frame (pDf) where each column contains relative quantities (sums up to 1)
-// Steps down each column and writes values for each quantile
-// into output data.frame
+
+
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * Miscellaneous functions
+ *
+ */
+
+
+SEXP copy_fastq_records(SEXP pInfile,SEXP pOutfile,SEXP pWhichCopy,SEXP pAppend)
+{
+	if(TYPEOF(pInfile)!=STRSXP)
+		error("[copy_fastq_records] pInfile must be a string!");
+	if(TYPEOF(pOutfile)!=STRSXP)
+		error("[copy_fastq_records] pOutfile must be a string!\n");
+	if(TYPEOF(pWhichCopy)!=INTSXP)
+		error("[copy_fastq_records] pWhichCopy must be integer!\n");
+	if(TYPEOF(pAppend)!=LGLSXP)
+		error("[copy_fastq_records] pAppend must be logical!\n");
+
+
+	FILE *fin=fopen(CHAR(STRING_ELT(pInfile,0)),"r");
+	if(fin==NULL)
+		error("[copy_fastq_records] Infile does not exist!");
+
+	/* Open file for ouptut									*/
+	_Bool append =*(LOGICAL(AS_LOGICAL(pAppend)));
+	FILE *fout;
+	if(append)
+		fout =fopen(CHAR(STRING_ELT(pOutfile,0)),"a+");
+	else
+		fout =fopen(CHAR(STRING_ELT(pOutfile,0)),"w");
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * create buffer for sequence and qualities
+	 */
+	char *head,*seq,*qual,*buf;
+	head=(char*) calloc(buf_size,sizeof(char));
+	seq =(char*) calloc(buf_size,sizeof(char));
+	qual=(char*) calloc(buf_size,sizeof(char));
+	buf =(char*) calloc(buf_size,sizeof(char));
+
+	int nCheck=INTEGER(pWhichCopy)[LENGTH(pWhichCopy)-1];
+	Rprintf("[copy_fastq_records] Checking %u records\n",nCheck);
+	int nWritten=0;
+	rewind(fin);
+
+	int c;
+	unsigned ma=0,mp=0;
+	int i=0;
+	while(!feof(fin) && i<nCheck)
+	{
+			c=fgetc(fin);
+			if(c=='@')
+			{
+				/* Number of identified fastq items						*/
+				++i;
+				/* read head and seq									*/
+				if(!fgets(head,ibuf_size,fin))
+					break;
+				if(!fgets(seq,ibuf_size,fin))
+					break;
+				c=fgetc(fin);
+				if(c!='+')
+				{
+					++mp;
+					/* skip following text until next @					*/
+					while(!feof(fin) && c!='@')
+						c=fgetc(fin);
+					if(!feof(fin))
+						ungetc('@',fin);
+				}
+				/* This should eat the '\n' after the '+'				*/
+				c=fgetc(fin);
+				if(!fgets(qual,ibuf_size,fin))
+					break;
+
+				/* check and eventually write item to outfile			*/
+				if(i==(INTEGER(pWhichCopy)[nWritten]))
+				{
+					fprintf(fout,"@%s%s+\n%s",head,seq,qual);
+					++nWritten;
+				}
+			}
+			else
+			{
+				if(!feof(fin))
+					++ma;
+
+				/* skip following text until next @						*/
+				while(!feof(fin) && c!='@')
+					c=fgetc(fin);
+				if(!feof(fin))
+					ungetc('@',fin);
+			}
+	}
+	Rprintf("[copy_fastq_records] Nr of '@' found: %u\tNr of missing '+': %u\tNr of missing '@': %u\n",i,mp,ma);
+
+	fclose(fin);
+	fclose(fout);
+	free(head);
+	free(seq);
+	free(buf);
+	free(qual);
+	Rprintf("[copy_fastq_records] %u records written to file '%s'.\n",nWritten,CHAR(STRING_ELT(pOutfile,0)));
+
+	SEXP ans;
+	PROTECT(ans=allocVector(INTSXP,1));
+	INTEGER(ans)[0]=nWritten;
+	UNPROTECT(1);
+	return ans;
+}
+
+
+SEXP count_fastq(SEXP pInfile,SEXP pMaxCol)
+{
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Check incoming args
+	 */
+
+	if(TYPEOF(pInfile)!=STRSXP)
+		error("[count_fastq] pInfile must be a string!");
+	if(TYPEOF(pMaxCol)!=INTSXP)
+		error("[count_fastq] pMaxCol must be Integer!");
+
+	FILE *fin=fopen(CHAR(STRING_ELT(pInfile,0)),"r");
+	if(fin==NULL)
+		error("[count_fastq] Infile does not exist!");
+
+	if(INTEGER(pMaxCol)[0]<1)
+		error("[count_fastq] pMaxCol must be positive (>0)!");
+
+	int nProtected=0;
+
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Prepare vector for counting of nucleotide frequencies.
+	 */
+
+	const unsigned alpha_size  =nFastq+5;		/* Total number of tracked values							*/
+	const unsigned iRead_pos   =nFastq;			/* Number of fastq items									*/
+	const unsigned iMin_seqlen =nFastq+1;		/* Length of shortest sequence								*/
+	const unsigned iMax_seqlen =nFastq+2;		/* Length of longest  sequence								*/
+	const unsigned iMissedLines=nFastq+3;		/* Number of skipped lines when searched for next '@'		*/
+	const unsigned iSeqQualLenUneq=nFastq+4;	/* Number of reads where Sequence and Qual differ in length	*/
+												/* (or nCols is too small).									*/
+	SEXP pAlpha=PROTECT(allocVector(INTSXP,alpha_size));
+	++nProtected;
+	int *alpha=INTEGER(pAlpha);
+	memset(alpha,0,sizeof(unsigned)*alpha_size);
+	/* Set to large value									*/
+	alpha[iMin_seqlen]=30000;
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Names for pAlpha
+	 */
+	SEXP names_vec;
+	PROTECT(names_vec=allocVector(STRSXP,alpha_size));
+	++nProtected;
+
+	SET_STRING_ELT(names_vec, 0,mkChar("A"));
+	SET_STRING_ELT(names_vec, 1,mkChar("C"));
+	SET_STRING_ELT(names_vec, 2,mkChar("G"));
+	SET_STRING_ELT(names_vec, 3,mkChar("T"));
+	SET_STRING_ELT(names_vec, 4,mkChar("M"));
+	SET_STRING_ELT(names_vec, 5,mkChar("R"));
+	SET_STRING_ELT(names_vec, 6,mkChar("W"));
+	SET_STRING_ELT(names_vec, 7,mkChar("S"));
+	SET_STRING_ELT(names_vec, 8,mkChar("Y"));
+	SET_STRING_ELT(names_vec, 9,mkChar("K"));
+	SET_STRING_ELT(names_vec,10,mkChar("V"));
+	SET_STRING_ELT(names_vec,11,mkChar("H"));
+	SET_STRING_ELT(names_vec,12,mkChar("D"));
+	SET_STRING_ELT(names_vec,13,mkChar("B"));
+	SET_STRING_ELT(names_vec,14,mkChar("N"));
+	SET_STRING_ELT(names_vec,15,mkChar("+"));
+	SET_STRING_ELT(names_vec,16,mkChar("-"));
+	SET_STRING_ELT(names_vec,17,mkChar("="));
+	SET_STRING_ELT(names_vec,18,mkChar("other"));
+	SET_STRING_ELT(names_vec,19,mkChar("nReads"));
+	SET_STRING_ELT(names_vec,20,mkChar("minSeqlen"));
+	SET_STRING_ELT(names_vec,21,mkChar("maxSeqlen"));
+	SET_STRING_ELT(names_vec,22,mkChar("missedLines"));
+	SET_STRING_ELT(names_vec,23,mkChar("seqQualLenUneq"));
+	setAttrib(pAlpha,R_NamesSymbol,names_vec);
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *  Prepare data frame for counting of quality values
+	 */
+	int i,c,seqlen,qual_value,nRows,nCols;
+	nCols=INTEGER(pMaxCol)[0];							/* Should be >= max seq-length				*/
+	nRows=128;											/* Maximum phred quality score				*/
+
+	SEXP dflist;
+	PROTECT(dflist=allocVector(VECSXP,nCols));
+	++nProtected;
+
+	SEXP col_vec;
+	for(i=0;i<nCols;++i)
+	{
+		col_vec=PROTECT(allocVector(INTSXP,nRows));
+		++nProtected;
+		memset(INTEGER(col_vec),0, ((size_t)nRows)*sizeof(int));
+		SET_VECTOR_ELT(dflist,i,col_vec);
+	}
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Row names
+	 */
+	SEXP row_names;
+    PROTECT(row_names=allocVector(STRSXP,nRows));
+    ++nProtected;
+
+    char *char_buf=(char*)calloc(buf_size,sizeof(char));
+    for(i=0;i<nRows;++i)
+    {
+    	sprintf(char_buf,"%i",i);
+    	SET_STRING_ELT(row_names,i,mkChar(char_buf));
+    }
+    setAttrib(dflist,R_RowNamesSymbol,row_names);
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column Names
+	 */
+	SEXP col_names;
+	PROTECT(col_names=allocVector(STRSXP,nCols));
+	++nProtected;
+    for(i=0;i<nCols;++i)
+    {
+    	sprintf(char_buf,"%i",i);
+    	SET_STRING_ELT(col_names,i,mkChar(char_buf));
+    }
+	setAttrib(dflist,R_NamesSymbol,col_names);
+	setAttrib(dflist,R_ClassSymbol,mkString("data.frame"));
+	free(char_buf);
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Create buffer for sequence and qualities
+	 */
+	char *head,*seq,*qual,*iter;
+	head=(char*) calloc(buf_size,sizeof(char));
+	seq =(char*) calloc(buf_size,sizeof(char));
+	qual=(char*) calloc(buf_size,sizeof(char));
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Collect data from fastq file
+	 */
+	while(!feof(fin))
+	{
+		c=fgetc(fin);
+		if(c=='@')
+		{
+			/* Number of identified fastq items				*/
+			++alpha[iRead_pos];
+			/* read head and seq							*/
+			if(!fgets(head,ibuf_size,fin))
+				break;
+			if(fgets(seq,ibuf_size,fin))
+				break;
+
+			/* count nucleotides in sequence				*/
+			iter=seq;
+			seqlen=0;
+			while((*iter!='\0')&(*iter!='\n'))
+			{
+				++alpha[FASTQ_LETTERS[(unsigned char)*iter]];
+				++iter;
+				++seqlen;
+			}
+
+			if(seqlen>alpha[iMax_seqlen])
+				alpha[iMax_seqlen]=seqlen;
+			if(seqlen<alpha[iMin_seqlen])
+				alpha[iMin_seqlen]=seqlen;
+
+			/* Read '+' and Quality string					*/
+			c=fgetc(fin);
+			/* This should eat the '\n' after the '+'		*/
+			c=fgetc(fin);
+			if(!fgets(qual,ibuf_size,fin))
+				break;
+
+			iter=qual;
+			i=0;
+			while(((*iter)!='\n')&((*iter)!='\0')&(i<nCols))
+			{
+				col_vec=VECTOR_ELT(dflist,i);
+
+				/* Calculate phred quality from fastq ASCII encoding	*/
+				qual_value=(*iter)-33;
+				if(qual_value<0)
+					++(INTEGER(col_vec)[0]);
+				else if(qual_value<nRows)
+					++(INTEGER(col_vec)[qual_value]);
+				else
+					++(INTEGER(col_vec)[nRows-1]);
+
+				++iter;
+				++i;
+			}
+			/* Sequence and Quality have different length				*/
+			/* (or nCols<seqlen)										*/
+			if(i!=seqlen)
+				++alpha[iSeqQualLenUneq];
+		}
+		else
+		{
+			// skip following text until next @
+			while(!feof(fin) && c!='@')
+			{
+				++alpha[iMissedLines];
+				c=fgetc(fin);
+			}
+			if(!feof(fin))
+				ungetc('@',fin);
+		}
+	}
+	fclose(fin);
+	free(head);
+	free(seq);
+	free(qual);
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Prepare list as return container
+	 */
+	unsigned list_size=2;
+	SEXP res_list=PROTECT(allocVector(VECSXP,list_size));
+	++nProtected;
+
+	SET_VECTOR_ELT(res_list,0,pAlpha);
+	SET_VECTOR_ELT(res_list,1,dflist);
+
+	SEXP list_names=PROTECT(allocVector(STRSXP,list_size));
+	++nProtected;
+	SET_STRING_ELT(list_names,0,mkChar("nuc_counts"));
+	SET_STRING_ELT(list_names,1,mkChar("qual_counts"));
+	setAttrib(res_list,R_NamesSymbol,list_names);
+	setAttrib(res_list,R_ClassSymbol,mkString("list"));
+
+	UNPROTECT(nProtected);
+	return res_list;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Expects a vector of quantiles (pQuant) and
+ * data.frame (pDf) where each column contains relative quantities (sums up to 1)
+ *
+ * Steps down each column and writes values for each quantile
+ * into output data.frame
+ */
 
 SEXP get_col_quantiles(SEXP pQuant, SEXP pDf)
 {
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// pQuant is expected to contain unique
-	// and ascending sorted values
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+	SEXP row_names;
+	SEXP col_names;
+	SEXP rQvec,wQvec;
+	SEXP dflist;
+	SEXP in_col_names;
+
+	int nwRows,nrRows, nCols;
+	int i,j,k,nProtected;
+	double val, *q;
+
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * pQuant is expected to contain unique
+	 * and ascending sorted values
+	 */
 	if(TYPEOF(pQuant)!=REALSXP)
 		error("[get_col_quantiles] pQuant must be REAL!");
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// pDf is expected to be a data.frame
-	// where all columns contain relative values
-	// (between 0 and 1, so direct comparison to pQuant
-	// works
-	// and all columns sum up to 1
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * pDf is expected to be a data.frame
+	 * where all columns contain relative values
+	 * (between 0 and 1), so direct comparison to pQuant works
+	 * and all columns sum up to 1.
+	 */
+
 	if(TYPEOF(pDf)!=VECSXP)
 		error("[get_col_quantiles] pDf must be VECSXP!");
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Nr of Rows for writing = Nr of quantile values
-	unsigned nwRows=LENGTH(pQuant);
-	// Nr of Rows for reading = Nr of rows in pDf
-	unsigned nrRows=LENGTH(VECTOR_ELT(pDf,0));
-	// Nr of Columns: equal in both data.frames
-	unsigned nCols=LENGTH(pDf);
-	double val, *q=REAL(pQuant);
-	unsigned i,j,k, nProtected=0;
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Nr of Rows for writing = Nr of quantile values
+	 */
+	nwRows=LENGTH(pQuant);
+	/* Nr of Rows for reading = Nr of rows in pDf			*/
+	nrRows=LENGTH(VECTOR_ELT(pDf,0));
+	/* Nr of Columns: equal in both data.frames				*/
+	nCols=LENGTH(pDf);
+	q=REAL(pQuant);
 
-	// read and write qual-vectors
-	SEXP rQvec,wQvec;
-	SEXP dflist;
+	nProtected=0;
+
+	/* read and write qual-vectors							*/
 	PROTECT(dflist=allocVector(VECSXP,nCols));
 	++nProtected;
 
@@ -3766,30 +4477,32 @@ SEXP get_col_quantiles(SEXP pQuant, SEXP pDf)
 			error("[get_col_quantiles] All columns in pDf must be REAL!");
 
 		val=0;
-		k=0; // which quantile we look for
+		k=0; /* which quantile we look for					*/
 		for(j=0;(j<nrRows) & (k<nwRows);++j)
 		{
 			val+=REAL(rQvec)[j];
 			if(val>q[k])
 			{
-				// The k-th entry gets the row index
-				// where the cumulative value exeeds
-				// the k-th quantile
+				/* * * * * * * * * * * * * * * * * * *
+				 * The k-th entry gets the row index
+				 * where the cumulative value exeeds
+				 * the k-th quantile
+				 */
 				INTEGER(wQvec)[k]=j;
 				++k;
 			}
 		}
-		// Fill the rest of quantiles with max values
+		/* Fill the rest of quantiles with max values		*/
 		for(;k<nwRows;++k)
 			INTEGER(wQvec)[k]=nrRows;
 	}
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	// Column Names
-	SEXP col_names;
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Column names
+	 */
 	PROTECT(col_names=allocVector(STRSXP,nCols));
 	++nProtected;
-	SEXP in_col_names=getAttrib(pDf,R_NamesSymbol);
+	in_col_names=getAttrib(pDf,R_NamesSymbol);
 
 	char *buf=(char*) calloc(buf_size,sizeof(char));
 	for(i=0;i<nCols;++i)
@@ -3799,25 +4512,248 @@ SEXP get_col_quantiles(SEXP pQuant, SEXP pDf)
 	}
 	setAttrib(dflist,R_NamesSymbol,col_names);
 
-	// + + + + + + + + + + + + + + + + + + + + + + + + + +
-	SEXP row_names;
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 * Row names
+	 */
     PROTECT(row_names=allocVector(STRSXP,nwRows));
     ++nProtected;
 
     for(i=0;i<nwRows;++i)
     {
-    	sprintf(buf,"%i",i);
+    	sprintf(buf,"q_%i",(int)(q[i]*100));
     	SET_STRING_ELT(row_names,i,mkChar(buf));
     }
     free(buf);
     setAttrib(dflist,R_RowNamesSymbol,row_names);
-
-    // + + + + + + + + + + + + + + + + + + + + + + + + + +
 	setAttrib(dflist,R_ClassSymbol,mkString("data.frame"));
-
 
 	UNPROTECT(nProtected);
 	return(dflist);
+}
+
+SEXP count_text_lines(SEXP pInfile)
+{
+	FILE *fin;
+	SEXP res;
+
+	if(TYPEOF(pInfile)!=STRSXP)
+		error("[count_text_lines] pInfile must be a string!");
+
+	fin=fopen(CHAR(STRING_ELT(pInfile,0)),"r");
+	if(fin==NULL)
+		error("[copy_fastq_records] Infile does not exist!");
+
+	int lines=0;
+	char * buf = (char*) calloc(buf_size,sizeof(char));
+
+	while(!feof(fin))
+	{
+		if(!fgets(buf,ibuf_size,fin))
+			break;
+		++lines;
+	}
+	fclose(fin);
+	free(buf);
+	--lines;
+
+
+	PROTECT(res=allocVector(INTSXP,1));
+	INTEGER(res)[0]=lines;
+	UNPROTECT(1);
+	return res;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ *
+ * Definitions for R_registerRoutines
+ *
+ */
+
+
+void R_init_rbamtools(DllInfo *info)
+{
+	R_CallMethodDef cmd[] ={
+			{ "is_nil_externalptr", 				(DL_FUNC) &is_nil_externalptr,					1},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * bamHeader
+			 */
+
+			{ "init_bam_header",					(DL_FUNC) &init_bam_header,						1},
+			{ "bam_header_get_header_text",			(DL_FUNC) &bam_header_get_header_text,			1},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * BamWriter
+			 */
+			{ "bam_writer_open",					(DL_FUNC) &bam_writer_open,						2},
+			{ "bam_reader_open_writer",				(DL_FUNC) &bam_reader_open_writer,				2},
+			{ "bam_writer_save_align",				(DL_FUNC) &bam_writer_save_align,				3},
+			{ "bam_writer_close",					(DL_FUNC) &bam_writer_close,					1},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * BamReader
+			 */
+			{ "bam_reader_open",					(DL_FUNC) &bam_reader_open,						1},
+			{ "bam_reader_close",					(DL_FUNC) &bam_reader_close,					1},
+			{ "bam_reader_get_header_text",			(DL_FUNC) &bam_reader_get_header_text,			1},
+			{ "bam_reader_get_ref_count",   		(DL_FUNC) &bam_reader_get_ref_count,    		1},
+			{ "bam_reader_get_target_name",			(DL_FUNC) &bam_reader_get_target_name,  		2},
+			{ "bam_reader_get_ref_data",			(DL_FUNC) &bam_reader_get_ref_data,				1},
+
+			{ "bam_reader_create_index",			(DL_FUNC) &bam_reader_create_index,				2},
+			{ "bam_reader_load_index",				(DL_FUNC) &bam_reader_load_index,				1},
+			{ "bam_reader_unload_index",			(DL_FUNC) &bam_reader_unload_index,				1},
+			{ "bam_reader_get_next_align",  		(DL_FUNC) &bam_reader_get_next_align,   		1},
+			{ "bam_reader_save_aligns",				(DL_FUNC) &bam_reader_save_aligns,  			2},
+			{ "bam_reader_sort_file",				(DL_FUNC) &bam_reader_sort_file,				4},
+
+			{ "bam_reader_get_header",				(DL_FUNC) &bam_reader_get_header,				1},
+			{ "bam_reader_tell",					(DL_FUNC) &bam_reader_tell,						1},
+			{ "bam_reader_seek",					(DL_FUNC) &bam_reader_seek,						2},
+			{ "bam_reader_write_fastq",  			(DL_FUNC) &bam_reader_write_fastq,   			3},
+			{ "bam_reader_write_fastq_index",		(DL_FUNC) &bam_reader_write_fastq_index,  		4},
+			{ "bam_count",							(DL_FUNC) &bam_count,							3},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * gap_list
+			 */
+			{ "create_gap_list",					(DL_FUNC) &create_gap_list,						0},
+			{ "gap_list_fetch",						(DL_FUNC) &gap_list_fetch,						3},
+			{ "gap_list_get_df",					(DL_FUNC) &gap_list_get_df,						1},
+			{ "gap_list_get_size",  				(DL_FUNC) &gap_list_get_size,   				1},
+			{ "gap_list_get_nAligns",				(DL_FUNC) &gap_list_get_nAligns,  				1},
+			{ "gap_list_get_nAlignGaps",			(DL_FUNC) &gap_list_get_nAlignGaps,				1},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * gap_site_list
+			 */
+			{ "create_gap_site_list",				(DL_FUNC) &create_gap_site_list,				0},
+			{ "gap_site_list_fetch",				(DL_FUNC) &gap_site_list_fetch,					3},
+			{ "gap_site_list_get_df",				(DL_FUNC) &gap_site_list_get_df,				1},
+			{ "gap_site_list_get_ref_id",  			(DL_FUNC) &gap_site_list_get_ref_id,   			1},
+			{ "gap_site_list_get_size",				(DL_FUNC) &gap_site_list_get_size,  			1},
+			{ "gap_site_list_get_nAligns",			(DL_FUNC) &gap_site_list_get_nAligns,			1},
+			{ "gap_site_list_get_nAlignGaps",		(DL_FUNC) &gap_site_list_get_nAlignGaps,		1},
+			{ "gap_site_list_merge",				(DL_FUNC) &gap_site_list_merge,					3},
+			{ "gap_site_list_copy",					(DL_FUNC) &gap_site_list_copy,					1},
+			{ "bitmask_r_zip",  					(DL_FUNC) &bitmask_r_zip,   					2},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * gap_site_list_list
+			 */
+			{ "gap_site_ll_init",					(DL_FUNC) &gap_site_ll_init,					0},
+			{ "gap_site_ll_fetch",					(DL_FUNC) &gap_site_ll_fetch,					5},
+			{ "gap_site_ll_copy",					(DL_FUNC) &gap_site_ll_copy,					1},
+			{ "gap_site_ll_get_df",					(DL_FUNC) &gap_site_ll_get_df,					2},
+			{ "gap_site_ll_get_size",   			(DL_FUNC) &gap_site_ll_get_size,    			1},
+			{ "gap_site_ll_get_nAligns",			(DL_FUNC) &gap_site_ll_get_nAligns,  			1},
+			{ "gap_site_ll_get_nAlignGaps",			(DL_FUNC) &gap_site_ll_get_nAlignGaps,			1},
+			{ "gap_site_ll_add_curr_pp",			(DL_FUNC) &gap_site_ll_add_curr_pp,				3},
+			{ "gap_site_ll_add_merge_pp",			(DL_FUNC) &gap_site_ll_add_merge_pp,			4},
+			{ "gap_site_ll_reset_refid",			(DL_FUNC) &gap_site_ll_reset_refid,				1},
+			{ "gap_site_ll_get_summary_df",  		(DL_FUNC) &gap_site_ll_get_summary_df,   		1},
+			{ "gap_site_ll_set_curr_first",			(DL_FUNC) &gap_site_ll_set_curr_first,  		1},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * bam_range
+			 */
+			{ "bam_range_init",						(DL_FUNC) &bam_range_init,						0},
+			{ "bam_range_fetch",					(DL_FUNC) &bam_range_fetch,						4},
+			{ "bam_range_get_size",					(DL_FUNC) &bam_range_get_size,					1},
+			{ "bam_range_get_coords",   			(DL_FUNC) &bam_range_get_coords,    			1},
+			{ "bam_range_get_params",				(DL_FUNC) &bam_range_get_params,  				1},
+			{ "bam_range_get_refname",				(DL_FUNC) &bam_range_get_refname,				1},
+
+			{ "bam_range_get_align_range",			(DL_FUNC) &bam_range_get_align_range,			1},
+			{ "bam_range_get_next_align",			(DL_FUNC) &bam_range_get_next_align,			1},
+			{ "bam_range_get_prev_align",			(DL_FUNC) &bam_range_get_prev_align,			1},
+			{ "bam_range_step_next_align",			(DL_FUNC) &bam_range_step_next_align,  			1},
+			{ "bam_range_step_prev_align",			(DL_FUNC) &bam_reader_sort_file,				1},
+
+			{ "bam_range_get_align_df",				(DL_FUNC) &bam_range_get_align_df,				1},
+			{ "bam_range_write",					(DL_FUNC) &bam_range_write,						3},
+			{ "bam_range_wind_back",				(DL_FUNC) &bam_range_wind_back,					1},
+			{ "bam_range_push_back",  				(DL_FUNC) &bam_range_push_back,   				2},
+			{ "bam_range_pop_back",					(DL_FUNC) &bam_range_pop_back,  				1},
+			{ "bam_range_push_front",				(DL_FUNC) &bam_range_push_front,				2},
+
+			{ "bam_range_pop_front",				(DL_FUNC) &bam_range_pop_front,					1},
+			{ "bam_range_write_current_align",		(DL_FUNC) &bam_range_write_current_align,		2},
+			{ "bam_range_insert_past_curr_align",	(DL_FUNC) &bam_range_insert_past_curr_align,	2},
+			{ "bam_range_insert_pre_curr_align",	(DL_FUNC) &bam_range_insert_pre_curr_align,    	2},
+			{ "bam_range_mv_curr_align",			(DL_FUNC) &bam_range_mv_curr_align,  			2},
+			{ "bam_range_write_fastq",				(DL_FUNC) &bam_range_write_fastq,				3},
+
+			{ "bam_range_write_fastq_index",		(DL_FUNC) &bam_range_write_fastq_index,			4},
+			{ "bam_range_get_seqlen",				(DL_FUNC) &bam_range_get_seqlen,				1},
+			{ "bam_range_get_qual_df",				(DL_FUNC) &bam_range_get_qual_df,				1},
+			{ "bam_range_get_align_depth",  		(DL_FUNC) &bam_range_get_align_depth,   		2},
+			{ "bam_range_count_nucs",               (DL_FUNC) &bam_range_count_nucs,                1},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * BamAlignment
+			 */
+			{ "bam_align_get_name",					(DL_FUNC) &bam_align_get_name,					1},
+			{ "bam_align_get_refid",				(DL_FUNC) &bam_align_get_refid,					1},
+			{ "bam_align_get_position",				(DL_FUNC) &bam_align_get_position,				1},
+			{ "bam_align_get_nCigar",   			(DL_FUNC) &bam_align_get_nCigar,    			1},
+			{ "bam_align_get_cigar_df",				(DL_FUNC) &bam_align_get_cigar_df,  			1},
+			{ "bam_align_get_mate_refid",			(DL_FUNC) &bam_align_get_mate_refid,			1},
+
+			{ "bam_align_get_mate_position",		(DL_FUNC) &bam_align_get_mate_position,			1},
+			{ "bam_align_get_insert_size",			(DL_FUNC) &bam_align_get_insert_size,			1},
+			{ "bam_align_get_map_quality",			(DL_FUNC) &bam_align_get_map_quality,			1},
+			{ "bam_align_get_segment_sequence",  	(DL_FUNC) &bam_align_get_segment_sequence,   	1},
+			{ "bam_align_get_qualities",			(DL_FUNC) &bam_align_get_qualities,  			1},
+			{ "bam_align_get_qual_values",			(DL_FUNC) &bam_align_get_qual_values,			1},
+			{ "bam_align_count_nucs",				(DL_FUNC) &bam_align_count_nucs,                1},
+
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * alignment flags
+			 */
+			{ "bam_align_is_paired",				(DL_FUNC) &bam_align_is_paired,					1},
+			{ "bam_align_mapped_in_proper_pair",	(DL_FUNC) &bam_align_mapped_in_proper_pair,		1},
+			{ "bam_align_is_unmapped",				(DL_FUNC) &bam_align_is_unmapped,				1},
+			{ "bam_align_mate_is_unmapped",			(DL_FUNC) &bam_align_mate_is_unmapped,			1},
+			{ "bam_align_strand_reverse",  			(DL_FUNC) &bam_align_strand_reverse,   			1},
+			{ "bam_align_mate_strand_reverse",		(DL_FUNC) &bam_align_mate_strand_reverse,  		1},
+			{ "bam_align_is_first_in_pair",			(DL_FUNC) &bam_align_is_first_in_pair,			1},
+			{ "bam_align_is_second_in_pair",		(DL_FUNC) &bam_align_is_second_in_pair,			1},
+			{ "bam_align_is_secondary_align",		(DL_FUNC) &bam_align_is_secondary_align,		1},
+			{ "bam_align_fail_qc",  				(DL_FUNC) &bam_align_fail_qc,   				1},
+			{ "bam_align_is_pcr_or_optical_dup",	(DL_FUNC) &bam_align_is_pcr_or_optical_dup,  	1},
+			{ "bam_align_get_flag",					(DL_FUNC) &bam_align_get_flag,					1},
+
+			{ "bam_align_set_refid",				(DL_FUNC) &bam_align_set_refid,					2},
+			{ "bam_align_set_is_paired",			(DL_FUNC) &bam_align_set_is_paired,				2},
+			{ "bam_align_set_mapped_in_proper_pair",(DL_FUNC) &bam_align_set_mapped_in_proper_pair,	2},
+			{ "bam_align_set_is_unmapped",   		(DL_FUNC) &bam_align_set_is_unmapped,    		2},
+			{ "bam_align_set_mate_is_unmapped",		(DL_FUNC) &bam_align_set_mate_is_unmapped,  	2},
+			{ "bam_align_set_strand_reverse",		(DL_FUNC) &bam_align_set_strand_reverse,		2},
+			{ "bam_align_set_mate_strand_reverse",	(DL_FUNC) &bam_align_set_mate_strand_reverse,	2},
+			{ "bam_align_set_is_first_in_pair",		(DL_FUNC) &bam_align_set_is_first_in_pair,		2},
+			{ "bam_align_set_is_second_in_pair",	(DL_FUNC) &bam_align_set_is_second_in_pair,		2},
+			{ "bam_align_set_is_secondary_align",  	(DL_FUNC) &bam_align_set_is_secondary_align,   	2},
+			{ "bam_align_set_fail_qc",				(DL_FUNC) &bam_align_set_fail_qc,				2},
+			{ "bam_align_set_is_pcr_or_optical_dup",(DL_FUNC) &bam_align_set_is_pcr_or_optical_dup,	2},
+			{ "bam_align_set_flag",					(DL_FUNC) &bam_align_set_flag,					2},
+			{ "bam_align_create",  					(DL_FUNC) &bam_align_create,   					2},
+
+			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+			 * Miscellaneous functions
+			 */
+			{ "copy_fastq_records",					(DL_FUNC) &copy_fastq_records,					4},
+			{ "count_fastq",						(DL_FUNC) &count_fastq,							2},
+			{ "get_col_quantiles",					(DL_FUNC) &get_col_quantiles,					2},
+			{ "count_text_lines",					(DL_FUNC) &count_text_lines,					1},
+
+			{NULL, NULL, 0}
+	};
+	/*
+	 * 			{ "",	(DL_FUNC) &,	}
+	 */
+	R_registerRoutines(info, NULL, cmd, NULL, NULL);
 }
 
 

@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "faidx.h"
 #include "khash.h"
-#include <R.h>
+
 
 typedef struct {
 	int32_t line_len, line_blen;
@@ -51,11 +51,19 @@ static R_INLINE void fai_insert_index(faidx_t *idx, const char *name, int len, i
 	khint_t k;
 	int ret;
 	faidx1_t t;
+	size_t slen;
+
 	if (idx->n == idx->m) {
 		idx->m = idx->m? idx->m<<1 : 16;
 		idx->name = (char**)realloc(idx->name, sizeof(void*) * idx->m);
 	}
-	idx->name[idx->n] = strdup(name);
+
+	//idx->name[idx->n] = str_dup(name);
+	slen=strlen(name) + 1;
+	idx->name[idx->n] = malloc(slen);
+	memcpy(idx->name[idx->n],name,slen);
+
+
 	k = kh_put(s, idx->hash, idx->name[idx->n], &ret);
 	t.len = len; t.line_len = line_len; t.line_blen = line_blen; t.offset = offset;
 	kh_value(idx->hash, k) = t;
@@ -173,7 +181,7 @@ faidx_t *fai_read(FILE *fp)
 #else
 		sscanf(p, "%d%lld%d%d", &len, &offset, &line_blen, &line_len);
 #endif
-		fai_insert_index(fai, buf, len, line_len, line_blen, offset);
+		fai_insert_index(fai, buf, len, line_len, line_blen, (uint64_t) offset);
 	}
 	free(buf);
 	return fai;
@@ -367,7 +375,7 @@ char *fai_fetch(const faidx_t *fai, const char *str, int *len)
 
 	// now retrieve the sequence
 	l = 0;
-	s = (char*)malloc(end - beg + 2);
+	s = (char*)malloc((size_t)(end - beg + 2));
 	razf_seek(fai->rz, val.offset + beg / val.line_blen * val.line_len + beg % val.line_blen, SEEK_SET);
 	while (razf_read(fai->rz, &c, 1) == 1 && l < end - beg && !fai->rz->z_err)
 		if (isgraph(c)) s[l++] = c;
@@ -425,14 +433,14 @@ char *faidx_fetch_seq(const faidx_t *fai, char *c_name, int p_beg_i, int p_end_i
     val = kh_value(fai->hash, iter);
 	if(p_end_i < p_beg_i) p_beg_i = p_end_i;
     if(p_beg_i < 0) p_beg_i = 0;
-    else if(val.len <= p_beg_i) p_beg_i = val.len - 1;
+    else if(val.len <= p_beg_i) p_beg_i = (int) (val.len - 1);
     if(p_end_i < 0) p_end_i = 0;
-    else if(val.len <= p_end_i) p_end_i = val.len - 1;
+    else if(val.len <= p_end_i) p_end_i = (int) (val.len - 1);
 
     // Now retrieve the sequence 
 	l = 0;
-	seq = (char*)malloc(p_end_i - p_beg_i + 2);
-	razf_seek(fai->rz, val.offset + p_beg_i / val.line_blen * val.line_len + p_beg_i % val.line_blen, SEEK_SET);
+	seq = (char*)malloc((size_t)(p_end_i - p_beg_i + 2));
+	razf_seek(fai->rz, val.offset + p_beg_i / val.line_blen * val.line_len + (int64_t) p_beg_i % val.line_blen, SEEK_SET);
 	while (razf_read(fai->rz, &c, 1) == 1 && l < p_end_i - p_beg_i + 1)
 		if (isgraph(c)) seq[l++] = c;
 	seq[l] = '\0';

@@ -31,7 +31,9 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
-#include <R.h>
+
+/* Settings for optional embedding into R*/
+#include "rdef.h"
 
 #define KS_SEP_SPACE 0 // isspace(): \t, \n, \v, \f, \r
 #define KS_SEP_TAB   1 // isspace() && !' '
@@ -132,7 +134,7 @@ typedef struct __kstring_t {
 			str->s = (char*)calloc(1, 1);								\
 		}																\
 		str->s[str->l] = '\0';											\
-		return str->l;													\
+		return (int) str->l;											\
 	} \
 	static R_INLINE int ks_getuntil(kstream_t *ks, int delimiter, kstring_t *str, int *dret) \
 	{ return ks_getuntil2(ks, delimiter, str, dret, 0); }

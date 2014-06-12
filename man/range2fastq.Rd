@@ -3,7 +3,7 @@
 \alias{range2fastq-methods}
 \alias{range2fastq,bamRange-method}
 \title{range2fastq}
-\description{The function \code{range2fastq} writes all (or selected) aligns from a \code{bamRange} into a fastq-file.}
+\description{The function \code{range2fastq} writes all (or selected) aligns from a \code{bamRange} into a compressed fastq file.}
 \usage{range2fastq(object,filename,which,append=FALSE)}
 \arguments{
   \item{object}{bamReader. Must be opened.}
@@ -17,9 +17,9 @@ bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
-range2fastq(range,"range.fastq")
+range2fastq(range,"range.fq.gz")
 index<-sample(1:size(range),100)
-range2fastq(range,"range_subset.fastq",which=index)
+range2fastq(range,"range_subset.fq.gz",which=index)
 }
 \keyword{range2fastq}
 \keyword{range2fastq}

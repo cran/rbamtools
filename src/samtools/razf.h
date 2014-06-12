@@ -37,9 +37,8 @@
 #include <stdio.h>
 #include "zlib.h"
 
-//#ifdef _USE_KNETFILE
-//#include "knetfile.h"
-//#endif
+/* Settings for optional embedding into R*/
+#include "rdef.h"
 
 #if ZLIB_VERNUM < 0x1221
 #define _RZ_READONLY

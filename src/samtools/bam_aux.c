@@ -1,7 +1,7 @@
 #include <ctype.h>
 #include "bam.h"
 #include "khash.h"
-#include <R.h>
+
 typedef char *str_p;
 KHASH_MAP_INIT_STR(s, int)
 KHASH_MAP_INIT_STR(r2l, str_p)

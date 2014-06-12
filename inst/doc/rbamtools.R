@@ -272,14 +272,43 @@ count
 
 
 ###################################################
-### code chunk number 30: rbamtools.Rnw:751-753 (eval = FALSE)
+### code chunk number 30: rbamtools.Rnw:748-750
+###################################################
+align<-bamAlign("HWUSI-0001","ACCGGGTTTT","Qual/Strng","4M10N6M",refid=0,position=100)
+countNucs(align)
+
+
+###################################################
+### code chunk number 31: rbamtools.Rnw:753-758
+###################################################
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+reader<-bamReader(bam,idx=TRUE)
+coords<-c(0,0,14730)
+range<-bamRange(reader,coords)
+countNucs(range)
+
+
+###################################################
+### code chunk number 32: rbamtools.Rnw:765-766
+###################################################
+nucStats(reader)
+
+
+###################################################
+### code chunk number 33: rbamtools.Rnw:770-771
+###################################################
+nucStats(bam)
+
+
+###################################################
+### code chunk number 34: rbamtools.Rnw:780-782 (eval = FALSE)
 ###################################################
 ## bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 ## create.idx.batch(bam)
 
 
 ###################################################
-### code chunk number 31: rbamtools.Rnw:763-771 (eval = FALSE)
+### code chunk number 35: rbamtools.Rnw:792-800 (eval = FALSE)
 ###################################################
 ## bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 ## reader<-bamReader(bam)
@@ -292,19 +321,19 @@ count
 
 
 ###################################################
-### code chunk number 32: rbamtools.Rnw:776-783 (eval = FALSE)
+### code chunk number 36: rbamtools.Rnw:805-812 (eval = FALSE)
 ###################################################
 ## bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 ## reader<-bamReader(bam,idx=TRUE)
 ## coords<-as.integer(c(0,0,249250621))
 ## range<-bamRange(reader,coords)
-## range2fastq(range,"range.fastq")
+## range2fastq(range,"rg.fq.gz")
 ## index<-sample(1:size(range),100)
-## range2fastq(range,"range_subset.fastq",which=index)
+## range2fastq(range,"rg_subset.fq.gz",which=index)
 
 
 ###################################################
-### code chunk number 33: rbamtools.Rnw:792-797
+### code chunk number 37: rbamtools.Rnw:821-826
 ###################################################
 qdf<-getQualDf(range)
 qdf[32:38,1:10]
@@ -314,20 +343,20 @@ qrr[32:38,1:10]
 
 
 ###################################################
-### code chunk number 34: rbamtools.Rnw:802-804
+### code chunk number 38: rbamtools.Rnw:831-833
 ###################################################
 qt<-getQualQuantiles(range,c(0.25,0.5,0.75))
 qt[,1:10]
 
 
 ###################################################
-### code chunk number 35: rbamtools.Rnw:809-810
+### code chunk number 39: rbamtools.Rnw:838-839
 ###################################################
 plotQualQuant(range)
 
 
 ###################################################
-### code chunk number 36: rbamtools.Rnw:822-829
+### code chunk number 40: rbamtools.Rnw:851-858
 ###################################################
 # WASH7P coordinates
 coords<-as.integer(c(0,16950,17400))
@@ -339,7 +368,7 @@ getParams(ad)
 
 
 ###################################################
-### code chunk number 37: rbamtools.Rnw:832-833
+### code chunk number 41: rbamtools.Rnw:861-862
 ###################################################
 plotAlignDepth(ad,col="lightblue")
 

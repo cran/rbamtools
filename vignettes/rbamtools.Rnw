@@ -742,6 +742,35 @@ count<-bamCountAll(reader,verbose=TRUE)
 count
 @
 
+\subsection{countNucs}
+
+The \Rfunction{countNucs} counts occurrence of the nucleotides ACGT in \Rclass{bamAlign} and \Rclass{bamRange} objects. An integer vector of length 4 is returned. The names give the nucleotide which is counted at each position. The syntax is identical for \Rclass{bamAlign}
+<<>>=
+align<-bamAlign("HWUSI-0001","ACCGGGTTTT","Qual/Strng","4M10N6M",refid=0,position=100)
+countNucs(align)
+@
+and \Rclass{bamRange}
+<<>>=
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+reader<-bamReader(bam,idx=TRUE)
+coords<-c(0,0,14730)
+range<-bamRange(reader,coords)
+countNucs(range)
+@
+objects.
+
+\subsection{nucStats}
+
+\paragraph{nucStats for bamReader} The \Rfunction{nucStats} function counts occurrence of the nucleotides ACGT in whole BAM files via opened \Rclass{bamReader} objects. Any other character values are subsumed in the value N. The last two columns contain values for GC content and AG/GC ratio. The function returns a \Rclass{data.frame} with one row for each reference sequence which is listed in the BAM-header section.
+<<>>=
+nucStats(reader)
+@
+
+\paragraph{nucStats for BAM file names} The \Rfunction{nucStats} function counts occurrence of the the nucleotides ACGT for a given list of BAM file names. The last two columns contain values for GC content and AG/GC ratio. The function returns a \Rclass{data.frame} with one row for each given BAM file name.
+<<>>=
+nucStats(bam)
+@
+
 \subsection{create.idx.batch}
 
 The \Rfunction{create.idx.batch} is intended to create index files for a batch of given BAM-files. The names of the created BAM-index files can optionally be added. The standard name for BAM-index files is the name of the BAM file plus an added suffix ".bai". The third (optional) argument is \Rfunarg{rebuild}. When \Rfunarg{rebuild} is \code{FALSE} the function will only create not already existing BAM-index files. When \Rfunarg{rebuild} is \code{TRUE} the function will build BAM-index for all given BAM-files.\\
@@ -772,22 +801,22 @@ reader2fastq(reader,"out_subset.fastq",which=index)
 @
 
 
-The function \Rfunction {range2fastq} writes all aligns in a \Rclass{bamRange} object into a fastq file. Optionally, a logical vector (where length must be equal to size of range) can be given. In this case only the depicted aligns are copied into the fastq file and the remaining alings are skipped.
+The function \Rfunction {range2fastq} writes all aligns in a \Rclass{bamRange} object into a compressed fastq file. Optionally, a logical vector (where length must be equal to size of range) can be given. In this case only the depicted aligns are copied into the fastq file and the remaining alings are skipped.
 <<eval=FALSE>>=
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
-range2fastq(range,"range.fastq")
+range2fastq(range,"rg.fq.gz")
 index<-sample(1:size(range),100)
-range2fastq(range,"range_subset.fastq",which=index)
+range2fastq(range,"rg_subset.fq.gz",which=index)
 @
 
 \subsection{Functions for reading and displaying Phred quality scores}
 
 Phred quality scores Q are defindes as $Q=-10 log_{10} P$ where P is the base calling error probability. 
 
-\paragraph{getQualDf} takes a \rcl{bamReader} and returns a data.frame. The data.frame has 128 rows. This number is arbitrary set as the upper limit for counted quality scores all greater scores are counted as if their values where 127. The number of columns equals the maximum sequence length in the given \rcl{bamRange}.\\
+\paragraph{getQualDf} takes a \rcl{bamReader} and returns a data.frame. The data.frame has 94 rows which represent values from 0 to 93 (~\cite{fastq}). The number of columns equals the maximum sequence length in the given \rcl{bamRange}.\\
 
 <<>>=
 qdf<-getQualDf(range)

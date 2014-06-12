@@ -8,7 +8,7 @@
 #ifndef GAPSITELISTLIST_H_
 #define GAPSITELISTLIST_H_
 
-#include <R.h>
+#include "samtools/rdef.h"
 #include "gapSiteList.h"
 
 typedef struct site_ll_element
@@ -127,6 +127,8 @@ pos_type get_nAligns(const site_ll *l)
 
 pos_type get_nAlignGaps(const site_ll *l)
 {
+	if(l->size==0)
+		return 0;
 	pos_type nAlignGaps=0;
 	unsigned i;
 	site_ll_element *el=l->first;

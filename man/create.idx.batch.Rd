@@ -10,7 +10,7 @@
 }
 \author{Wolfgang Kaisers}
 \examples{
-# bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
-# create.idx.batch(bam)
+#bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+#create.idx.batch(bam)
 }
 \keyword{create.idx.batch}

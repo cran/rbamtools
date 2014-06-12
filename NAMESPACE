@@ -1,4 +1,5 @@
 useDynLib(rbamtools)
+import(methods)
 importFrom(utils,head)
 importFrom(utils,tail)
 export(
@@ -11,6 +12,7 @@ export(
 	bamHeaderText,
 	bamReader,
 	bamRange,
+        countTextLines,
         create.idx.batch,
         merge.gapSiteList,
         merge.bamGapList,
@@ -22,6 +24,7 @@ exportMethods(
 	addSeq,
         alignDepth,
 	alignQual,
+	alignQualVal,
 	alignSeq,
 	as.list,
 	bamClose,
@@ -34,7 +37,7 @@ exportMethods(
 	bamSort,
 	bamWriter,
 	cigarData,
-        coerce,
+        countNucs,
 	create.index,
 	dim,
         extractRanges,
@@ -88,7 +91,7 @@ exportMethods(
         nAligns,
 	nCigar,
         nAlignGaps,
-        nGapAligns,
+        nucStats,
 	paired,
 	"paired<-",
 	pcrORopt_duplicate,

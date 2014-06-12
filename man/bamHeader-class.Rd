@@ -5,6 +5,7 @@
 \alias{as.character}
 \alias{bamHeader-class}
 \alias{bamHeader}
+\alias{show,bamHeader-method}
 \alias{bamWriter,bamHeader-method}
 \alias{getHeaderText,bamHeader-method}
 \alias{initialize,bamHeader-method}
@@ -33,6 +34,7 @@ bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam)
 # Extract binary header structure
 header<-getHeader(reader)
+header
 # Extract textual representation
 htxt<-getHeaderText(header)
 # Extract header line segment

@@ -10,6 +10,7 @@
 \alias{initialize,gapSiteList-method}
 \alias{nAligns,gapSiteList-method}
 \alias{nAlignGaps,gapSiteList-method}
+\alias{refID,gapSiteList-method}
 \alias{show,gapSiteList-method}
 \alias{size,gapSiteList-method}
 \title{Class \code{"gapSiteList"}}
@@ -32,22 +33,31 @@ Objects can be created by calls of the form \code{siteList(reader,coords))}.
     \item{show}{\code{signature(object = "gapList")}: Prints a short message with some summarizing data. }
     \item{nAligns}{\code{signature(object = "gapList")}: Returns number of aligns in specified Range. }
     \item{nAlignGaps}{\code{signature(object = "gapList")}: Returns number of align gaps in specified Range. }
+    \item{refID}{\code{signature(object="gapList")}: Returns refID from which \code{gapList} has been retrieved.}
 	 }
 }
 \author{Wolfgang Kaisers}
 \examples{
-library(rbamtools)
-# Open (indexed) BAM file
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## Open (indexed) BAM file
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-getRefCoords(reader,"chr1")
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## Read siteList
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 sl<-siteList(reader,coords)
+bamClose(reader)
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## Access siteList
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 size(sl)
 nAligns(sl)
 nAlignGaps(sl)
+refID(sl)
 sl
 df<-as.data.frame(sl)
 head(df)
-bamClose(reader)
 }
 \keyword{bamAlign}

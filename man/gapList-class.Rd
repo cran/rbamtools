@@ -31,7 +31,7 @@ Objects can be created by calls of the form \code{gapList(reader,coords))}.
   \describe{
     \item{size}{\code{signature(x = "gapList")}: Returns number of gapped-align items in list. }
     \item{coerce}{\code{signature(from = "gapList", to = "data.frame")}: Coercion of gapList to data.frame.}
-    \item{coerce}{\code{signature("gapList","data.frame")}: Coercion of gapList to data.frame.}
+    \item{as.data.frame}{\code{signature(x="gapList",row.names=NULL,optional=FALSE)}: Coercion of gapList to data.frame.}
     \item{show}{\code{signature(object = "gapList")}: Prints a short message with some summarizing data. }
     \item{nAligns}{\code{signature(object = "gapList")}: Returns number of aligns in specified Range. }
     \item{nAlignGaps}{\code{signature(object = "gapList")}: Returns number of align gaps in specified Range. }
@@ -39,8 +39,9 @@ Objects can be created by calls of the form \code{gapList(reader,coords))}.
 }
 \author{Wolfgang Kaisers}
 \examples{
-library(rbamtools)
-# Open (indexed) BAM file
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## Open (indexed) BAM file
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-getRefCoords(reader,"chr1")
@@ -49,7 +50,11 @@ size(gl)
 nAligns(gl)
 nAlignGaps(gl)
 gl
-df<-as.data.frame(gl)
+dfr<-as.data.frame(gl)
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## coerce
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+dfr<-as(gl,"data.frame")
 head(df)
 bamClose(reader)
 }

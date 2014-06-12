@@ -31,11 +31,14 @@ The bamHeader object can be used to initialize an object of class bamWriter. The
 \url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \examples{
-library(rbamtools)
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## Open BAM file
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
-idx<-paste(bam,"bai",sep=".")
-# Open BAM file
 reader<-bamReader(bam)
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## Extract header
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 header<-getHeader(reader)
 htxt<-getHeaderText(header)
 getHeaderText(htxt)

@@ -28,6 +28,8 @@
 #ifndef FAIDX_H
 #define FAIDX_H
 
+#include "rdef.h"
+
 /*!
   @header
 

@@ -39,7 +39,6 @@ Objects can be created by calls of the form \code{siteList(reader,coords))}.
 }
 \author{Wolfgang Kaisers}
 \examples{
-library(rbamtools)
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 bsl<-bamGapList(reader)

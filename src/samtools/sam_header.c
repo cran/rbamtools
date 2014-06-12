@@ -4,7 +4,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <R.h>
 
 #include "khash.h"
 KHASH_MAP_INIT_STR(str, const char *)
@@ -142,13 +141,13 @@ static int tag_exists(const char *tag, const char **tags)
 //  newline character is stripped.
 static const char *nextline(char **lineptr, size_t *n, const char *text)
 {
-    int len;
+    size_t len;
     const char *to = text;
 
     if ( !*to ) return NULL;
 
     while ( *to && *to!='\n' && *to!='\r' ) to++;
-    len = to - text + 1;
+    len = (size_t) (to - text + 1);
 
     if ( *to )
     {
@@ -185,7 +184,7 @@ static const char *nextline(char **lineptr, size_t *n, const char *text)
 static HeaderTag *new_tag(const char *name, const char *value_from, const char *value_to)
 {
     HeaderTag *tag = malloc(sizeof(HeaderTag));
-    int len = value_to-value_from+1;
+    size_t len = (size_t) (value_to-value_from+1);
 
     tag->key[0] = name[0];
     tag->key[1] = name[1];
@@ -290,6 +289,7 @@ static int sam_header_compare_lines(HeaderLine *hline1, HeaderLine *hline2)
 
 static HeaderLine *sam_header_line_clone(const HeaderLine *hline)
 {
+	size_t len;
     list_t *tags;
     HeaderLine *out = malloc(sizeof(HeaderLine));
     out->type[0] = hline->type[0];
@@ -304,7 +304,12 @@ static HeaderLine *sam_header_line_clone(const HeaderLine *hline)
         HeaderTag *new = malloc(sizeof(HeaderTag));
         new->key[0] = old->key[0];
         new->key[1] = old->key[1];
-        new->value  = strdup(old->value);
+
+        //new->value  = str_dup(old->value);
+        len = strlen(old->value) + 1;
+        new->value = malloc(len);
+        memcpy(new->value,old->value,len);
+
         out->tags = list_append(out->tags, new);
 
         tags = tags->next;
@@ -315,6 +320,7 @@ static HeaderLine *sam_header_line_clone(const HeaderLine *hline)
 static int sam_header_line_merge_with(HeaderLine *out_hline, const HeaderLine *tmpl_hline)
 {
     list_t *tmpl_tags;
+    size_t len;
 
     if ( out_hline->type[0]!=tmpl_hline->type[0] || out_hline->type[1]!=tmpl_hline->type[1] )
         return 0;
@@ -329,7 +335,12 @@ static int sam_header_line_merge_with(HeaderLine *out_hline, const HeaderLine *t
             HeaderTag *tag = malloc(sizeof(HeaderTag));
             tag->key[0] = tmpl_tag->key[0];
             tag->key[1] = tmpl_tag->key[1];
-            tag->value  = strdup(tmpl_tag->value);
+
+            //tag->value  = str_dup(tmpl_tag->value);
+            len = strlen(tmpl_tag->value) + 1;
+            tag->value = malloc(len);
+            memcpy(tag->value,tmpl_tag->value,len);
+
             out_hline->tags = list_append(out_hline->tags,tag);
         }
         tmpl_tags = tmpl_tags->next;
@@ -530,7 +541,8 @@ char *sam_header_write(const void *_header)
 {
 	const HeaderDict *header = (const HeaderDict*)_header;
     char *out = NULL;
-    int len=0, nout=0;
+    int nout=0;
+    size_t len=0;
     const list_t *hlines;
 
     // Calculate the length of the string to allocate
@@ -652,10 +664,12 @@ char **sam_header2list(const void *_dict, char type[2], char key_tag[2], int *_n
 {
 	const HeaderDict *dict = (const HeaderDict*)_dict;
     const list_t *l   = dict;
-    int max, n;
+    size_t max, n;
 	char **ret;
 
-	ret = 0; *_n = max = n = 0;
+	ret = 0;
+	max = n = 0;
+	*_n = (int) max;
     while (l)
     {
         HeaderLine *hline = l->data;
@@ -681,7 +695,7 @@ char **sam_header2list(const void *_dict, char type[2], char key_tag[2], int *_n
 
         l = l->next;
     }
-	*_n = n;
+	*_n = (int) n;
     return ret;
 }
 

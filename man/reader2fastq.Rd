@@ -3,7 +3,7 @@
 \alias{reader2fastq-methods}
 \alias{reader2fastq,bamReader-method}
 \title{reader2fastq}
-\description{The function \code{reader2fastq} writes (remaining) aligns or some part of the stored aligns in a BAM file as reads into a fastq file.}
+\description{The function \code{reader2fastq} writes (remaining) aligns or some part of the stored aligns in a BAM file as reads into a compressed fastq file.}
 \usage{reader2fastq(object,filename,which,append=FALSE)}
 \arguments{
   \item{object}{bamReader. Must be opened.}
@@ -16,12 +16,12 @@
 \examples{
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam)
-reader2fastq(reader,"out.fastq")
+reader2fastq(reader,"out.fq.gz")
 bamClose(reader)
 # Reopen in order to point to first align
 reader<-bamReader(bam)
 index<-sample(1:100,20)
-reader2fastq(reader,"out_subset.fastq",which=index)
+reader2fastq(reader,"out_subset.fq.gz",which=index)
 }
 \keyword{reader2fastq}
 \keyword{reader2fastq}

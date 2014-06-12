@@ -26,4 +26,4 @@ ranges<-data.frame(seqid=seqid,start=start,end=end,gene_name=gene_name)
 extractRanges(reader,ranges=ranges,filename="new_file.bam")
 }
 \keyword{extractRanges}
-\keyword{bamReader}
+\seealso{bamReader}
