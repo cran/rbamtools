@@ -99,11 +99,10 @@ int main() {
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-
-/* Settings for optional embedding into R*/
 #include "rdef.h"
 
 /* compipler specific configuration */
+
 #if UINT_MAX == 0xffffffffu
 typedef unsigned int khint32_t;
 #elif ULONG_MAX == 0xffffffffu
@@ -339,8 +338,8 @@ static const double __ac_HASH_UPPER = 0.77;
  */
 static R_INLINE khint_t __ac_X31_hash_string(const char *s)
 {
-	khint_t h = (khint_t) *s;
-	if (h) for (++s ; *s; ++s) h = (h << 5) - h + ((khint_t)*s);
+	khint_t h = *s;
+	if (h) for (++s ; *s; ++s) h = (h << 5) - h + *s;
 	return h;
 }
 /*! @function

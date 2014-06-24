@@ -38,26 +38,19 @@ Objects can be created by calls of the form \code{siteList(reader,coords))}.
 }
 \author{Wolfgang Kaisers}
 \examples{
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Open (indexed) BAM file
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+library(rbamtools)
+# Open (indexed) BAM file
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-getRefCoords(reader,"chr1")
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Read siteList
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 sl<-siteList(reader,coords)
-bamClose(reader)
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Access siteList
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 size(sl)
 nAligns(sl)
 nAlignGaps(sl)
-refID(sl)
 sl
+refID(sl)
 df<-as.data.frame(sl)
 head(df)
+bamClose(reader)
 }
 \keyword{bamAlign}

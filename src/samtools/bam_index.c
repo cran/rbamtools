@@ -161,8 +161,7 @@ bam_index_t *bam_index_core(bamFile fp)
 	uint64_t save_off, last_off, n_mapped, n_unmapped, off_beg, off_end, n_no_coor;
 
 	idx = (bam_index_t*)calloc(1, sizeof(bam_index_t));
-	b= bam_init1();
-	//b = (bam1_t*)calloc(1, sizeof(bam1_t));
+	b = bam_init1();
 	h = bam_header_read(fp);
 	c = &b->core;
 
@@ -182,11 +181,9 @@ bam_index_t *bam_index_core(bamFile fp)
 			last_tid = c->tid;
 			last_bin = 0xffffffffu;
 		} else if ((uint32_t)last_tid > (uint32_t)c->tid) {
-			// REP: fprintf(stderr, "[bam_index_core] the alignment is not sorted (%s): %d-th chr > %d-th chr\n",bam1_qname(b), last_tid+1, c->tid+1);
 			Rprintf("[bam_index_core] the alignment is not sorted (%s): %d-th chr > %d-th chr\n",bam1_qname(b), last_tid+1, c->tid+1);
 			return NULL;
 		} else if ((int32_t)c->tid >= 0 && last_coor > c->pos) {
-			// REP: fprintf(stderr, "[bam_index_core] the alignment is not sorted (%s): %u > %u in %d-th chr\n",bam1_qname(b), last_coor, c->pos, c->tid+1);
 			Rprintf("[bam_index_core] the alignment is not sorted (%s): %u > %u in %d-th chr\n",bam1_qname(b), last_coor, c->pos, c->tid+1);
 			return NULL;
 		}
@@ -207,7 +204,6 @@ bam_index_t *bam_index_core(bamFile fp)
 			if (save_tid < 0) break;
 		}
 		if (bam_tell(fp) <= last_off) {
-			// REP: fprintf(stderr, "[bam_index_core] bug in BGZF/RAZF: %llx < %llx\n",(unsigned long long)bam_tell(fp), (unsigned long long)last_off);
 			Rprintf("[bam_index_core] bug in BGZF/RAZF: %llx < %llx\n",(unsigned long long)bam_tell(fp), (unsigned long long)last_off);
 			return NULL;
 		}
@@ -227,17 +223,13 @@ bam_index_t *bam_index_core(bamFile fp)
 		while ((ret = bam_read1(fp, b)) >= 0) {
 			++n_no_coor;
 			if (c->tid >= 0 && n_no_coor) {
-				// REP: fprintf(stderr, "[bam_index_core] the alignment is not sorted: reads without coordinates prior to reads with coordinates.\n");
 				Rprintf("[bam_index_core] the alignment is not sorted: reads without coordinates prior to reads with coordinates.\n");
 				return NULL;
 			}
 		}
 	}
-	// REP: if (ret < -1) fprintf(stderr, "[bam_index_core] truncated file? Continue anyway. (%d)\n", ret);
 	if (ret < -1) Rprintf("[bam_index_core] truncated file? Continue anyway. (%d)\n", ret);
-
 	bam_destroy1(b);
-	//free(b->data); free(b);
 	idx->n_no_coor = n_no_coor;
 	return idx;
 }
@@ -330,13 +322,11 @@ bam_index_t *bam_index_load_core(FILE *fp)
 	char magic[4];
 	bam_index_t *idx;
 	if (fp == 0) {
-		// REP: fprintf(stderr, "[bam_index_load_core] fail to load index.\n");
 		Rprintf("[bam_index_load_core] fail to load index.\n");
 		return 0;
 	}
 	fread(magic, 1, 4, fp);
 	if (strncmp(magic, "BAI\1", 4)) {
-		// REP: fprintf(stderr, "[bam_index_load] wrong magic number.\n");
 		Rprintf("[bam_index_load] wrong magic number.\n");
 		fclose(fp);
 		return 0;
@@ -393,25 +383,17 @@ bam_index_t *bam_index_load_local(const char *_fn)
 {
 	FILE *fp;
 	char *fnidx, *fn;
-	size_t len;
 
 	if (strstr(_fn, "ftp://") == _fn || strstr(_fn, "http://") == _fn) {
 		const char *p;
 		int l = strlen(_fn);
 		for (p = _fn + l - 1; p >= _fn; --p)
 			if (*p == '/') break;
-
-		//fn = str_dup(p + 1);
-		len = strlen(p + 1) + 1;
-		fn = malloc(len);
-		memcpy(fn,p + 1,len);
-	}
-	else
-	{
-		//fn = str_dup(_fn);
-		len = strlen(_fn) + 1;
-		fn  = malloc(len);
-		memcpy(fn,_fn,len);
+		fn = malloc(strlen(p + 1) + 1);
+		strcpy(fn,(p + 1));
+	} else {
+		fn = malloc(strlen(_fn) + 1);
+		strcpy(fn,_fn);
 	}
 	fnidx = (char*)calloc(strlen(fn) + 5, 1);
 	strcpy(fnidx, fn); strcat(fnidx, ".bai");
@@ -479,12 +461,10 @@ bam_index_t *bam_index_load(const char *fn)
 	if (idx == 0 && (strstr(fn, "ftp://") == fn || strstr(fn, "http://") == fn)) {
 		char *fnidx = calloc(strlen(fn) + 5, 1);
 		strcat(strcpy(fnidx, fn), ".bai");
-		// REP: fprintf(stderr, "[bam_index_load] attempting to download the remote index file.\n");
 		Rprintf("[bam_index_load] attempting to download the remote index file.\n");
 		download_from_remote(fnidx);
 		idx = bam_index_load_local(fn);
 	}
-	// REP: if (idx == 0) fprintf(stderr, "[bam_index_load] fail to load BAM index.\n");
 	if (idx == 0) Rprintf("[bam_index_load] fail to load BAM index.\n");
 	return idx;
 }
@@ -495,8 +475,6 @@ int bam_index_build2(const char *fn, const char *_fnidx)
 	FILE *fpidx;
 	bamFile fp;
 	bam_index_t *idx;
-	size_t len;
-
 	if ((fp = bam_open(fn, "r")) == 0) {
 		Rprintf("[bam_index_build2] fail to open BAM file: '%s'\n",fn);
 		return -1;
@@ -510,16 +488,13 @@ int bam_index_build2(const char *fn, const char *_fnidx)
 	if (_fnidx == 0) {
 		fnidx = (char*)calloc(strlen(fn) + 5, 1);
 		strcpy(fnidx, fn); strcat(fnidx, ".bai");
-	}
-	else
-	{
-		//fnidx = str_dup(_fnidx);
-		len = strlen(_fnidx) + 1;
-		fnidx = malloc(len);
-		memcpy(fnidx,_fnidx,len);
+	} else {
+		fnidx = malloc(strlen(_fnidx) + 1);
+		strcpy(fnidx,_fnidx);
 	}
 	fpidx = fopen(fnidx, "wb");
 	if (fpidx == 0) {
+		// REP: fprintf(stderr, "[bam_index_build2] fail to create the index file.\n");
 		Rprintf("[bam_index_build2] fail to create the index file.\n");
 		free(fnidx);
 		return -1;
@@ -536,49 +511,6 @@ int bam_index_build(const char *fn)
 	return bam_index_build2(fn, 0);
 }
 
-int bam_index(int argc, char *argv[])
-{
-	if (argc < 2) {
-		Rprintf("Usage: samtools index <in.bam> [out.index]\n");
-		return 1;
-	}
-	if (argc >= 3) bam_index_build2(argv[1], argv[2]);
-	else bam_index_build(argv[1]);
-	return 0;
-}
-
-int bam_idxstats(int argc, char *argv[])
-{
-	bam_index_t *idx;
-	bam_header_t *header;
-	bamFile fp;
-	int i;
-	if (argc < 2) {
-		// REP: fprintf(stderr, "Usage: samtools idxstats <in.bam>\n");
-		Rprintf("Usage: samtools idxstats <in.bam>\n");
-		return 1;
-	}
-	fp = bam_open(argv[1], "r");
-	if (fp == 0) { Rprintf("[%s] fail to open BAM.\n", __func__); return 1; }
-	header = bam_header_read(fp);
-	bam_close(fp);
-	idx = bam_index_load(argv[1]);
-	if (idx == 0) { Rprintf("[%s] fail to load the index.\n", __func__); return 1; }
-	for (i = 0; i < idx->n; ++i) {
-		khint_t k;
-		khash_t(i) *h = idx->index[i];
-		Rprintf("%s\t%d", header->target_name[i], header->target_len[i]);
-		k = kh_get(i, h, BAM_MAX_BIN);
-		if (k != kh_end(h))
-			Rprintf("\t%llu\t%llu", (long long)kh_val(h, k).list[1].u, (long long)kh_val(h, k).list[1].v);
-		else Rprintf("\t0\t0");
-		Rprintf("\n");
-	}
-	Rprintf("*\t0\t0\t%llu\n", (long long)idx->n_no_coor);
-	bam_header_destroy(header);
-	bam_index_destroy(idx);
-	return 0;
-}
 
 static R_INLINE int reg2bins(uint32_t beg, uint32_t end, uint16_t list[BAM_MAX_BIN])
 {

@@ -28,10 +28,6 @@
 #ifndef BAM_BAM_H
 #define BAM_BAM_H
 
-/* Settings for optional embedding into R*/
-#include "rdef.h"
-
-
 /*!
   @header
 
@@ -50,7 +46,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-/* defines optind and optarg */
+/* defines optind and optarg (bam_sort.c) */
 #include <getopt.h>
 
 #include "rdef.h"
@@ -77,7 +73,6 @@ typedef gzFile bamFile;
 #define bam_read(fp, buf, size) gzread(fp, buf, size)
 /* no bam_write/bam_tell/bam_seek() here */
 #endif
-
 
 /*! @typedef
   @abstract Structure for the alignment header.
@@ -142,13 +137,7 @@ void bam_destroy_header_hash(bam_header_t *header);
  * Describing how CIGAR operation/length is packed in a 32-bit integer.
  */
 #define BAM_CIGAR_SHIFT 4
-
-/* #define BAM_CIGAR_MASK (1 << BAM_CIGAR_SHIFT) - 1)*/
-#define BAM_CIGAR_MASK 15u
-
-#define BC_RIGHT_SHIFT(X) ((uint32_t) ((X)/16u))
-#define BC_LEFT_SHIFT(X) ((uint32_t) ((X)*16u))
-
+#define BAM_CIGAR_MASK  ((1 << BAM_CIGAR_SHIFT) - 1)
 
 /*
   CIGAR operations.
@@ -213,10 +202,10 @@ typedef struct {
 typedef struct {
 	bam1_core_t core;
 	int l_aux, data_len, m_data;
+	uint8_t *data;
 #ifdef BAM1_ADD_CIGAR
 	uint32_t *cigar;
 #endif
-	uint8_t *data;
 } bam1_t;
 
 typedef struct __bam_iter_t *bam_iter_t;
@@ -236,15 +225,12 @@ typedef struct __bam_iter_t *bam_iter_t;
 
 
 #ifdef BAM1_ADD_CIGAR
-
 #define bam1_cigar(b) ((b)->cigar)
 #define bam1_data_cigar(b) ((b)->data + (b)->core.l_qname)
-
 #else
-
 #define bam1_cigar(b) ((b)->data + (b)->core.l_qname)
+#endif /* BAM1_ADD_CIGAR */
 
-#endif
 
 /*! @function
   @abstract  Get the name of the query
@@ -488,24 +474,19 @@ extern "C" {
 	  @param  b  pointer to an alignment
 	 */
 
-
+// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
+// Eventually free extra copy of cigar data
+// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 #ifdef BAM1_ADD_CIGAR
-
-// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-// Additionally free extra copy of cigar data
-// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-#define bam_destroy1(b) do {									\
-		if (b) { free((b)->data); free((b)->cigar); free(b); 	\
-		}														\
+#define bam_destroy1(b) do {					\
+		if (b) { free((b)->data); free((b)->cigar); free(b); }	\
 	} while (0)
-
 #else
-
 #define bam_destroy1(b) do {					\
 		if (b) { free((b)->data); free(b); }	\
 	} while (0)
+#endif /* BAM1_ADD_CIGAR */
 
-#endif
 
 
 	/*!
@@ -754,9 +735,7 @@ extern "C" {
   @param  end  end of the region, 0-based
   @return      bin
  */
-
-/* Replace: return type changed from int to uint32_t */
-static R_INLINE uint32_t bam_reg2bin(uint32_t beg, uint32_t end)
+static R_INLINE int bam_reg2bin(uint32_t beg, uint32_t end)
 {
 	--end;
 	if (beg>>14 == end>>14) return 4681 + (beg>>14);
@@ -773,39 +752,26 @@ static R_INLINE uint32_t bam_reg2bin(uint32_t beg, uint32_t end)
   @param  bsrc  source alignment struct
   @return       pointer to the destination alignment struct
  */
-
-// free((b)->data); free((b)->cigar); free(b);
-
 static R_INLINE bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc)
 {
 	uint8_t *data = bdst->data;
 	int m_data = bdst->m_data;   // backup data and m_data
-	if (m_data < bsrc->data_len)
-	{ // double the capacity
-		m_data = bsrc->data_len;
-		kroundup32(m_data);
-		data = (uint8_t*)realloc(data, (size_t) m_data);
+	if (m_data < bsrc->data_len) { // double the capacity
+		m_data = bsrc->data_len; kroundup32(m_data);
+		data = (uint8_t*)realloc(data, m_data);
 	}
-	memcpy(data, bsrc->data, (size_t) bsrc->data_len); // copy var-len data
-
-	// plain copy, replaces: *bdst=*bsrc
-	bdst->core=bsrc->core;
-	bdst->l_aux=bsrc->l_aux;
-	bdst->data_len=bsrc->data_len;
-	// bsrc->cigar must not be copied here!
-
-	// deep copy
+	memcpy(data, bsrc->data, bsrc->data_len); // copy var-len data
+	*bdst = *bsrc; // copy the rest
+	// restore the backup
 	bdst->m_data = m_data;
 	bdst->data = data;
 
+	// + + + + + + + + + + + + + + + //
+	// Eventually fill cigar field
+	// + + + + + + + + + + + + + + + //
 #ifdef BAM1_ADD_CIGAR
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-	// Fill additional cigar field with copy of cigar data
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 	COPY_CIGAR_VALUES(bdst);
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 #endif
-
 	return bdst;
 }
 
@@ -831,14 +797,12 @@ static R_INLINE bam1_t *bam_dup1(const bam1_t *src)
 	b->data = (uint8_t*)calloc((size_t) b->data_len, 1);
 	memcpy(b->data, src->data, (size_t) b->data_len);
 
+	// + + + + + + + + + + + + + + + //
+	// Eventually fill cigar field
+	// + + + + + + + + + + + + + + + //
 #ifdef BAM1_ADD_CIGAR
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-	// Fill additional cigar field with copy of cigar data
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 	COPY_CIGAR_VALUES(b);
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 #endif
-
 	return b;
 }
 

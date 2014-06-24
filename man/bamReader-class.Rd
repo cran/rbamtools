@@ -72,6 +72,7 @@
 }
 \author{Wolfgang Kaisers}
 \examples{
+library(rbamtools)
 bam<- system.file("extdata", "accepted_hits.bam", package="rbamtools")
 idx<- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
 # Open BAM-file for reading

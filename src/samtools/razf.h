@@ -36,9 +36,11 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "zlib.h"
-
-/* Settings for optional embedding into R*/
 #include "rdef.h"
+
+//#ifdef _USE_KNETFILE
+//#include "knetfile.h"
+//#endif
 
 #if ZLIB_VERNUM < 0x1221
 #define _RZ_READONLY

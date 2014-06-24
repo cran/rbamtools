@@ -11,8 +11,6 @@ bam_header_t *bam_header_dup(const bam_header_t *h0)
 {
 	bam_header_t *h;
 	int i;
-	size_t len;
-
 	h = bam_header_init();
 	*h = *h0;
 	h->hash = h->dict = h->rg2lib = 0;
@@ -22,11 +20,7 @@ bam_header_t *bam_header_dup(const bam_header_t *h0)
 	h->target_name = (char**)calloc(h->n_targets, sizeof(void*));
 	for (i = 0; i < h->n_targets; ++i) {
 		h->target_len[i] = h0->target_len[i];
-
-		//h->target_name[i] = str_dup(h0->target_name[i]);
-		len = strlen(h0->target_name[i]) + 1;
-		h->target_name[i] = malloc(len);
-		memcpy(h->target_name[i],h0->target_name[i],len);
+		h->target_name[i] = strdup(h0->target_name[i]);
 	}
 	return h;
 }
@@ -51,6 +45,7 @@ samfile_t *samopen(const char *fn, const char *mode, const void *aux)
 		fp->type |= TYPE_READ;
 		if (strchr(mode, 'b')) { // binary
 			fp->type |= TYPE_BAM;
+
 			fp->x.bam = bam_open(fn, "r");
 			if (fp->x.bam == 0) goto open_err_ret;
 			fp->header = bam_header_read(fp->x.bam);
@@ -148,24 +143,6 @@ int samwrite(samfile_t *fp, const bam1_t *b)
 		return l + 1;
 	}
 }
-
-/*
-int sampileup(samfile_t *fp, int mask, bam_pileup_f func, void *func_data)
-{
-	bam_plbuf_t *buf;
-	int ret;
-	bam1_t *b;
-	b = bam_init1();
-	buf = bam_plbuf_init(func, func_data);
-	bam_plbuf_set_mask(buf, mask);
-	while ((ret = samread(fp, b)) >= 0)
-		bam_plbuf_push(b, buf);
-	bam_plbuf_push(0, buf);
-	bam_plbuf_destroy(buf);
-	bam_destroy1(b);
-	return 0;
-}
-*/
 
 char *samfaipath(const char *fn_ref)
 {

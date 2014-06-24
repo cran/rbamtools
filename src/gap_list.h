@@ -12,7 +12,6 @@
 #ifndef GAP_LIST_H_
 #define GAP_LIST_H_
 
-#include "samtools/rdef.h"
 #include "samtools/sam.h"
 #include "samtools/bam.h"
 
@@ -131,7 +130,7 @@ static R_INLINE void pop_back_gap_list(gap_list *l)
 		destroy_gap_elem(e);
 		--(l->size);
 	}
-	else if(l->last_el!=0)
+	else if(l->last_el>0)
 	{
 		destroy_gap_elem(l->last_el);
 		l->first_el=0;
@@ -151,7 +150,7 @@ static R_INLINE void pop_front_gap_list(gap_list *l)
 		destroy_gap_elem(e);
 		--(l->size);
 	}
-	else if(l->first_el!=0)
+	else if(l->first_el>0)
 	{
 		destroy_gap_elem(l->first_el);
 		l->first_el=0;
@@ -180,10 +179,10 @@ void list_gaps(gap_list *l,const bam1_t* align)
 	int op;
 
 	cigar=bam1_cigar(align);
-	position=(uint32_t)align->core.pos;
+	position=align->core.pos;
 	n_cigar=align->core.n_cigar;
 
-	g.refid=(unsigned) align->core.tid;
+	g.refid=align->core.tid;
 	g.position=position;
 	// Count total Aligns
 	++(l->nAligns);
@@ -205,7 +204,7 @@ void list_gaps(gap_list *l,const bam1_t* align)
 		// Add size of first cigar to position to get *1-based* left stop
 		// BAM is *0-based*
 		// position always points to *1-based* last nucleotide of active cigar item
-		position+= BC_RIGHT_SHIFT(cigar[0]); //(cigar[0] >> BAM_CIGAR_SHIFT);
+		position+= (cigar[0] >> BAM_CIGAR_SHIFT);
 
 		for(i=1;i<(n_cigar-1);++i)
 		{
@@ -219,7 +218,7 @@ void list_gaps(gap_list *l,const bam1_t* align)
 				++(l->nAlignGaps);
 				// N -> Add gap to list
 				g.left_stop=position;
-				g.gap_len= BC_RIGHT_SHIFT(cigar[i]); //cigar[i] >> BAM_CIGAR_SHIFT;
+				g.gap_len=cigar[i] >> BAM_CIGAR_SHIFT;
 
 				position += g.gap_len;
 				// position now points to *1-based* last nuc of gap
@@ -231,7 +230,7 @@ void list_gaps(gap_list *l,const bam1_t* align)
 				if((cigar[i-1] & BAM_CIGAR_MASK)!=BAM_CMATCH)
 					return;
 				// Add left cigar data
-				g.left_cigar_len=BC_RIGHT_SHIFT(cigar[i-1]); //cigar[i-1]>>BAM_CIGAR_SHIFT;
+				g.left_cigar_len=cigar[i-1]>>BAM_CIGAR_SHIFT;
 				// Adding one -> always positive values -> output as factor
 				g.left_cigar_type=BAM_CMATCH+1;
 
@@ -239,7 +238,7 @@ void list_gaps(gap_list *l,const bam1_t* align)
 				if((cigar[i+1] & BAM_CIGAR_MASK)!=BAM_CMATCH)
 					return;
 				// Add right cigar data
-				g.right_cigar_len=BC_RIGHT_SHIFT(cigar[i+1]); //cigar[i+1]>>BAM_CIGAR_SHIFT;
+				g.right_cigar_len=cigar[i+1]>>BAM_CIGAR_SHIFT;
 				// Adding one -> always positive values -> output as factor
 				g.right_cigar_type=BAM_CMATCH+1;
 
@@ -247,7 +246,7 @@ void list_gaps(gap_list *l,const bam1_t* align)
 				
 				// next cigar can also be processed because we know it's an M
 				++i;
-				position+=BC_RIGHT_SHIFT(cigar[i]); //(cigar[i] >> BAM_CIGAR_SHIFT);
+				position+=(cigar[i] >> BAM_CIGAR_SHIFT);
 				// position now points to *1-based* last nuc of match
 			}
 			else if(op == BAM_CMATCH)
@@ -258,7 +257,7 @@ void list_gaps(gap_list *l,const bam1_t* align)
 			else if(op == BAM_CDEL)
 			{
 				// shift position
-				position += BC_RIGHT_SHIFT(cigar[i]); //(cigar[i] >> BAM_CIGAR_SHIFT);
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
 			}
 		}
 		//printf("\n");

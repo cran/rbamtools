@@ -2,11 +2,7 @@
 #define BAM_ENDIAN_H
 
 #include <stdint.h>
-
-/* Settings for optional embedding into R*/
 #include "rdef.h"
-
-
 
 static R_INLINE int bam_is_big_endian()
 {

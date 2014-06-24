@@ -15,14 +15,10 @@
 \value{Integer (of length 4).}
 \author{Wolfgang Kaisers}
 \examples{
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## A) For bamAlign
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# A) For bamAlign
 align<-bamAlign("HWUSI-0001","ACCGGGTTTT","Qual/Strng","4M10N6M",refid=0,position=100)
 countNucs(align)
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## B) For bamRange
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# B) For bamRange
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-c(0,0,14730)

@@ -54,6 +54,7 @@ The \code{params} vector contains the following values:
 }}
 \author{Wolfgang Kaisers}
 \examples{
+library(rbamtools)
 # Open (indexed) BAM file
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)

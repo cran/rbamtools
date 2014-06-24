@@ -18,31 +18,20 @@ An instance of class bamReader
 \value{An object of class bamAlign or NULL.}
 \author{Wolfgang Kaisers}
 \examples{
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Open bamReader
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+library(rbamtools)
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
-reader<-bamReader(bam,idx=TRUE)
-
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Use 'getNextAlign' on bamReader
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+idx<-system.file("extdata","accepted_hits.bam.bai",package="rbamtools")
+reader<-bamReader(bam)
+isOpen(reader)
 align<-getNextAlign(reader)
 if(is.null(align))
 	print("End of File!\n")
-
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Read bamRange
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+load.index(reader,idx)
+index.initialized(reader)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
-
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Use 'getNextAlign on bamRange
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 align<-getNextAlign(range)
 position(align)
-
 bamClose(reader)
 }
 \keyword{methods}

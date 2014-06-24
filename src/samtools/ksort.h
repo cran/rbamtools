@@ -189,7 +189,7 @@ typedef struct {
 		while (1) {														\
 			if (s < t) {												\
 				if (--d == 0) {											\
-					ks_combsort_##name(t - ((size_t)s) + 1, ((size_t)s));					\
+					ks_combsort_##name(t - s + 1, s);					\
 					t = s;												\
 					continue;											\
 				}														\

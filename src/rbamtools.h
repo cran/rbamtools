@@ -5,14 +5,6 @@
  * 	Author: 	Wolfgang Kaisers
  *	Content:	C Header File for R package rbamtools
  *
- *	C99 standard: GCC C compiler / Debugging / Other debugging flags: -std=c99
- *	Gives some errors: bam_import.c: fileno, strdup not declared.
- *	Try: gnu99
- *		Alternative: -std=c99 -D_GNU_SOURCE
- *	If no -std option is specified, clang defaults to gnu99 mode.
- *
- *
- *
  *	Change log:
  *      29.Okt.12 (nemesis) [gap_list_get_df] Changed cigar_type output to 'factor'.
  *      30.Okt.12 (phoibe)  [gap_list_fetch] Removed gap_list_fetch message.
@@ -36,21 +28,17 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "samtools/bam.h"
-#include "samtools/sam.h"
-#include "samtools/rdef.h"
-
-// is already included via rdef.h
-//#include <R.h>
+#include <R.h>
 #include <Rinternals.h>
 #include <Rdefines.h>
 #include <R_ext/PrtUtil.h>
-#include <R_ext/Rdynload.h> /* DllInfo	*/
-
+#include <R_ext/Rdynload.h> // DllInfo
+#include "samtools/bam.h"
+#include "samtools/sam.h"
 #include "align_list.h"
 #include "gap_list.h"
 
-/* Extended gap_list	*/
+// Extended gap_list
 #include "gapSiteList.h"
 #include "bitmask.h"
 #include "gapSiteListList.h"
@@ -61,26 +49,26 @@ const char * const CIGAR_TYPES="MIDNSHP=X";
 bam_header_t* clone_bam_header(bam_header_t *h);
 SEXP is_nil_externalptr(SEXP ptr);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * bamHeader
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// bamHeader
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 static void finalize_bam_header(SEXP ptr);
 SEXP init_bam_header(SEXP pHeaderText);
 SEXP bam_header_get_header_text(SEXP pHeader);
 
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * bamWriter
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// BamWriter
+///////////////////////////////////////////////////////////////////////////////////////////////////
 static void finalize_bam_writer(SEXP ptr);
 SEXP bam_writer_open(SEXP pHeader,SEXP pFilename);
 SEXP bam_reader_open_writer(SEXP pReader,SEXP pFilename);
 SEXP bam_writer_save_align(SEXP pWriter,SEXP pAlign,SEXP pRefid);
 SEXP bam_writer_close(SEXP pWriter);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * bamReader
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// BamReader
+///////////////////////////////////////////////////////////////////////////////////////////////////
 static void finalize_bam_reader(SEXP ptr);
 static void finalize_bam_index(SEXP ptr);
 SEXP bam_reader_open(SEXP filename);
@@ -104,9 +92,10 @@ SEXP bam_reader_write_fastq_index(SEXP pReader,SEXP pFilename,SEXP pWhichWrite,S
 static int bam_count_fetch_func(const bam1_t *align, void *data);
 SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * gap_list
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// gap_list
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 static void finalize_gap_list(SEXP ptr);
 SEXP create_gap_list();
 static int gap_fetch_func(const bam1_t *b, void *data);
@@ -116,9 +105,10 @@ SEXP gap_list_get_size(SEXP pGapList);
 SEXP gap_list_get_nAligns(SEXP pGapList);
 SEXP gap_list_get_nAlignGaps(SEXP pGapList);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * gap_site_list
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// gap_site_list
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 static void finalize_gap_site_list(SEXP ptr);
 SEXP create_gap_site_list();
 static int gap_site_list_fetch_func(const bam1_t *b, void *data);
@@ -132,13 +122,13 @@ SEXP gap_site_list_merge(SEXP pLhs, SEXP pRhs, SEXP pRef);
 SEXP gap_site_list_copy(SEXP pGapList);
 SEXP bitmask_r_zip(SEXP lhs, SEXP rhs);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * gap_site_list_list
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// gap_site_list_list
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 static void finialize_gap_site_ll(SEXP ptr);
 SEXP gap_site_ll_init();
 SEXP gap_site_ll_fetch(SEXP pReader, SEXP pIndex, SEXP pRefid, SEXP pStart, SEXP pEnd);
-SEXP gap_site_ll_copy(SEXP pGapList);
 SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames);
 SEXP gap_site_ll_get_size(SEXP pGapList);
 SEXP gap_site_ll_get_nAligns(SEXP pGapList);
@@ -149,9 +139,10 @@ SEXP gap_site_ll_reset_refid(SEXP pGapList);
 SEXP gap_site_ll_get_summary_df(SEXP pGapList);
 SEXP gap_site_ll_set_curr_first(SEXP pGapList);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * bamRange
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// bam_range
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 static void finalize_bam_range(SEXP ptr);
 static int range_fetch_func(const bam1_t *b, void *data);
 static int range_fetch_complex_func(const bam1_t *b,void *data);
@@ -183,10 +174,13 @@ SEXP bam_range_get_seqlen(SEXP pRange);
 SEXP bam_range_get_qual_df(SEXP pRange);
 SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap);
 SEXP bam_range_count_nucs(SEXP pRange);
+SEXP bam_range_idx_copy(SEXP pRange, SEXP pIndex);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * bamAlign
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// BamAlignment
+///////////////////////////////////////////////////////////////////////////////////////////////////
 static void finalize_bam_align(SEXP pAlign);
 SEXP bam_align_get_name(SEXP pAlign);
 SEXP bam_align_get_refid(SEXP pAlign);
@@ -202,26 +196,24 @@ SEXP bam_align_get_qualities(SEXP pAlign);
 SEXP bam_align_get_qual_values(SEXP pAlign);
 SEXP bam_align_count_nucs(SEXP pAlign);
 
-/*
- * alignment flags
- */
+///////////////////////////////////////////////////////////
+// alignment flags
 
-
-/* Reading accessors		*/
-SEXP bam_align_is_paired(SEXP pAlign);
-SEXP bam_align_mapped_in_proper_pair(SEXP pAlign);
-SEXP bam_align_is_unmapped(SEXP pAlign);
-SEXP bam_align_mate_is_unmapped(SEXP pAlign);
-SEXP bam_align_strand_reverse(SEXP pAlign);
-SEXP bam_align_mate_strand_reverse(SEXP pAlign);
-SEXP bam_align_is_first_in_pair(SEXP pAlign);
-SEXP bam_align_is_second_in_pair(SEXP pAlign);
+// Reading accessors
+SEXP bam_align_is_paired(SEXP pAlign);//
+SEXP bam_align_mapped_in_proper_pair(SEXP pAlign);//
+SEXP bam_align_is_unmapped(SEXP pAlign);//
+SEXP bam_align_mate_is_unmapped(SEXP pAlign);//
+SEXP bam_align_strand_reverse(SEXP pAlign);//
+SEXP bam_align_mate_strand_reverse(SEXP pAlign);//
+SEXP bam_align_is_first_in_pair(SEXP pAlign);//
+SEXP bam_align_is_second_in_pair(SEXP pAlign);//
 SEXP bam_align_is_secondary_align(SEXP pAlign);
-SEXP bam_align_fail_qc(SEXP pAlign);
-SEXP bam_align_is_pcr_or_optical_dup(SEXP pAlign);
+SEXP bam_align_fail_qc(SEXP pAlign);//
+SEXP bam_align_is_pcr_or_optical_dup(SEXP pAlign);//
 SEXP bam_align_get_flag(SEXP pAlign);
 
-/* Writing accessors		*/
+// Writing accessors
 SEXP bam_align_set_refid(SEXP pAlign,SEXP pRefid);
 SEXP bam_align_set_is_paired(SEXP pAlign, SEXP val);
 SEXP bam_align_set_mapped_in_proper_pair(SEXP pAlign, SEXP val);
@@ -236,20 +228,21 @@ SEXP bam_align_set_fail_qc(SEXP pAlign, SEXP val);
 SEXP bam_align_set_is_pcr_or_optical_dup(SEXP pAlign, SEXP val);
 SEXP bam_align_set_flag(SEXP pAlign, SEXP val);
 
-/* Create new bamAlign structure from scratch */
+// Create new bamAlign structure from scratch
 SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Miscellaneous functions
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Miscellaneous functions
+///////////////////////////////////////////////////////////////////////////////////////////////////
 SEXP copy_fastq_records(SEXP pInfile,SEXP pOutfile,SEXP pWhichCopy,SEXP pAppend);
 SEXP count_fastq(SEXP pInfile,SEXP pMaxCol);
 SEXP get_col_quantiles(SEXP pQuant, SEXP pDf);
 SEXP count_text_lines(SEXP pInfile);
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * Declarations for R_registerRoutines
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Declarations for R_registerRoutines
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 void R_init_rbamtools(DllInfo *info);
 
 #endif

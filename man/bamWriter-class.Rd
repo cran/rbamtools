@@ -37,44 +37,45 @@ Objects can be created by calls of the form \code{writer<-bamWriter(reader,filen
 }
 \author{Wolfgang Kaisers}
 \examples{
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## We copy some complex (i.e. nCigar>1) into a new
-## BAM file.
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# +++++++++++++++++++++++++++++++++++++++++++++++
+# In this example, we copy some complex (i.e. interesting) aligns
+# into a new BAM file
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 idx<-paste(bam,"bai",sep=".")
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Open BAM file and read complex aligns from chr1
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# +++++++++++++++++++++++++++++++++++++++++++++++
+# Open BAM file and read complex aligns from chr1
 reader<-bamReader(bam)
 load.index(reader,idx)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords,complex=TRUE)
 bamClose(reader)
+# +++++++++++++++++++++++++++++++++++++++++++++++
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Create bamHeader from scratch
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# +++++++++++++++++++++++++++++++++++++++++++++++
+#  Create bamHeader from scratch
 bh<-new("bamHeaderText")
 headl<-new("headerLine")
 setVal(headl,"SO","coordinate")
 dict<-new("refSeqDict")
 addSeq(dict,SN="chr1",LN=249250621)
+addSeq(dict,SN="chr10",LN=135534747)
 dict
 prog<-new("headerProgram")
 setVal(prog,"ID","1")
 setVal(prog,"PN","tophat")
-setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hs_ucsc rna033.fastq")
+setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hs_ucsc test.fq")
 setVal(prog,"VN","2.0.0")
 bh<-bamHeaderText(head=headl,dict=dict,prog=prog)
+#getHeaderText(bh)
 header<-bamHeader(bh)
+# +++++++++++++++++++++++++++++++++++++++++++++++
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-##  Copy aligns in range into new BAM file
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# +++++++++++++++++++++++++++++++++++++++++++++++
+#  Copy aligns in range into new BAM file
 writer<-bamWriter(header,"chr1_complex.bam")
 bamSave(writer,range,refid=0)
 bamClose(writer)
+# +++++++++++++++++++++++++++++++++++++++++++++++
 }
 \keyword{classes}

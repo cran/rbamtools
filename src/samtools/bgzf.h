@@ -27,16 +27,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <zlib.h>
-
-/* Settings for optional embedding into R*/
 #include "rdef.h"
 
-
-//#ifdef _USE_KNETFILE
-//#include "knetfile.h"
-//#endif
-
-//typedef int8_t bool;
 
 typedef struct {
     int file_descriptor;
@@ -110,7 +102,7 @@ int bgzf_write(BGZF* fp, const void* data, int length);
  * Return value is non-negative on success.
  * Returns -1 on error.
  */
-#define bgzf_tell(fp) ((fp->block_address << 16) | ((int64_t)fp->block_offset & 0xFFFF))
+#define bgzf_tell(fp) ((fp->block_address << 16) | (fp->block_offset & 0xFFFF))
 
 /*
  * Set the file to read from the location specified by pos, which must
@@ -143,15 +135,15 @@ static R_INLINE int bgzf_getc(BGZF *fp)
 {
 	int c;
 	if (fp->block_offset >= fp->block_length) {
-		if (bgzf_read_block(fp) != 0) return -2; 	/* error */
-		if (fp->block_length == 0) return -1; 		/* end-of-file */
+		if (bgzf_read_block(fp) != 0) return -2; /* error */
+		if (fp->block_length == 0) return -1; /* end-of-file */
 	}
-	c = ((Bytef*)fp->uncompressed_block)[fp->block_offset++];
+	c = ((unsigned char*)fp->uncompressed_block)[fp->block_offset++];
     if (fp->block_offset == fp->block_length) {
 #ifdef _USE_KNETFILE
         fp->block_address = knet_tell(fp->x.fpr);
 #else
-        fp->block_address = ftello(fp->file);
+        fp->block_address = ftell(fp->file);
 #endif
         fp->block_offset = 0;
         fp->block_length = 0;

@@ -1,17 +1,11 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
-//#include <assert.h>
 #include "bam.h"
 #include "bam_endian.h"
 #include "kstring.h"
 #include "sam_header.h"
 
-#ifdef R_CRAN
-#include <R.h>
-#else
-#define R_INLINE inline
-#endif
 
 int bam_is_be = 0, bam_verbose = 2;
 char *bam_flag2char_table = "pPuUrR12sfd\0\0\0\0\0";
@@ -25,9 +19,9 @@ uint32_t bam_calend(const bam1_core_t *c, const uint32_t *cigar)
 	uint32_t k, end;
 	end = c->pos;
 	for (k = 0; k < c->n_cigar; ++k) {
-		int op = (int) cigar[k] & BAM_CIGAR_MASK;
+		int op = cigar[k] & BAM_CIGAR_MASK;
 		if (op == BAM_CMATCH || op == BAM_CDEL || op == BAM_CREF_SKIP)
-			end += BC_RIGHT_SHIFT(cigar[k]); // cigar[k] >> BAM_CIGAR_SHIFT;
+			end += cigar[k] >> BAM_CIGAR_SHIFT;
 	}
 	return end;
 }
@@ -37,9 +31,9 @@ int32_t bam_cigar2qlen(const bam1_core_t *c, const uint32_t *cigar)
 	uint32_t k;
 	int32_t l = 0;
 	for (k = 0; k < c->n_cigar; ++k) {
-		int op = (int) cigar[k] & BAM_CIGAR_MASK;
+		int op = cigar[k] & BAM_CIGAR_MASK;
 		if (op == BAM_CMATCH || op == BAM_CINS || op == BAM_CSOFT_CLIP || op == BAM_CEQUAL || op == BAM_CDIFF)
-			l += BC_RIGHT_SHIFT(cigar[k]); // cigar[k] >> BAM_CIGAR_SHIFT;
+			l += cigar[k] >> BAM_CIGAR_SHIFT;
 	}
 	return l;
 }
@@ -81,12 +75,13 @@ bam_header_t *bam_header_read(bamFile fp)
 	// check EOF
 	i = bgzf_check_EOF(fp);
 	if (i < 0) {
-		if (errno != ESPIPE)
-			Rprintf("[bam_reader_read] bgzf_check_EOF %s",strerror( errno ));
+		// If the file is a pipe, checking the EOF marker will *always* fail
+		// with ESPIPE.  Suppress the error message in this case.
+		if (errno != ESPIPE) Rprintf("[bam_reader_read] bgzf_check_EOF %s",strerror( errno ));
+
 	}
 	else if (i == 0)
 		Rprintf("[bam_header_read] EOF marker is absent. The input is probably truncated.\n");
-
 	// read "BAM1"
 	magic_len = bam_read(fp, buf, 4);
 	if (magic_len != 4 || strncmp(buf, "BAM\001", 4) != 0) {
@@ -189,7 +184,6 @@ int bam_read1(bamFile fp, bam1_t *b)
 	int32_t block_len, ret, i;
 	uint32_t x[8];
 
-	//assert(BAM_CORE_SIZE == 32);
 	if(BAM_CORE_SIZE!=32)
 		return -2;
 	if ((ret = bam_read(fp, &block_len, 4)) != 4) {
@@ -216,15 +210,12 @@ int bam_read1(bamFile fp, bam1_t *b)
 	b->l_aux = b->data_len - c->n_cigar * 4 - c->l_qname - c->l_qseq - (c->l_qseq+1)/2;
 	if (bam_is_be) swap_endian_data(c, b->data_len, b->data);
 
-
+	// + + + + + + + + + + + + + + + //
+	// Eventually fill cigar field
+	// + + + + + + + + + + + + + + + //
 #ifdef BAM1_ADD_CIGAR
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-	// Fill additional cigar field with copy of cigar data
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 	COPY_CIGAR_VALUES(b);
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 #endif
-
 	return 4 + block_len;
 }
 
@@ -233,7 +224,6 @@ int bam_write1_core(bamFile fp, const bam1_core_t *c, int data_len, uint8_t *dat
 	uint32_t x[8], block_len = data_len + BAM_CORE_SIZE, y;
 	int i;
 
-	//assert(BAM_CORE_SIZE == 32);
 	if(BAM_CORE_SIZE!=32)
 		return -1;
 
@@ -368,9 +358,7 @@ int bam_validate1(const bam_header_t *header, const bam1_t *b)
 	if (b->data_len < b->core.l_qname) return 0;
 	s = memchr(bam1_qname(b), '\0', b->core.l_qname);
 	if (s != &bam1_qname(b)[b->core.l_qname-1]) return 0;
-
 	// FIXME: Other fields could also be checked, especially the auxiliary data
-
 	return 1;
 }
 

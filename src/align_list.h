@@ -13,12 +13,9 @@
 #define ALIGN_LIST_H_
 #include "samtools/sam.h"
 #include "samtools/bam.h"
-#include "samtools/rdef.h"
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * basic definitions
- */
-
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// basic definitions
 
 typedef struct align_element
 {
@@ -35,58 +32,62 @@ typedef struct {
 	int32_t min_seqlen;		/* bam1_core_t->l_qseq */
 	int32_t max_seqlen;
 
-	/* 0-based BAM coordinates */
+	// 0-based BAM coordinates
 	unsigned      seqid;
 	unsigned long range_begin;
 	unsigned long range_end;
 
-	/* BamHeader values */
+	// BamHeader values
 	char * refname;
 	unsigned long seq_LN;
 
 	unsigned complex;
 } align_list;
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * basic functions
- */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// basic functions
 
 align_list * init_align_list()
 {
 	align_list * l=(align_list*) calloc(1,sizeof(align_list));
-	/* Create large number because min_seqlen must decrease	*/
+	// Create large number because min_seqlen must decrease
 	l->min_seqlen=10000;
 	return l;
 }
 
-// Copy of bam_copy1 in bam.h
 static R_INLINE void copy_align(bam1_t *target,const bam1_t * const source)
 {
-	/* see bam.h duplicate_align	*/
+	// see bam.h duplicate_align
 	if(target==NULL)
 		return;
-	*target=*source;
-	target->m_data=source->data_len;
+
+	// Plain copy
+	//replaces: *target=*source;
+	target->core=source->core;
+	target->l_aux=source->l_aux;
+	target->data_len=source->data_len;
+	target->m_data=source->data_len;	// max data size=capacity
+
+	// Deep copy
 	free(target->data);
-	target->data=(uint8_t*)calloc((size_t)(target->data_len),1);
+	target->data=(uint8_t*)calloc((size_t) target->data_len,1);
 	memcpy(target->data,source->data,(size_t)target->data_len);
 
+	// + + + + + + + + + + + + + + + //
+	// Eventually fill cigar field
+	// + + + + + + + + + + + + + + + //
 #ifdef BAM1_ADD_CIGAR
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-	// Fill additional cigar field with copy of cigar data
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-	// double free!
-	target->cigar=0;
 	COPY_CIGAR_VALUES(target);
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 #endif
 }
 
-// Copy of bam_dup1 in bam.h
 static R_INLINE bam1_t *duplicate_align(const bam1_t *src)
 {
 	bam1_t *b;
 	b = bam_init1();
+
+	if(src==NULL)
+		return NULL;
 
 	// Static copy (replaces *b=*src)
 	b->core=src->core;
@@ -98,14 +99,12 @@ static R_INLINE bam1_t *duplicate_align(const bam1_t *src)
 	b->data = (uint8_t*)calloc((size_t)(b->data_len), 1);
 	memcpy(b->data, src->data, (size_t)(b->data_len));
 
+	// + + + + + + + + + + + + + + + //
+	// Eventually fill cigar field
+	// + + + + + + + + + + + + + + + //
 #ifdef BAM1_ADD_CIGAR
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
-	// Fill additional cigar field with copy of cigar data
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 	COPY_CIGAR_VALUES(b);
-	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + //
 #endif
-
 	return b;
 }
 
@@ -118,19 +117,17 @@ static R_INLINE align_element* align_list_init_elem(const bam1_t *align)
 
 static R_INLINE void align_list_destroy_elem(align_element *e)
 {
-	//Rprintf("[align_list_destroy_elem] e=%u\n",e);
 	bam_destroy1(e->align);
 	free(e);
 }
 
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * list generic accessor functions
- */
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// list generic accessor functions
 
 void align_list_push_back(align_list *l, const bam1_t *align)
 {
-	align_element *e;
 
 	if((l->max_seqlen)<(align->core.l_qseq))
 			l->max_seqlen=align->core.l_qseq;
@@ -138,8 +135,8 @@ void align_list_push_back(align_list *l, const bam1_t *align)
 	if((l->min_seqlen)>(align->core.l_qseq) && l->size>1)
 		l->min_seqlen=align->core.l_qseq;
 
-	e=align_list_init_elem(align);
-	if(l->size==0)
+	align_element *e=align_list_init_elem(align);
+	if(l->size==0)	// list is empty
 	{
 		l->first_el=e;
 		l->last_el=e;
@@ -152,12 +149,11 @@ void align_list_push_back(align_list *l, const bam1_t *align)
 		l->last_el=e;
 		++(l->size);
 	}
-	//Rprintf("[align_list_push_back] e=%x\n",e);
+	//printf("push_back pos: %i\n",align->core.pos);
 }
 
 void align_list_push_front(align_list *l,const bam1_t *align)
 {
-	align_element *e;
 
 	if((l->max_seqlen)<(align->core.l_qseq))
 			l->max_seqlen=align->core.l_qseq;
@@ -165,8 +161,8 @@ void align_list_push_front(align_list *l,const bam1_t *align)
 	if((l->min_seqlen)>(align->core.l_qseq) && l->size>1)
 		l->min_seqlen=align->core.l_qseq;
 
-	e=align_list_init_elem(align);
-	if(l->first_el==0)
+	align_element *e=align_list_init_elem(align);
+	if(l->first_el==0)	// list is empty
 	{
 		l->first_el=e;
 		l->last_el=e;
@@ -179,12 +175,10 @@ void align_list_push_front(align_list *l,const bam1_t *align)
 		l->first_el=e;
 		++(l->size);
 	}
-	//Rprintf("[align_list_push_front] e=%x\n",e);
 }
 
 void align_list_pop_back(align_list *l)
 {
-	//Rprintf("[align_list_pop_back] e=%x\n",l->last_el);
 	if(l->first_el!=l->last_el)
 	{
 		align_element *e=l->last_el;
@@ -205,7 +199,6 @@ void align_list_pop_back(align_list *l)
 
 void align_list_pop_front(align_list *l)
 {
-	//Rprintf("[align_list_pop_front] e=%x\n",l->first_el);
 	align_element *e;
 	if(l->first_el!=l->last_el)
 	{
@@ -224,6 +217,7 @@ void align_list_pop_front(align_list *l)
 	}
 }
 
+
 void wind_back(align_list *l)
 {
 	l->curr_el=NULL;
@@ -233,31 +227,25 @@ void wind_back(align_list *l)
 
 void align_list_mv_curr_elem(align_list *src,align_list *target)
 {
-	/*
-	 * Moves current element from src to end of target list
-	 * and moves curr_el pointer to next align
-	 *
-	 */
+	// Moves current element from src to end of target list
+	// and moves curr_el pointer to next align
 
-	align_element *e;
-
+	// Nothing to do
 	if(src->curr_el==NULL)
 		return;
 
-	e=src->curr_el;
+	align_element *e=src->curr_el;
 	src->curr_el=e->next_el;
 
-	/*
-	 * Remove e from src list
-	 */
+	///////////////////////////////////
+	// Remove e from src list
 	if(e->next_el!=NULL)
 		e->next_el->last_el=e->last_el;
 	if(e->last_el!=NULL)
 		e->last_el->next_el=e->next_el;
 
-	/*
-	 * Insert e into end of target list
-	 */
+	///////////////////////////////////
+	// Insert e into end of target list
 	if(target->size==0)
 	{
 		target->first_el=e;
@@ -273,9 +261,8 @@ void align_list_mv_curr_elem(align_list *src,align_list *target)
 	}
 }
 
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
- * higher level convenience functions
- */
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// higher level convenience functions
 
 void destroy_align_list(align_list *l)
 {
@@ -286,33 +273,33 @@ void destroy_align_list(align_list *l)
 	free(l);
 }
 
-/*
- * Returns a *COPY* of current align
- */
-bam1_t * get_next_align(align_list *l)
+bam1_t * get_next_align(align_list *l)		// Returns a *COPY* of current align
 {
 
 	if(l->first_el==NULL)
 	{
+		//printf("[get_next_align] l->first_el==NULL\n");
 		return (bam1_t*) NULL;
 	}
 
 	if(l->curr_el==NULL)
 	{
+		//printf("[get_next_align] curr_el==NULL!\n");
 		l->curr_el=l->first_el;
-		return duplicate_align(l->curr_el->align);	/* Copy */
+		return duplicate_align(l->curr_el->align);	// Copy!
 	}
 	if(l->curr_el->next_el==NULL)
 	{
+		//printf("[get_next_align] l->curr_el->next_el==NULL\n");
 		l->curr_el=NULL;
 		return (bam1_t*) NULL;
 	}
 
 	l->curr_el=l->curr_el->next_el;
-	return duplicate_align(l->curr_el->align);		/* Copy */
+	return duplicate_align(l->curr_el->align);		// Copy!
 }
 
-const bam1_t * get_const_next_align(align_list *l)		/* Returns a *CONSTANT REFERENCE* to current align */
+const bam1_t * get_const_next_align(align_list *l)		// Returns a *CONSTANT REFERENCE* to current align
 {
 
 	if(l->first_el==NULL)
@@ -323,7 +310,7 @@ const bam1_t * get_const_next_align(align_list *l)		/* Returns a *CONSTANT REFER
 	if(l->curr_el==NULL)
 	{
 		l->curr_el=l->first_el;
-		return l->curr_el->align;	/* No Copy! */
+		return l->curr_el->align;	// No Copy!
 	}
 	if(l->curr_el->next_el==NULL)
 	{
@@ -332,7 +319,7 @@ const bam1_t * get_const_next_align(align_list *l)		/* Returns a *CONSTANT REFER
 	}
 
 	l->curr_el=l->curr_el->next_el;
-	return l->curr_el->align;		/* No copy! */
+	return l->curr_el->align;		// No copy!
 }
 
 
@@ -343,7 +330,7 @@ bam1_t * get_prev_align(align_list *l)
 	if((l->curr_el)==NULL)
 	{
 		l->curr_el=l->last_el;
-		return duplicate_align(l->curr_el->align);	/* Copy! */
+		return duplicate_align(l->curr_el->align);	// Copy!
 	}
 	if((l->curr_el->last_el)==NULL)
 	{
@@ -383,15 +370,13 @@ void mm_curr_align(align_list *l)
 
 void insert_past_curr_align(align_list *l,bam1_t *align)
 {
-	align_element *e;
-
 	if((l->max_seqlen)<(align->core.l_qseq))
 			l->max_seqlen=align->core.l_qseq;
 
 	if((l->min_seqlen)>(align->core.l_qseq) && l->size>1)
 		l->min_seqlen=align->core.l_qseq;
 
-	e=align_list_init_elem(align);
+	align_element *e=align_list_init_elem(align);
 	if(l->first_el==NULL)
 	{
 		l->first_el=e;
@@ -425,14 +410,13 @@ void insert_past_curr_align(align_list *l,bam1_t *align)
 
 void insert_pre_curr_align(align_list *l,bam1_t *align)
 {
-	align_element *e;
 	if((l->max_seqlen)<(align->core.l_qseq))
 			l->max_seqlen=align->core.l_qseq;
 
 	if((l->min_seqlen)>(align->core.l_qseq) && l->size>1)
 		l->min_seqlen=align->core.l_qseq;
 
-	e=align_list_init_elem(align);
+	align_element *e=align_list_init_elem(align);
 	if(l->first_el==NULL)
 	{
 		l->first_el=e;
@@ -463,193 +447,197 @@ void insert_pre_curr_align(align_list *l,bam1_t *align)
 	++(l->size);
 }
 
-static R_INLINE void add_match_depth(unsigned long  *ald, long begin, long end, long position, uint32_t cigar_len)
-{
-	/*
-	 * 0-based index of last count value
-	 * nPos=range_end+1 (size of count)
-	 */
-	long range_end, w_start, w_end,i;
-	long align_end;
 
-	range_end=((long)end)-((long)begin);
+static R_INLINE align_list* align_list_idx_copy(align_list *src, unsigned* index, unsigned n_index)
+{
+	// assumes:
+	//   i) index is ascending ordered
+	//  ii) index[0] >=1
+	// iii) n_index = number of elements in index
+	unsigned al_idx, idx_idx;
+	const bam1_t* align;
+	align_list *dest;
+
+	if(src==0)
+		return 0;
+
+	idx_idx = 0;
+	dest = init_align_list();
+
+	dest->seqid=src->seqid;
+	dest->seq_LN=src->seq_LN;
+	dest->range_begin=src->range_begin;
+	dest->range_end=src->range_end;
+
+	if(src->refname)
+	{
+		dest->refname=malloc(strlen(src->refname) + 1);
+		strcpy(dest->refname,src->refname);
+	}
+
+	for(al_idx = 1; al_idx < src->size && idx_idx < n_index; ++al_idx)
+	{
+		align = get_const_next_align(src);
+		if(al_idx==index[idx_idx] && align!=NULL)
+		{
+			align_list_push_back(dest,align);
+			++idx_idx;
+		}
+	}
+	return dest;
+}
+
+
+static R_INLINE void add_match_depth(unsigned long  *ald, unsigned long begin,unsigned long end,unsigned long position, unsigned long cigar_len)
+{
+	// 0-based index of last count value
+	// nPos=range_end+1 (size of count)
+	long range_end= ((long) end) - ((long) begin);
 	if(range_end<1)
 		return;
 
-	/*
-	 * position = 0-based align_begin
-	 * align_end = 0-based
-	 */
-	align_end=position+cigar_len-1;
+	// position = 0-based align_begin
+	// align_end = 0-based
+	unsigned long align_end=position+cigar_len-1;
 
-	/*
-	 * first and last writing index (0-based). <0 allowed
-	 */
-	w_start= position - begin;
-	w_end  = align_end- begin;
+	// first and last writing index (0-based). <0 allowed
+	long w_start= ((long) position) - ((long) begin);
+	long w_end  = ((long) align_end) - ((long) begin);
 
 	if((w_start>=range_end) | (w_end<0))
 		return;
 
-	/*
-	 * secure array boundaries (also all trimming)
-	 */
+	// secure array boundaries (also all trimming)
 	w_start=(w_start<0)       ? 0         : w_start;
 	w_end  =(w_end>range_end) ? range_end : w_end;
 
-	/* Do counting */
+	// Do counting
+	long i;
 	for(i=w_start;i<=w_end;++i)
 		++(ald[i]);
 
 	return;
 }
 
+
 void count_align_depth (unsigned long *ald,unsigned long begin,unsigned long end,const bam1_t * align)
 {
-	uint32_t n_cigar,i;
-	int32_t position;
-	int op;
-	const uint32_t* cigar;
-
-
-	/*
-	 * All positions are 0-based handled.
-	 * position: 0-based position of first cigar-op nuc
-	 * pos += cigar_shift: shifts to next (first cigar-op nuc)
-	 */
+	// All positions are 0-based handled.
+	// position: 0-based position of first cigar-op nuc
+	// pos += cigar_shift: shifts to next (first cigar-op nuc)
 	if(!align)
 		return;
 
-	cigar=bam1_cigar(align);
+	uint32_t position,n_cigar,i;
+	int op;
+
+	const uint32_t *cigar=bam1_cigar(align);
 	position=align->core.pos;
 	n_cigar=align->core.n_cigar;
 
-	/*
-	 * Add first cigar (must be match)
-	 *
-	 */
-	add_match_depth(ald,(long) begin,(long) end,position,cigar[0]>>BAM_CIGAR_SHIFT);
-	position += (int32_t) (cigar[0] >> BAM_CIGAR_SHIFT);
+	// Add first cigar (must be match)
+	//Rprintf("[count_align_depth] pos: %lu\tlen: %u\n",position,cigar[0]>>BAM_CIGAR_SHIFT);
+	add_match_depth(ald,begin,end,position,cigar[0]>>BAM_CIGAR_SHIFT);
+	position +=(cigar[0] >> BAM_CIGAR_SHIFT);
 
 	if(n_cigar>1)
 	{
-		/* n_cigar>2 */
+		// n_cigar>2
 		for(i=1;i<(n_cigar-1);++i)
 		{
 			op = cigar[i] & BAM_CIGAR_MASK;
 			if((op==BAM_CREF_SKIP) | (op == BAM_CDEL))
 			{
-				/*
-				 * N or D -> shift position
-				 * Rprintf("[count_align_depth] + + NorD + + pos: %lu\tlen: %u\n",position,cigar[i]>>BAM_CIGAR_SHIFT);
-				 */
-				position += (int32_t) (cigar[i] >> BAM_CIGAR_SHIFT);
+				// N or D -> shift position
+				//Rprintf("[count_align_depth] + + NorD + + pos: %lu\tlen: %u\n",position,cigar[i]>>BAM_CIGAR_SHIFT);
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
 
 			}
 			else if(op == BAM_CMATCH)
 			{
-				/*
-				 * M en=cigar[i+1]>>BAM_CIGAR_SHIFT;
-				 * Rprintf("[count_align_depth] pos: %lu\tlen: %u\n",position,cigar[i]>>BAM_CIGAR_SHIFT);
-				 */
-				add_match_depth(ald,(long) begin,(long) end,position,cigar[i]>>BAM_CIGAR_SHIFT);
-				/* position then points on rightmost nuc of exon */
-				position += (int32_t) (cigar[i] >> BAM_CIGAR_SHIFT);
+				// M en=cigar[i+1]>>BAM_CIGAR_SHIFT;
+				//Rprintf("[count_align_depth] pos: %lu\tlen: %u\n",position,cigar[i]>>BAM_CIGAR_SHIFT);
+				add_match_depth(ald,begin,end,position,cigar[i]>>BAM_CIGAR_SHIFT);
+				// position then points on rightmost nuc of exon
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
 			}
-			/* I: Do nothing */
+			// I: Do nothing
 		}
-		/*
-		 * Add last cigar (must be match)
-		 * Rprintf("[count_align_depth] pos: %lu\tlen: %u\n",position,cigar[i]>>BAM_CIGAR_SHIFT);
-		 */
-		add_match_depth(ald,(long) begin,(long) end,position,cigar[i]>>BAM_CIGAR_SHIFT);
+		// Add last cigar (must be match)
+		//Rprintf("[count_align_depth] pos: %lu\tlen: %u\n",position,cigar[i]>>BAM_CIGAR_SHIFT);
+		add_match_depth(ald,begin,end,position,cigar[i]>>BAM_CIGAR_SHIFT);
 	}
 }
 
-void count_align_gap_depth (unsigned long *ald,unsigned long begin, unsigned long end,const bam1_t * align)
+void count_align_gap_depth (unsigned long *ald,unsigned long begin,unsigned long end,const bam1_t * align)
 {
-	uint32_t n_cigar,i;
-	int32_t position, right_cigar_pos;
-	int op;
-	const uint32_t *cigar;
-	uint32_t right_cigar_len;
-
-	/*
-	 * All positions are 0-based handled.
-	 */
+	// All positions are 0-based handled.
 	if(!align)
 		return;
 
+	uint32_t position,n_cigar,i;
+	int op;
 
-	cigar=bam1_cigar(align);
+	const uint32_t *cigar=bam1_cigar(align);
 	position=align->core.pos;
 	n_cigar=align->core.n_cigar;
-	/*
-	 * Store count coords for right adjacent match
-	 * right_cigar_len==0 says that no cigar op is
-	 * still to be counted
-	 */
-	right_cigar_len=0;
 
+	// Store count coords for right adjacent match
 
-	/*
-	 * Always count Matches on left side of N
-	 */
+	// right_cigar_len==0 says that no cigar op is
+	// still to be counted
+	uint32_t right_cigar_pos, right_cigar_len=0;
+
+	// Always count Matches on left side of N
 	if(n_cigar>2)
 	{
-
-		/* Shift position for first cigar op (must be M) */
-		position += (int32_t)(cigar[0] >> BAM_CIGAR_SHIFT);
+		// Shift position for first cigar op (must be M)
+		position +=(cigar[0] >> BAM_CIGAR_SHIFT);
 		for(i=1;i<(n_cigar-1);++i)
 		{
-			/* There always is a left and right cigar */
+			// There always is a left and right cigar
 			op = cigar[i] & BAM_CIGAR_MASK;
 			if(op==BAM_CREF_SKIP)
 			{
-				/* Count left adjacent Match */
-				add_match_depth(ald,(long)begin,(long) end,position,cigar[i-1]>>BAM_CIGAR_SHIFT);
-				/* shift position */
-				position += (int32_t) (cigar[i] >> BAM_CIGAR_SHIFT);
-				/* Save position and length for right match */
+				// Count left adjacent Match
+				add_match_depth(ald,begin,end,position,cigar[i-1]>>BAM_CIGAR_SHIFT);
+				// shift position
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
+				// Save position and length for right match
 				right_cigar_pos=position;
 				right_cigar_len=(cigar[i+1] >> BAM_CIGAR_SHIFT);
 			}
 			else if(op == BAM_CDEL)
 			{
-				position += (int32_t) (cigar[i] >> BAM_CIGAR_SHIFT);
-
-				/*
-				 * When D lies behind right adjacent
-				 * cigar match of a skip (N):
-				 * count saved region and reset.
-				 */
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
+				// When D lies behind right adjacent
+				// cigar match of a skip (N):
+				// count saved region and reset.
 				if(right_cigar_len)
 				{
-					add_match_depth(ald,(long)begin,(long)end,right_cigar_pos,right_cigar_len);
+					add_match_depth(ald,begin,end,right_cigar_pos,right_cigar_len);
 					right_cigar_len=0;
 				}
 			}
 			else if(op == BAM_CINS)
 			{
-				/*
-				 * When I lies behind right adjacent
-				 * cigar match of a skip (N):
-				 * count saved region and reset.
-				 */
+				// When I lies behind right adjacent
+				// cigar match of a skip (N):
+				// count saved region and reset.
 				if(right_cigar_len)
 				{
-					add_match_depth(ald,(long)begin,(long)end,right_cigar_pos,right_cigar_len);
+					add_match_depth(ald,begin,end,right_cigar_pos,right_cigar_len);
 					right_cigar_len=0;
 				}
 			}
-			else if(op == BAM_CMATCH) /* M */
+			else if(op == BAM_CMATCH) // M
 			{
-				position += (int32_t)(cigar[i] >> BAM_CIGAR_SHIFT);
+				position +=(cigar[i] >> BAM_CIGAR_SHIFT);
 			}
 		}
-		/* Add last unsaved match region */
+		// Add last unsaved match region
 		if(right_cigar_len)
-			add_match_depth(ald,(long)begin,(long) end,right_cigar_pos,right_cigar_len);
+			add_match_depth(ald,begin,end,right_cigar_pos,right_cigar_len);
 	}
 	return;
 }

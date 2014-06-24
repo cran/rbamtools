@@ -39,9 +39,8 @@ Objects can be created by calls of the form \code{gapList(reader,coords))}.
 }
 \author{Wolfgang Kaisers}
 \examples{
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Open (indexed) BAM file
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+library(rbamtools)
+# Open (indexed) BAM file
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-getRefCoords(reader,"chr1")
@@ -51,9 +50,7 @@ nAligns(gl)
 nAlignGaps(gl)
 gl
 dfr<-as.data.frame(gl)
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## coerce
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# coerce
 dfr<-as(gl,"data.frame")
 head(df)
 bamClose(reader)

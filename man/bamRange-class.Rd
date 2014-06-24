@@ -5,62 +5,85 @@
 \alias{as.data.frame.bamRange}
 \alias{getNextAlign,bamRange-method}
 \alias{coerce,bamRange,data.frame-method}
+\alias{initialize,bamRange-method}
+\alias{rewind,bamRange-method}
+%
+\alias{[-methods}
+\alias{[,bamRange-method}
+%
 \alias{getAlignRange}
 \alias{getAlignRange-methods}
 \alias{getAlignRange,bamRange-method}
+%
 \alias{getCoords}
 \alias{getCoords-methods}
 \alias{getCoords,bamRange-method}
+%
 \alias{getParams}
 \alias{getParams-methods}
 \alias{getParams,bamRange-method}
+%
 \alias{getRefName}
 \alias{getRefName-methods}
 \alias{getRefName,bamRange-method}
+%
 \alias{getSeqLen}
 \alias{getSeqLen-methods}
 \alias{getSeqLen,bamRange-method}
+%
 \alias{getPrevAlign}
 \alias{getPrevAlign-methods}
 \alias{getPrevAlign,bamRange-method}
-\alias{initialize,bamRange-method}
+%
 \alias{insertPastCurrent}
 \alias{insertPastCurrent-methods}
 \alias{insertPastCurrent,bamRange-method}
+%
 \alias{insertPreCurrent}
 \alias{insertPreCurrent-methods}
 \alias{insertPreCurrent,bamRange-method}
+%
 \alias{moveCurrentAlign}
 \alias{moveCurrentAlign-methods}
 \alias{moveCurrentAlign,bamRange-method}
+%
 \alias{pop_back}
 \alias{pop_back-methods}
 \alias{pop_back,bamRange-method}
+%
 \alias{pop_front}
 \alias{pop_front-methods}
 \alias{pop_front,bamRange-method}
+%
 \alias{push_back}
 \alias{push_back-methods}
 \alias{push_back,bamRange-method}
+%
 \alias{push_front}
 \alias{push_front-methods}
 \alias{push_front,bamRange-method}
+%
 \alias{size}
 \alias{size-methods}
 \alias{size,bamRange-method}
+%
 \alias{stepNextAlign}
 \alias{stepNextAlign-methods}
 \alias{stepNextAlign,bamRange-method}
+%
 \alias{stepPrevAlign}
 \alias{stepPrevAlign-methods}
 \alias{stepPrevAlign,bamRange-method}
-\alias{rewind,bamRange-method}
+%
 \alias{writeCurrentAlign}
 \alias{writeCurrentAlign-methods}
 \alias{writeCurrentAlign,bamRange-method}
+%
 \title{Class \code{"bamRange"}}
+%
 \description{bamRange represents a double linked list of bamAlign objects which overlap with a defined region in a BAM-file. The bamRange-function retrieves all alignments in the depicted Range from BAM-File into a bamRange object. A bamRange object maintains a double-linked list of aligns. The list keeps a pointer to a current align structure for iteration purposes. Addidionally there are some summarizing values stored (which are displayed by \code{show}) which describe the range inside the reference from which the \code{bamRange} object was read (seqid,qrBegin,qrEnd,complex) and some statistis (size,qSeqMinLen,qSeqMaxLen).
 }
+%
 \section{Objects from the Class}{
 Objects can be created by calls of the form \code{range<-bamRange(reader, coords)}.}
 \section{Slots}{
@@ -68,6 +91,7 @@ Objects can be created by calls of the form \code{range<-bamRange(reader, coords
     \item{\code{range}:}{External pointer. Points to double linked list of bamAligns.}
   }
 }
+%
 \details{\code{bamRange} objects internally keep the following values:
 \tabular{rll}{
   1 \tab seqid      \tab 0-based index of reference sequence\cr
@@ -78,6 +102,7 @@ Objects can be created by calls of the form \code{range<-bamRange(reader, coords
   6 \tab qSeqMinLen \tab Minimum of query sequence length (= read length)\cr
   7 \tab qSeqMaxLen \tab Maximum of query sequence length (= read length)
 }
+For the \code{bamRange} class exists a rudimentary subsetting ('[') operator. '[' allows only for indexes > 0 and <= size(x). Index values are sorted in ascending order before values are extracted.
 }
 \section{Methods}{
   \describe{
@@ -110,22 +135,47 @@ Objects can be created by calls of the form \code{range<-bamRange(reader, coords
 ## A) Open reader
 ## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+idx<-paste(bam,"bai",sep=".")
 # Open BAM file
-reader<-bamReader(bam,idx=TRUE)
+reader<-bamReader(bam)
+# create.index(reader,idx)
+# Load BAM index file
+load.index(reader,idx)
+index.initialized(reader)   # Should return 'TRUE'
 
 ## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## B) Read range (see: getRefData)
+## B) Read range
 ## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+#  Find appropriate refid (=ID)
+#  Returns a data.frame with three columns:
+#  ID=refid, SN=Sequence Name, LN=Sequence length
 
+rdf<-getRefData(reader)
+head(rdf)
+
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# The sequence length (LN) also determines valid
+# range for start and stop coordinates
+# Invalid refid-, start- or stop-coordinates will
+# release an error.
 # coords: refid=0, start=0, stop=249250621
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
-bamClose(reader)
-
-# Access data in 'bamRange' 
+size(range)
+range<-bamRange(reader,coords,complex=TRUE)
+dfr<-as.data.frame(range)
 size(range)
 align<-getNextAlign(range)
 cigarData(align)
+rewind(range)
+
+# while(!is.null(align))
+# {
+#   print(position(align))
+#   align<-getNextAlign(range)
+# }
+bamClose(reader)
 
 ## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 ## C) Get print message and some other values
@@ -136,6 +186,11 @@ getSeqLen(range)
 getParams(range)
 getRefName(range)
 getAlignRange(range)
+
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## D) Rudimentary subsetting
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+range[1:5]
 }
 \keyword{classes}
 \keyword{bamReader}

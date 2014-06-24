@@ -188,6 +188,7 @@ Objects can be created by calls of the form \code{new("bamAlign", alignment)}.
 }
 \author{Wolfgang Kaisers}
 \examples{
+library(rbamtools)
 # retrieve align from file
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam)

@@ -20,28 +20,20 @@
 \details{Phred values are truncated by 127 (the maximum which can be represented by ASCII values). The function runs down each colum (sequence position) and returns the row index where the quantile exceeds the cumlated column values.}
 \author{Wolfgang Kaisers}
 \examples{
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## A) Read bamRange
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# A) Read bamRange
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
 bamClose(reader)
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## B) getQualDf
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# B) getQualDf
 qdf<-getQualDf(range)
 qdf[32:38,1:15]
 qdr<-getQualDf(range,prob=TRUE)
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## C) getQualQuantiles
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# C) getQualQuantiles
 quantiles<-c(0.1,0.25,0.5,0.75,0.9)
 qt<-getQualQuantiles(range,quantiles)
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## D) Plot
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# D) Plot
 plotQualQuant(range)
 }
 \keyword{getQualDf}
