@@ -1,0 +1,69 @@
+ 
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+## Change Log for package rbamtools
+## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+
+30.Okt.12	[initialize.gapList] Made printout message optional (verbose)
+
+31.Okt.12	[bamRange] Included test for initialized index
+
+31.Okt.12	Check for open reader in getHeader, getHeaderText, getRefCount
+
+01.Nov.12	[get_const_next_align] added to correct memory leak.
+
+08.Nov.12	Reading and writing big bamRanges (pure C, no R) valgrind checked.
+
+09.Nov.12	[bamCopy.bamReader] Added which allows refwise copying.
+
+31.Dec.12	gapSiteList class added
+
+11.Jan.13	bamGapList class added
+
+06.Feb.13	First successful test of bamGapList on 36 BAM-files (871.926 aligns/sec)
+
+20.Feb.13	Fixed Error in merge.bamGapList
+
+27.Feb.13	Renamed createIndex -> create.index and loadIndex
+		-> load.index and bamSiteList -> bamGapList
+
+18.Apr.13	Corrected some memory leaks in C-Code as reported by Brian Ripley
+
+22.Apr.13	Added (read-) name and revstrand to as.data.frame.bamRange (as proposed by Ander Muniategui)
+
+11.Jun.13	Added reader2fastq and range2fastq functions (2.5.3, valgrind tested)
+
+11.Jun.13	Changed signature for bamSave: added refid argument
+		(needed to prevent samtools crashes when creating BAM files
+		with single align regions and appropriate refSeqDict entries)
+		(2.5.4, valgrind tested)
+
+12.Jun.13	Added extractRanges function (2.5.5)
+
+21.Jun.13	Added bamAlign function (2.5.6)
+
+01.Jul.13	Added bamCount function (2.5.8)
+
+02.Jul.13	Added bamCountAll function, valgrind tested (2.5.9)
+
+18.Jul.13	Changed 'nGapAligns' to 'nAlignGaps (2.5.10) nGapAligns deprecated!
+
+24.JUl.13	Added alignQual function, valgrind tested (2.5.11)
+
+28.Jul.13	Added alignDepth function, valgrind tested (2.5.12)
+
+13.Aug.13	Added countTextLines function, valgrind tested (2.6.1)
+
+26.Aug.13	Removed "coerce" from Namespace declaration
+
+02.Sep.13	Changed "cat" to "message"
+
+10.Jun.14	On CRAN after correction of "Mis-alignment errors"
+
+19.Jun.14	Re-introduction of changes after resetting to 2.7.0 due to internal errors
+
+21.Jul.14	Updated plotAlignDepth: Option for plotting of exon positions added
+
+14.Jul.14	Added test directory
+
+28.Jul.14	Added NEWS and ChangeLog file
+

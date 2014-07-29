@@ -1,0 +1,17 @@
+CHANGES IN VERSION 2.9.14
+-------------------------
+
+NEW FEATURES
+
+    o Included this NEWS file and a ChangeLog file
+
+    o Added test directory (tests are executed on R CMD check)
+
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o Extended plotAlignDepth function: Option for plotting of exon positions added
+
+BUG FIXES
+
+    o (none)

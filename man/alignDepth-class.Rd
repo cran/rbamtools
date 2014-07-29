@@ -1,21 +1,27 @@
 \name{alignDepth-class}
 \Rdversion{1.1}
 \docType{class}
+%
 \alias{alignDepth-class}
+%
 \alias{alignDepth}
 \alias{alignDepth-methods}
 \alias{alignDepth,bamRange-method}
+%
 \alias{getDepth}
 \alias{getDepth-methods}
 \alias{getDepth,alignDepth-method}
+%
 \alias{getParams,alignDepth-method}
+%
 \alias{getPos}
 \alias{getPos-methods}
 \alias{getPos,alignDepth-method}
+%
 \alias{plotAlignDepth}
 \alias{plotAlignDepth-methods}
 \alias{plotAlignDepth,alignDepth-method}
-
+%
 \alias{show,alignDepth-method}
 \title{Class \code{"alignDepth"}}
 \description{
@@ -47,24 +53,40 @@ The \code{params} vector contains the following values:
 \section{Methods}{
   \describe{
   \item{show}{\code{signature(object = "alignDepth")}: Prints a short message with some summarizing data. }
-  \item{plotAlignDepth}{\code{signature(object = "alignDepth","...")}: Plots align depth in a line-plot.}
+  \item{plotAlignDepth}{\code{signature(object = "alignDepth",main, xlab, ylab, start, end, transcript, xlim, strand,"...")}: Plots align depth in a line-plot.}
   \item{getDepth}{\code{signature(object = "alignDepth")}: Returns numeric align depth values. }
   \item{getPos}{\code{signature(object = "alignDepth")}: Returns numeric position values for align depth. }
   \item{getParams}{\code{signature(object = "alignDepth")}: Returns numeric parameter values. }
 }}
 \author{Wolfgang Kaisers}
 \examples{
-library(rbamtools)
 # Open (indexed) BAM file
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
-# WASH7P coordinates
-start<-16500
-end<-16700
-coords<-as.integer(c(0,start,end))
+# Extract reads from BAM file
+xlim = c(10000, 30000)
+coords<-c(0,xlim[1], xlim[2])
 range<-bamRange(reader,coords)
 bamClose(reader)
+# Calculate align depth
 ad<-alignDepth(range)
 ad
+getParams(ad)
+# Prepare plotting parameter
+gene<-"WASH7P"
+ensg_id <- "ENSG00000227232"
+enst_id <- "ENST00000538476"
+# Get exon positions
+start<-c(14411,15000,15796,15904,16607,16748,16858,17233,17602,17915,18268,24737,29534)
+end <- c(14502,15038,15901,15947,16745,16765,17055,17364,17742,18061,18366,24891,29806)
+# Do plot
+plotAlignDepth(ad, lwd = 2, xlim = xlim,
+            main = paste("Align depth for gene",gene),
+            ylab = "Align depth", start = start,
+            end = end, strand = "-",
+            transcript = paste("Chromosome 1",
+            "\tGene", ensg_id, 
+            "\tTranscript ",enst_id)
+)
 }
 \keyword{bamAlign}

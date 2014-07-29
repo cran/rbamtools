@@ -77,7 +77,7 @@ bam_header_t *bam_header_read(bamFile fp)
 	if (i < 0) {
 		// If the file is a pipe, checking the EOF marker will *always* fail
 		// with ESPIPE.  Suppress the error message in this case.
-		if (errno != ESPIPE) Rprintf("[bam_reader_read] bgzf_check_EOF %s",strerror( errno ));
+		if (errno != ESPIPE) Rprintf("[bam_reader_read] bgzf_check_EOF %s\n",strerror( errno ));
 
 	}
 	else if (i == 0)

@@ -2,35 +2,33 @@
 \Rdversion{1.1}
 \docType{class}
 \alias{bamReader-class}
+%
 \alias{bamClose,bamReader-method}
+\alias{bamSave,bamReader-method}
+\alias{bamSort,bamReader-method}
+\alias{filename,bamReader-method}
+\alias{isOpen,bamReader-method}
+%
 \alias{bamCopy}
 \alias{bamCopy-methods}
 \alias{bamCopy,bamReader-method}
-\alias{bamSave,bamReader-method}
+%
 \alias{create.index}
 \alias{create.index-methods}
 \alias{create.index,bamReader-method}
+%
 \alias{getHeader,bamReader-method}
 \alias{getHeaderText,bamReader-method}
 \alias{getNextAlign,bamReader-method}
-\alias{getRefCoords}
-\alias{getRefCoords-methods}
-\alias{getRefCoords,bamReader-method}
-\alias{getRefCount}
-\alias{getRefCount-methods}
-\alias{getRefCount,bamReader-method}
-\alias{getRefData}
-\alias{getRefData-methods}
-\alias{getRefData,bamReader-method}
-\alias{filename,bamReader-method}
-\alias{bamSort,bamReader-method}
+%
 \alias{load.index}
 \alias{load.index,bamReader-method}
 \alias{initialize,bamReader-method}
+%
 \alias{index.initialized}
 \alias{index.initialized-methods}
 \alias{index.initialized,bamReader-method}
-\alias{isOpen,bamReader-method}
+%
 \alias{rewind}
 \alias{rewind-methods}
 \alias{rewind,bamReader-method}
@@ -72,7 +70,6 @@
 }
 \author{Wolfgang Kaisers}
 \examples{
-library(rbamtools)
 bam<- system.file("extdata", "accepted_hits.bam", package="rbamtools")
 idx<- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
 # Open BAM-file for reading
