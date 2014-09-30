@@ -9,25 +9,42 @@
 \alias{bamWriter,bamHeader-method}
 \alias{getHeaderText,bamHeader-method}
 \alias{initialize,bamHeader-method}
-\title{Class \code{"bamHeader"}}
-\description{bamHeader represents Data contained in the header Section of BAM-files.}
+%
+\title{Class \code{"bamHeader"}: Representation of data contained in the
+    header section of BAM files.}
+%
+\description{bamHeader represents data contained in the header Section 
+    of BAM-files.}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Creation of objects
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %   
 \section{Objects from the Class}{
 Objects can be created by calls of the form \code{header<-new("bamHeader")}.}
 \section{Slots}{
-  \describe{
-    \item{\code{header}:}{Object of class \code{"externalptr"}. Points to samtools bam_header_t struct.}
-  }
+    \describe{
+        \item{\code{header}:}{Object of class \code{"externalptr"}.
+            Points to samtools bam_header_t struct.}
+    }
 }
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Methods
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \section{Methods}{
-  \describe{
-    \item{getHeaderText}{\code{signature(x = "bamHeader")}: Returns textual representation of data stored in this class as desrcribed in SAM Format Specification.}
-	 }
+    \describe{
+        \item{getHeaderText}{\code{signature(x = "bamHeader")}:
+        Returns textual representation of data stored in this class as 
+        desrcribed in SAM Format Specification.}
+    }
 }
 \references{
-\verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}
+\verb{The SAM Format Specification (v1.4-r985).
+The SAM Format Specification Working Group. September 7, 2011.}
 \url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \author{Wolfgang Kaisers}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Examples
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \examples{
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 # Open bam file

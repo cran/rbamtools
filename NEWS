@@ -1,3 +1,30 @@
+CHANGES IN VERSION 2.10.0
+-------------------------
+
+NEW FEATURES
+
+    o Added support for Description (DS) segment in header program
+
+    o Added support for Supplementary Alignment (0x800) segment in alignment FLAG
+
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o The functions create.index, load.index and create.idx.batch will
+	be deprecated soon and replaced by createIndex, loadIndex and
+	createIdxBatch.
+
+BUG FIXES
+
+    o Fixed erroneous FLAG re-setting algorithm
+
+    o Enclosed range2fastq example in "\dontrun{}" in order to avoid
+	checking errors (File could not be opened) on OSX snowleopard
+
+    o Replaced rand() by runif() in (samtools) ksort.h
+	(due to NOTE in devel CRAN win-builder:
+		"Compiled code should not call (...) the C RNG")
+
 CHANGES IN VERSION 2.9.14
 -------------------------
 

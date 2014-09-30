@@ -61,9 +61,22 @@
 
 19.Jun.14	Re-introduction of changes after resetting to 2.7.0 due to internal errors
 
-21.Jul.14	Updated plotAlignDepth: Option for plotting of exon positions added
+21.Jul.14	Updated plotAlignDepth: Option for plotting of exon positions added (2.9.14)
 
 14.Jul.14	Added test directory
 
 28.Jul.14	Added NEWS and ChangeLog file
+
+29.Sep.14	Added support for DS segment in headerProgram (@PG).
+			Added support for Supplementary alignmnet FLAG.
+			Corrected error in resetting FLAG values.
+			(2.9.16)
+
+29.Sep.14	Replaced rand() by runif() in ksort.h
+			Enclosed range2fasta, reader2fastq examples in \dontrun{}
+			(File could not be opened error on OSX snowleopard)
+
+30.Sep.14	Prepared depreciation of create.index, load.index, create.idx.batch
+			which will be replaced by createIndex, loadIndex and createIdxBatch
+			(2.10.0)
 

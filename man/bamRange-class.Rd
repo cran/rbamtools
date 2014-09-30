@@ -79,19 +79,38 @@
 \alias{writeCurrentAlign-methods}
 \alias{writeCurrentAlign,bamRange-method}
 %
-\title{Class \code{"bamRange"}}
+\title{Class \code{"bamRange"}: Representation of genomic alignments in 
+defined regions.}
 %
-\description{bamRange represents a double linked list of bamAlign objects which overlap with a defined region in a BAM-file. The bamRange-function retrieves all alignments in the depicted Range from BAM-File into a bamRange object. A bamRange object maintains a double-linked list of aligns. The list keeps a pointer to a current align structure for iteration purposes. Addidionally there are some summarizing values stored (which are displayed by \code{show}) which describe the range inside the reference from which the \code{bamRange} object was read (seqid,qrBegin,qrEnd,complex) and some statistis (size,qSeqMinLen,qSeqMaxLen).
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Description
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+\description{bamRange represents a double linked list of bamAlign objects 
+which overlap with a defined region in a BAM-file.
+The bamRange-function retrieves all alignments in the depicted Range from
+BAM-File into a bamRange object.
+A bamRange object maintains a double-linked list of aligns. 
+The list keeps a pointer to a current align structure for iteration purposes.
+Addidionally there are some summarizing values stored (which are displayed
+by \code{show}) which describe the range inside the reference from which
+the \code{bamRange} object was read (seqid, qrBegin, qrEnd, complex) 
+and some statistis (size, qSeqMinLen, qSeqMaxLen).
 }
-%
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Creation of objects
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \section{Objects from the Class}{
-Objects can be created by calls of the form \code{range<-bamRange(reader, coords)}.}
+    Objects can be created by calls of the form 
+    \code{range<-bamRange(reader, coords)}.}
 \section{Slots}{
-  \describe{
-    \item{\code{range}:}{External pointer. Points to double linked list of bamAligns.}
-  }
+    \describe{
+        \item{\code{range}:}{External pointer. 
+            Points to double linked list of bamAligns.}
+    }
 }
-%
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Details
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \details{\code{bamRange} objects internally keep the following values:
 \tabular{rll}{
   1 \tab seqid      \tab 0-based index of reference sequence\cr
@@ -102,34 +121,88 @@ Objects can be created by calls of the form \code{range<-bamRange(reader, coords
   6 \tab qSeqMinLen \tab Minimum of query sequence length (= read length)\cr
   7 \tab qSeqMaxLen \tab Maximum of query sequence length (= read length)
 }
-For the \code{bamRange} class exists a rudimentary subsetting ('[') operator. '[' allows only for indexes > 0 and <= size(x). Index values are sorted in ascending order before values are extracted.
+For the \code{bamRange} class exists a rudimentary subsetting ('[') operator.
+'[' allows only for indexes > 0 and <= size(x).
+Index values are sorted in ascending order before values are extracted.
 }
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Methods
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \section{Methods}{
-  \describe{
-    \item{as.data.frame}{\code{signature(x = "bamRange")}: Returns data.frame representation of aligns. }
-    \item{coerce}{\code{signature(from = "bamRange", to = "data.frame")}: Coercion of bamRange to data.frame.}
-    \item{bamSave}{\code{signature(object = "bamRange")}: Saves aligns stored in this list to BAM-file via a bamWriter object. }
-    \item{getAlignRange}{\code{signature(object = "bamRange")}: Iterates through the list and returns 0-based position of the leftmost and rightmost matching nucleotide in range.}
-    \item{getNextAlign}{\code{signature(object = "bamRange")}: Returns next align from current position and shifts current position to next one. }
-    \item{getParams}{\code{signature(object = "bamRange")}: Returns named vector of stored parameters}
-    \item{getPrevAlign}{\code{signature(object = "bamRange")}: Returns previous align from current position and shifts current position to previous one. }
-    \item{getRefName}{\code{signature(.Object = "bamRange")}: Returns the reference sequence name from which the range was retrieved. }
-    \item{getQualDf}{\code{signature(object = "bamRange", prob="logical")}: Returns position dependent counts of phred quality values. }
-    \item{getQualQuantiles}{\code{signature(object = "bamRange", quantiles = "numeric")}: Returns position dependent quantile values for phred scores.}
-    \item{plotQualQuant}{\code{signature(object = "bamRange")}: Plots phred quality quantiles for sequence positions. }
-    \item{initialize}{\code{signature(.Object = "bamRange")}: Initializes bamRange object. }
-    \item{insertPastCurrent}{\code{signature(object = "bamRange")}: Inserts align past current position into list. }
-    \item{insertPreCurrent}{\code{signature(object = "bamRange")}: Insert align before current position into list. }
-    \item{pop_back}{\code{signature(object = "bamRange")}: Removes last align from list. }
-    \item{pop_front}{\code{signature(object = "bamRange")}: Removes first align from list. }
-    \item{push_back}{\code{signature(object = "bamRange")}: Adds align at the end of the list. }
-    \item{push_front}{\code{signature(object = "bamRange")}: Adds align at the front of the list. }
-    \item{rewind}{\code{signature(object = "bamRange")}: Shifts current align to position before first align. }
-    \item{size}{\code{signature(object = "bamRange")}: Returns number of aligns in list. }
-    \item{writeCurrentAlign}{\code{signature(object = "bamRange")}: Overwrites current align with given align. }
-	 }
+    \describe{
+        \item{as.data.frame}{\code{signature(x="bamRange")}:
+            Returns data.frame representation of aligns.}
+        %
+        \item{coerce}{\code{signature(from="bamRange", to="data.frame")}: 
+            Coercion of bamRange to data.frame.}
+        %
+        \item{bamSave}{\code{signature(object="bamRange")}:
+        Saves aligns stored in this list to BAM-file via a bamWriter object.}
+        %
+        \item{getAlignRange}{\code{signature(object="bamRange")}: 
+            Iterates through the list and returns 0-based position of the 
+            leftmost and rightmost matching nucleotide in range.}
+        %
+        \item{getNextAlign}{\code{signature(object="bamRange")}: 
+            Returns next align from current position and shifts current
+            position to next one.}
+        %
+        \item{getParams}{\code{signature(object="bamRange")}:
+            Returns named vector of stored parameters}
+        %
+        \item{getPrevAlign}{\code{signature(object="bamRange")}:
+            Returns previous align from current position and shifts current
+                position to previous one.}
+        %
+        \item{getRefName}{\code{signature(.Object="bamRange")}: 
+            Returns the reference sequence name from which the range was
+            retrieved.}
+        %
+        \item{getQualDf}{\code{signature(object="bamRange", prob="logical")}: 
+            Returns position dependent counts of phred quality values.}
+        %
+        \item{getQualQuantiles}{\code{signature(object="bamRange",
+            quantiles="numeric")}:
+            Returns position dependent quantile values for phred scores.}
+        %
+        \item{plotQualQuant}{\code{signature(object="bamRange")}: 
+            Plots phred quality quantiles for sequence positions.}
+        %
+        \item{initialize}{\code{signature(.Object="bamRange")}:
+            Initializes bamRange object.}
+        %
+        \item{insertPastCurrent}{\code{signature(object="bamRange")}: 
+            Inserts align past current position into list.}
+        %
+        \item{insertPreCurrent}{\code{signature(object="bamRange")}: 
+            Insert align before current position into list.}
+        %
+        \item{pop_back}{\code{signature(object="bamRange")}: 
+            Removes last align from list.}
+        %
+        \item{pop_front}{\code{signature(object="bamRange")}:
+            Removes first align from list.}
+        %
+        \item{push_back}{\code{signature(object="bamRange")}: 
+            Adds align at the end of the list.}
+        %
+        \item{push_front}{\code{signature(object="bamRange")}: 
+            Adds align at the front of the list.}
+        %
+        \item{rewind}{\code{signature(object="bamRange")}: 
+            Shifts current align to position before first align.}
+        %
+        \item{size}{\code{signature(object="bamRange")}: 
+            Returns number of aligns in list.}
+        %
+        \item{writeCurrentAlign}{\code{signature(object="bamRange")}:
+            Overwrites current align with given align.}
+    }
 }
 \author{Wolfgang Kaisers}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Examples
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \examples{
 ## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 ## A) Open reader
@@ -138,10 +211,10 @@ bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
 idx<-paste(bam,"bai",sep=".")
 # Open BAM file
 reader<-bamReader(bam)
-# create.index(reader,idx)
+\dontrun{create.index(reader,idx)}
 # Load BAM index file
-load.index(reader,idx)
-index.initialized(reader)   # Should return 'TRUE'
+loadIndex(reader,idx)
+indexInitialized(reader)   # Should return 'TRUE'
 
 ## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
 ## B) Read range
@@ -170,11 +243,13 @@ align<-getNextAlign(range)
 cigarData(align)
 rewind(range)
 
-# while(!is.null(align))
-# {
-#   print(position(align))
-#   align<-getNextAlign(range)
-# }
+\dontrun{
+while(!is.null(align))
+{
+    print(position(align))
+    align<-getNextAlign(range)
+}
+}
 bamClose(reader)
 
 ## + + + + + + + + + + + + + + + + + + + + + + + + + + + ##

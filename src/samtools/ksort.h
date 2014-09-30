@@ -60,6 +60,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Used for runif (line 265)
+#include <Rmath.h>
+
 typedef struct {
 	void *left, *right;
 	int depth;
@@ -254,12 +257,18 @@ typedef struct {
 	void ks_shuffle_##name(size_t n, type_t a[])						\
 	{																	\
 		int i, j;														\
+		GetRNGstate();													\
 		for (i = n; i > 1; --i) {										\
 			type_t tmp;													\
-			j = (int)(((double)rand()/RAND_MAX) * i);									\
+			/***** replaced  *******/									\
+			/* j = (int)(((double)rand()/RAND_MAX) * i); */				\
+			j = (int)((runif(0,1)) * i);								\
+			/***** * * * * * *******/									\
 			tmp = a[j]; a[j] = a[i-1]; a[i-1] = tmp;					\
 		}																\
+		PutRNGstate();													\
 	}
+	//			j = (int)(((double)rand()/RAND_MAX) * i);
 
 #define ks_mergesort(name, n, a, t) ks_mergesort_##name(n, a, t)
 #define ks_introsort(name, n, a) ks_introsort_##name(n, a)

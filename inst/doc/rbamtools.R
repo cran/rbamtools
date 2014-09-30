@@ -28,26 +28,26 @@ reader <- bamReader(bam)
 ###################################################
 ### code chunk number 4: rbamtools.Rnw:597-598 (eval = FALSE)
 ###################################################
-## create.index(reader, idx_filename="index_file_name.bai")
+## createIndex(reader, idx_filename="index_file_name.bai")
 
 
 ###################################################
 ### code chunk number 5: rbamtools.Rnw:605-606 (eval = FALSE)
 ###################################################
-## create.index(reader)
+## createIndex(reader)
 
 
 ###################################################
 ### code chunk number 6: rbamtools.Rnw:613-615
 ###################################################
 idx <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
-load.index(reader, idx)
+loadIndex(reader, idx)
 
 
 ###################################################
 ### code chunk number 7: rbamtools.Rnw:618-619
 ###################################################
-index.initialized(reader)
+indexInitialized(reader)
 
 
 ###################################################
@@ -92,11 +92,11 @@ addSeq(dict, SN="chr16", LN=90354753)
 dict
 
 prog <- new("headerProgram")
-setVal(prog, "ID", "1")
+setVal(prog, "ID", "TopHat")
 setVal(prog, "PN", "tophat")
 setVal(prog, "CL",
     "tophat --library-type fr-unstranded hs_ucsc_index reads.fastq")
-
+setVal(prog, "DS", "Description")
 setVal(prog, "VN", "2.0.0")
 bh <- bamHeaderText(head=headl, dict=dict, prog=prog)
 header <- bamHeader(bh)
@@ -335,7 +335,7 @@ xtable(ncs, digits=c(0, 0, 0, 0, 0, 0, 0, 2, 2))
 ###################################################
 ### code chunk number 39: rbamtools.Rnw:1182-1183 (eval = FALSE)
 ###################################################
-## create.idx.batch(bam)
+## createIdxBatch(bam)
 
 
 ###################################################

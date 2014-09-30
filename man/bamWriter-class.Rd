@@ -9,33 +9,61 @@
 \alias{filename,bamWriter-method}
 \alias{initialize,bamWriter-method}
 \alias{isOpen,bamWriter-method}
-\title{Class \code{"bamWriter"}}
+\title{Class \code{"bamWriter"}: Representation of a file connection to
+    a BAM file for writing access.}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Description
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \description{
-The bamWriter class represents the writing connection to a BAM-file. Usually, this class is used to create an empty BAM-file and to copy aligns from another BAM-file into the new file.
+The bamWriter class represents the writing connection to a BAM-file.
+Usually, this class is used to create an empty BAM-file and to copy aligns
+from another BAM-file into the new file.
 }
 \section{Objects from the Class}{
-Objects can be created by calls of the form \code{writer<-bamWriter(reader,filename)}.
+    Objects can be created by calls of the form
+    \code{writer<-bamWriter(reader,filename)}.
 }
+%
 \section{Slots}{
-  \describe{
-    \item{\code{filename}:}{Object of class \code{"character"}.  }
-    \item{\code{writer}:}{Object of class \code{"externalptr"}. Points to samtools struct samtile_t. }
-  }
+    \describe{
+        \item{\code{filename}:}{Object of class \code{"character"}.}
+        %
+        \item{\code{writer}:}{Object of class \code{"externalptr"}.
+            Points to samtools struct samtile_t. }
+    }
 }
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Methods
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \section{Methods}{
-  \describe{
-    \item{bamClose}{\code{signature(object = "bamWriter")}: Closes BAM file. }
-    \item{bamSave}{\code{signature(object = "bamWriter",value = "bamAlign" or "bamRange",refid = "numeric")}: Saves bamAlign or bamRange object to BAM-file. refid will be overwritten in all written aligns. }
-    \item{filename}{\code{signature(object = "bamWriter")}: Returns filename of opened BAM-file. }
-    \item{initialize}{\code{signature(.Object = "bamWriter")}: Opens BAM file for writing.}
-    \item{isOpen}{\code{signature(object = "bamWriter")}: Returns TRUE when file connection is open. }
-	 }
+    \describe{
+        \item{bamClose}{\code{signature(object = "bamWriter")}:
+            Closes BAM file. }
+        %
+        \item{bamSave}{\code{signature(object = "bamWriter",
+            value = "bamAlign" or "bamRange",refid = "numeric")}:
+            Saves bamAlign or bamRange object to BAM-file.
+            refid will be overwritten in all written aligns. }
+        %
+        \item{filename}{\code{signature(object = "bamWriter")}: 
+            Returns filename of opened BAM-file. }
+        %
+        \item{initialize}{\code{signature(.Object = "bamWriter")}:
+            Opens BAM file for writing.}
+        %
+        \item{isOpen}{\code{signature(object = "bamWriter")}: 
+            Returns TRUE when file connection is open. }
+    }
 }
 \references{
-\verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}
+\verb{The SAM Format Specification (v1.4-r985). 
+The SAM Format Specification Working Group. September 7, 2011.}
 \url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \author{Wolfgang Kaisers}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Examples
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \examples{
 # +++++++++++++++++++++++++++++++++++++++++++++++
 # In this example, we copy some complex (i.e. interesting) aligns
@@ -46,7 +74,7 @@ idx<-paste(bam,"bai",sep=".")
 # +++++++++++++++++++++++++++++++++++++++++++++++
 # Open BAM file and read complex aligns from chr1
 reader<-bamReader(bam)
-load.index(reader,idx)
+loadIndex(reader,idx)
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords,complex=TRUE)
 bamClose(reader)
@@ -73,9 +101,11 @@ header<-bamHeader(bh)
 
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #  Copy aligns in range into new BAM file
-writer<-bamWriter(header,"chr1_complex.bam")
-bamSave(writer,range,refid=0)
+\dontrun{
+writer<-bamWriter(header, "chr1_complex.bam")
+bamSave(writer, range, refid=0)
 bamClose(writer)
+}
 # +++++++++++++++++++++++++++++++++++++++++++++++
 }
 \keyword{classes}

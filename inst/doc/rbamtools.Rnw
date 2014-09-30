@@ -595,7 +595,7 @@ usually named as the BAM file itself with an added suffix ".bai". An index file
 can be created with:
 %
 <<eval=FALSE>>=
-create.index(reader, idx_filename="index_file_name.bai")
+createIndex(reader, idx_filename="index_file_name.bai")
 @
 %
 Omitting the \verb|idx_filename| argument results in adding the ".bai" suffix
@@ -603,7 +603,7 @@ to the filename of the BAM file which is then automatically located in the
 same directory as the BAM file itself:
 %
 <<eval=FALSE>>=
-create.index(reader)
+createIndex(reader)
 @
 The creation of indexes for large BAM files (10 GB) takes some minutes time but
 can readily be done with this routine and of course has to be done only once per
@@ -612,11 +612,11 @@ file.\\
 The index files must be loaded before they can be used:
 <<echo=TRUE>>=
 idx <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
-load.index(reader, idx)
+loadIndex(reader, idx)
 @
 The reader object can be checked for for loaded index with:
 <<echo=TRUE>>=
-index.initialized(reader)
+indexInitialized(reader)
 @
 A shortcut for opening a BAM file and loading the "standard" index at the same
 time is:
@@ -711,11 +711,11 @@ addSeq(dict, SN="chr16", LN=90354753)
 dict
 
 prog <- new("headerProgram")
-setVal(prog, "ID", "1")
+setVal(prog, "ID", "TopHat")
 setVal(prog, "PN", "tophat")
 setVal(prog, "CL",
     "tophat --library-type fr-unstranded hs_ucsc_index reads.fastq")
-
+setVal(prog, "DS", "Description")
 setVal(prog, "VN", "2.0.0")
 bh <- bamHeaderText(head=headl, dict=dict, prog=prog)
 header <- bamHeader(bh)
@@ -1164,9 +1164,9 @@ xtable(ncs, digits=c(0, 0, 0, 0, 0, 0, 0, 2, 2))
 
 %% + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + %%
 
-\subsection{create.idx.batch}
+\subsection{createIdxBatch}
 
-The {create.idx.batch} is intended to create index files for a batch 
+The {createIdxBatch} is intended to create index files for a batch 
 of given BAM-files. The names of the created BAM-index files can optionally be
 added. The standard name for BAM-index files is the name of the BAM file plus
 an added suffix ".bai".\\
@@ -1180,7 +1180,7 @@ Sometimes (especially when BAM-files have been copied), they content may be
 corrupt. Rebuilding index files is a way to check the integrity of a BAM-file.
 \\
 <<eval=FALSE>>=
-create.idx.batch(bam)
+createIdxBatch(bam)
 @
 
 

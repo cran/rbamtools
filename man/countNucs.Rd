@@ -6,7 +6,14 @@
 \alias{countNucs,bamAlign-method}
 \alias{countNucs,bamRange-method}
 \title{Counting nucleotides in \code{bamAlign} and \code{bamRange}}
-\description{The function counts occurrence of the Nucleotides A,C,G,T in \code{bamAlign} and \code{bamRange} objects. Any other values will be combined counted in the last value (N). The function returns an integer vector of length 5. The names indicate which position contains the count value each nucleotide.
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Description
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+\description{The function counts occurrence of the Nucleotides A,C,G,T in 
+\code{bamAlign} and \code{bamRange} objects. 
+Any other values will be combined counted in the last value (N).
+The function returns an integer vector of length 5. 
+The names indicate which position contains the count value each nucleotide.
 }
 \usage{countNucs(object)}
 \arguments{
@@ -14,10 +21,14 @@
 }
 \value{Integer (of length 4).}
 \author{Wolfgang Kaisers}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
+% Examples
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \examples{
 # A) For bamAlign
 align<-bamAlign("HWUSI-0001","ACCGGGTTTT","Qual/Strng","4M10N6M",refid=0,position=100)
 countNucs(align)
+
 # B) For bamRange
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)

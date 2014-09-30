@@ -399,7 +399,7 @@ static RAZF* razf_open_r(int fd, int _load_index){
 	rz->block_off = 0;
 	if(ext_len < 7 || memcmp(((unsigned char*)rz->inbuf) + ext_off, c, 4) != 0) return rz;
 	if(((((unsigned char*)rz->inbuf)[ext_off + 5] << 8) | ((unsigned char*)rz->inbuf)[ext_off + 6]) != RZ_BLOCK_SIZE){
-		Rprintf( " -- WARNING: RZ_BLOCK_SIZE is not %d, treat source as gz file.  in %s -- %s:%d --\n", RZ_BLOCK_SIZE, __FUNCTION__, __FILE__, __LINE__);
+		Rprintf( " -- WARNING: RZ_BLOCK_SIZE is not %d, treat source as gz file.  in %s -- %s:%d --\n", RZ_BLOCK_SIZE, "razf_open_r", __FILE__, __LINE__);
 		return rz;
 	}
 	rz->load_index = _load_index;

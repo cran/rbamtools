@@ -91,22 +91,22 @@ static const unsigned char FASTQ_LETTERS[256] = {
 
 
 
-static R_INLINE void clear_buf(char *c,unsigned n)
+static R_INLINE void clear_buf(char *c, unsigned n)
 {
 	unsigned i;
-	for(i=0;i<n;++i)
+	for(i=0; i<n; ++i)
 		c[i]=(char)0;
 }
 
-static R_INLINE void set_flag(bam1_t *align,_Bool val,unsigned pattern)
+static R_INLINE void set_flag(bam1_t *align, _Bool val, unsigned pattern)
 {
 	if(val)
-		align->core.flag=(align->core.flag) | pattern;
+		align->core.flag |= pattern;
 	else
-		align->core.flag=(align->core.flag) & !pattern;
+		align->core.flag &= ~pattern;
 }
 
-static R_INLINE int cigar2str(char *c,const bam1_t *align)
+static R_INLINE int cigar2str(char *c, const bam1_t *align)
 {
 	if(align==NULL)
 		return 0;
@@ -115,7 +115,7 @@ static R_INLINE int cigar2str(char *c,const bam1_t *align)
 	uint32_t *cigar=bam1_cigar(align);
 	char buf[128];
 
-	sprintf(buf,"%lu",(unsigned long) (cigar[0] >> BAM_CIGAR_SHIFT));
+	sprintf(buf, "%lu", (unsigned long) (cigar[0] >> BAM_CIGAR_SHIFT));
 	strcpy(c,buf);
 	if((cigar[0]&BAM_CIGAR_MASK)>=strlen(CIGAR_TYPES))	// Error
 		return 0;
@@ -3582,6 +3582,20 @@ SEXP bam_align_is_pcr_or_optical_dup(SEXP pAlign)
 	return ans;
 }
 
+SEXP bam_align_is_supplementary_align(SEXP pAlign)
+{
+	if(TYPEOF(pAlign)!=EXTPTRSXP)
+		error("[bam_align_is_supplementary_align] No external pointer!");
+
+	bam1_t *align=(bam1_t*)(R_ExternalPtrAddr(pAlign));
+
+	SEXP ans;
+	PROTECT(ans=allocVector(LGLSXP,1));
+	LOGICAL(ans)[0]=align->core.flag & BAM_FSUPPLEMENTARY;
+	UNPROTECT(1);
+	return ans;
+}
+
 SEXP bam_align_get_flag(SEXP pAlign)
 {
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
@@ -3742,6 +3756,20 @@ SEXP bam_align_set_is_pcr_or_optical_dup(SEXP pAlign, SEXP val)
 	return R_NilValue;
 }
 
+
+SEXP bam_align_set_is_supplementary_align(SEXP pAlign, SEXP val)
+{
+	if(TYPEOF(pAlign)!=EXTPTRSXP)
+		error("[bam_align_set_is_supplementary_align] No external pointer!");
+	if(TYPEOF(val)!=LGLSXP)
+		error("[bam_align_set_is_supplementary_align] No bool value!");
+
+	bam1_t *align=(bam1_t*)(R_ExternalPtrAddr(pAlign));
+	set_flag(align,*(LOGICAL(AS_LOGICAL(val))),BAM_FSUPPLEMENTARY);
+	return R_NilValue;
+}
+
+
 SEXP bam_align_set_flag(SEXP pAlign, SEXP val)
 {
 	if(TYPEOF(pAlign)!=EXTPTRSXP)
@@ -3753,6 +3781,9 @@ SEXP bam_align_set_flag(SEXP pAlign, SEXP val)
 	align->core.flag=*INTEGER(val);
 	return R_NilValue;
 }
+
+
+
 
 SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals)
 {
@@ -4443,188 +4474,188 @@ SEXP count_text_lines(SEXP pInfile)
 void R_init_rbamtools(DllInfo *info)
 {
 	R_CallMethodDef cmd[] ={
-			{ "is_nil_externalptr", 				(DL_FUNC) &is_nil_externalptr,					1},
+		{ "is_nil_externalptr", 					(DL_FUNC) &is_nil_externalptr,					1},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * bamHeader
-			 */
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * bamHeader
+		 */
 
-			{ "init_bam_header",					(DL_FUNC) &init_bam_header,						1},
-			{ "bam_header_get_header_text",			(DL_FUNC) &bam_header_get_header_text,			1},
+		{ "init_bam_header",						(DL_FUNC) &init_bam_header,						1},
+		{ "bam_header_get_header_text",				(DL_FUNC) &bam_header_get_header_text,			1},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * BamWriter
-			 */
-			{ "bam_writer_open",					(DL_FUNC) &bam_writer_open,						2},
-			{ "bam_reader_open_writer",				(DL_FUNC) &bam_reader_open_writer,				2},
-			{ "bam_writer_save_align",				(DL_FUNC) &bam_writer_save_align,				3},
-			{ "bam_writer_close",					(DL_FUNC) &bam_writer_close,					1},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * BamWriter
+		 */
+		{ "bam_writer_open",						(DL_FUNC) &bam_writer_open,						2},
+		{ "bam_reader_open_writer",					(DL_FUNC) &bam_reader_open_writer,				2},
+		{ "bam_writer_save_align",					(DL_FUNC) &bam_writer_save_align,				3},
+		{ "bam_writer_close",						(DL_FUNC) &bam_writer_close,					1},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * BamReader
-			 */
-			{ "bam_reader_open",					(DL_FUNC) &bam_reader_open,						1},
-			{ "bam_reader_close",					(DL_FUNC) &bam_reader_close,					1},
-			{ "bam_reader_get_header_text",			(DL_FUNC) &bam_reader_get_header_text,			1},
-			{ "bam_reader_get_ref_count",   		(DL_FUNC) &bam_reader_get_ref_count,    		1},
-			{ "bam_reader_get_target_name",			(DL_FUNC) &bam_reader_get_target_name,  		2},
-			{ "bam_reader_get_ref_data",			(DL_FUNC) &bam_reader_get_ref_data,				1},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * BamReader
+		 */
+		{ "bam_reader_open",						(DL_FUNC) &bam_reader_open,						1},
+		{ "bam_reader_close",						(DL_FUNC) &bam_reader_close,					1},
+		{ "bam_reader_get_header_text",				(DL_FUNC) &bam_reader_get_header_text,			1},
+		{ "bam_reader_get_ref_count",   			(DL_FUNC) &bam_reader_get_ref_count,    		1},
+		{ "bam_reader_get_target_name",				(DL_FUNC) &bam_reader_get_target_name,  		2},
+		{ "bam_reader_get_ref_data",				(DL_FUNC) &bam_reader_get_ref_data,				1},
 
-			{ "bam_reader_create_index",			(DL_FUNC) &bam_reader_create_index,				2},
-			{ "bam_reader_load_index",				(DL_FUNC) &bam_reader_load_index,				1},
-			{ "bam_reader_unload_index",			(DL_FUNC) &bam_reader_unload_index,				1},
-			{ "bam_reader_get_next_align",  		(DL_FUNC) &bam_reader_get_next_align,   		1},
-			{ "bam_reader_save_aligns",				(DL_FUNC) &bam_reader_save_aligns,  			2},
-			{ "bam_reader_sort_file",				(DL_FUNC) &bam_reader_sort_file,				4},
+		{ "bam_reader_create_index",				(DL_FUNC) &bam_reader_create_index,				2},
+		{ "bam_reader_load_index",					(DL_FUNC) &bam_reader_load_index,				1},
+		{ "bam_reader_unload_index",				(DL_FUNC) &bam_reader_unload_index,				1},
+		{ "bam_reader_get_next_align",  			(DL_FUNC) &bam_reader_get_next_align,   		1},
+		{ "bam_reader_save_aligns",					(DL_FUNC) &bam_reader_save_aligns,  			2},
+		{ "bam_reader_sort_file",					(DL_FUNC) &bam_reader_sort_file,				4},
 
-			{ "bam_reader_get_header",				(DL_FUNC) &bam_reader_get_header,				1},
-			{ "bam_reader_tell",					(DL_FUNC) &bam_reader_tell,						1},
-			{ "bam_reader_seek",					(DL_FUNC) &bam_reader_seek,						2},
-			{ "bam_reader_write_fastq",  			(DL_FUNC) &bam_reader_write_fastq,   			3},
-			{ "bam_reader_write_fastq_index",		(DL_FUNC) &bam_reader_write_fastq_index,  		4},
-			{ "bam_count",							(DL_FUNC) &bam_count,							3},
+		{ "bam_reader_get_header",					(DL_FUNC) &bam_reader_get_header,				1},
+		{ "bam_reader_tell",						(DL_FUNC) &bam_reader_tell,						1},
+		{ "bam_reader_seek",						(DL_FUNC) &bam_reader_seek,						2},
+		{ "bam_reader_write_fastq",  				(DL_FUNC) &bam_reader_write_fastq,   			3},
+		{ "bam_reader_write_fastq_index",			(DL_FUNC) &bam_reader_write_fastq_index,  		4},
+		{ "bam_count",								(DL_FUNC) &bam_count,							3},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * gap_list
-			 */
-			{ "create_gap_list",					(DL_FUNC) &create_gap_list,						0},
-			{ "gap_list_fetch",						(DL_FUNC) &gap_list_fetch,						3},
-			{ "gap_list_get_df",					(DL_FUNC) &gap_list_get_df,						1},
-			{ "gap_list_get_size",  				(DL_FUNC) &gap_list_get_size,   				1},
-			{ "gap_list_get_nAligns",				(DL_FUNC) &gap_list_get_nAligns,  				1},
-			{ "gap_list_get_nAlignGaps",			(DL_FUNC) &gap_list_get_nAlignGaps,				1},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * gap_list
+		 */
+		{ "create_gap_list",						(DL_FUNC) &create_gap_list,						0},
+		{ "gap_list_fetch",							(DL_FUNC) &gap_list_fetch,						3},
+		{ "gap_list_get_df",						(DL_FUNC) &gap_list_get_df,						1},
+		{ "gap_list_get_size",  					(DL_FUNC) &gap_list_get_size,   				1},
+		{ "gap_list_get_nAligns",					(DL_FUNC) &gap_list_get_nAligns,  				1},
+		{ "gap_list_get_nAlignGaps",				(DL_FUNC) &gap_list_get_nAlignGaps,				1},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * gap_site_list
-			 */
-			{ "create_gap_site_list",				(DL_FUNC) &create_gap_site_list,				0},
-			{ "gap_site_list_fetch",				(DL_FUNC) &gap_site_list_fetch,					3},
-			{ "gap_site_list_get_df",				(DL_FUNC) &gap_site_list_get_df,				1},
-			{ "gap_site_list_get_ref_id",  			(DL_FUNC) &gap_site_list_get_ref_id,   			1},
-			{ "gap_site_list_get_size",				(DL_FUNC) &gap_site_list_get_size,  			1},
-			{ "gap_site_list_get_nAligns",			(DL_FUNC) &gap_site_list_get_nAligns,			1},
-			{ "gap_site_list_get_nAlignGaps",		(DL_FUNC) &gap_site_list_get_nAlignGaps,		1},
-			{ "gap_site_list_merge",				(DL_FUNC) &gap_site_list_merge,					3},
-			{ "gap_site_list_copy",					(DL_FUNC) &gap_site_list_copy,					1},
-			{ "bitmask_r_zip",  					(DL_FUNC) &bitmask_r_zip,   					2},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * gap_site_list
+		 */
+		{ "create_gap_site_list",					(DL_FUNC) &create_gap_site_list,				0},
+		{ "gap_site_list_fetch",					(DL_FUNC) &gap_site_list_fetch,					3},
+		{ "gap_site_list_get_df",					(DL_FUNC) &gap_site_list_get_df,				1},
+		{ "gap_site_list_get_ref_id",  				(DL_FUNC) &gap_site_list_get_ref_id,   			1},
+		{ "gap_site_list_get_size",					(DL_FUNC) &gap_site_list_get_size,  			1},
+		{ "gap_site_list_get_nAligns",				(DL_FUNC) &gap_site_list_get_nAligns,			1},
+		{ "gap_site_list_get_nAlignGaps",			(DL_FUNC) &gap_site_list_get_nAlignGaps,		1},
+		{ "gap_site_list_merge",					(DL_FUNC) &gap_site_list_merge,					3},
+		{ "gap_site_list_copy",						(DL_FUNC) &gap_site_list_copy,					1},
+		{ "bitmask_r_zip",  						(DL_FUNC) &bitmask_r_zip,   					2},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * gap_site_list_list
-			 */
-			{ "gap_site_ll_init",					(DL_FUNC) &gap_site_ll_init,					0},
-			{ "gap_site_ll_fetch",					(DL_FUNC) &gap_site_ll_fetch,					5},
-			{ "gap_site_ll_get_df",					(DL_FUNC) &gap_site_ll_get_df,					2},
-			{ "gap_site_ll_get_size",   			(DL_FUNC) &gap_site_ll_get_size,    			1},
-			{ "gap_site_ll_get_nAligns",			(DL_FUNC) &gap_site_ll_get_nAligns,  			1},
-			{ "gap_site_ll_get_nAlignGaps",			(DL_FUNC) &gap_site_ll_get_nAlignGaps,			1},
-			{ "gap_site_ll_add_curr_pp",			(DL_FUNC) &gap_site_ll_add_curr_pp,				3},
-			{ "gap_site_ll_add_merge_pp",			(DL_FUNC) &gap_site_ll_add_merge_pp,			4},
-			{ "gap_site_ll_reset_refid",			(DL_FUNC) &gap_site_ll_reset_refid,				1},
-			{ "gap_site_ll_get_summary_df",  		(DL_FUNC) &gap_site_ll_get_summary_df,   		1},
-			{ "gap_site_ll_set_curr_first",			(DL_FUNC) &gap_site_ll_set_curr_first,  		1},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * gap_site_list_list
+		 */
+		{ "gap_site_ll_init",						(DL_FUNC) &gap_site_ll_init,					0},
+		{ "gap_site_ll_fetch",						(DL_FUNC) &gap_site_ll_fetch,					5},
+		{ "gap_site_ll_get_df",						(DL_FUNC) &gap_site_ll_get_df,					2},
+		{ "gap_site_ll_get_size",   				(DL_FUNC) &gap_site_ll_get_size,    			1},
+		{ "gap_site_ll_get_nAligns",				(DL_FUNC) &gap_site_ll_get_nAligns,  			1},
+		{ "gap_site_ll_get_nAlignGaps",				(DL_FUNC) &gap_site_ll_get_nAlignGaps,			1},
+		{ "gap_site_ll_add_curr_pp",				(DL_FUNC) &gap_site_ll_add_curr_pp,				3},
+		{ "gap_site_ll_add_merge_pp",				(DL_FUNC) &gap_site_ll_add_merge_pp,			4},
+		{ "gap_site_ll_reset_refid",				(DL_FUNC) &gap_site_ll_reset_refid,				1},
+		{ "gap_site_ll_get_summary_df",  			(DL_FUNC) &gap_site_ll_get_summary_df,   		1},
+		{ "gap_site_ll_set_curr_first",				(DL_FUNC) &gap_site_ll_set_curr_first,  		1},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * bam_range
-			 */
-			{ "bam_range_init",						(DL_FUNC) &bam_range_init,						0},
-			{ "bam_range_fetch",					(DL_FUNC) &bam_range_fetch,						4},
-			{ "bam_range_get_size",					(DL_FUNC) &bam_range_get_size,					1},
-			{ "bam_range_get_coords",   			(DL_FUNC) &bam_range_get_coords,    			1},
-			{ "bam_range_get_params",				(DL_FUNC) &bam_range_get_params,  				1},
-			{ "bam_range_get_refname",				(DL_FUNC) &bam_range_get_refname,				1},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * bam_range
+		 */
+		{ "bam_range_init",							(DL_FUNC) &bam_range_init,						0},
+		{ "bam_range_fetch",						(DL_FUNC) &bam_range_fetch,						4},
+		{ "bam_range_get_size",						(DL_FUNC) &bam_range_get_size,					1},
+		{ "bam_range_get_coords",   				(DL_FUNC) &bam_range_get_coords,    			1},
+		{ "bam_range_get_params",					(DL_FUNC) &bam_range_get_params,  				1},
+		{ "bam_range_get_refname",					(DL_FUNC) &bam_range_get_refname,				1},
 
-			{ "bam_range_get_align_range",			(DL_FUNC) &bam_range_get_align_range,			1},
-			{ "bam_range_get_next_align",			(DL_FUNC) &bam_range_get_next_align,			1},
-			{ "bam_range_get_prev_align",			(DL_FUNC) &bam_range_get_prev_align,			1},
-			{ "bam_range_step_next_align",			(DL_FUNC) &bam_range_step_next_align,  			1},
-			{ "bam_range_step_prev_align",			(DL_FUNC) &bam_reader_sort_file,				1},
+		{ "bam_range_get_align_range",				(DL_FUNC) &bam_range_get_align_range,			1},
+		{ "bam_range_get_next_align",				(DL_FUNC) &bam_range_get_next_align,			1},
+		{ "bam_range_get_prev_align",				(DL_FUNC) &bam_range_get_prev_align,			1},
+		{ "bam_range_step_next_align",				(DL_FUNC) &bam_range_step_next_align,  			1},
+		{ "bam_range_step_prev_align",				(DL_FUNC) &bam_reader_sort_file,				1},
+		{ "bam_range_get_align_df",					(DL_FUNC) &bam_range_get_align_df,				1},
+		{ "bam_range_write",						(DL_FUNC) &bam_range_write,						3},
+		{ "bam_range_wind_back",					(DL_FUNC) &bam_range_wind_back,					1},
+		{ "bam_range_push_back",  					(DL_FUNC) &bam_range_push_back,   				2},
+		{ "bam_range_pop_back",						(DL_FUNC) &bam_range_pop_back,  				1},
+		{ "bam_range_push_front",					(DL_FUNC) &bam_range_push_front,				2},
 
-			{ "bam_range_get_align_df",				(DL_FUNC) &bam_range_get_align_df,				1},
-			{ "bam_range_write",					(DL_FUNC) &bam_range_write,						3},
-			{ "bam_range_wind_back",				(DL_FUNC) &bam_range_wind_back,					1},
-			{ "bam_range_push_back",  				(DL_FUNC) &bam_range_push_back,   				2},
-			{ "bam_range_pop_back",					(DL_FUNC) &bam_range_pop_back,  				1},
-			{ "bam_range_push_front",				(DL_FUNC) &bam_range_push_front,				2},
+		{ "bam_range_pop_front",					(DL_FUNC) &bam_range_pop_front,					1},
+		{ "bam_range_write_current_align",			(DL_FUNC) &bam_range_write_current_align,		2},
+		{ "bam_range_insert_past_curr_align",		(DL_FUNC) &bam_range_insert_past_curr_align,	2},
+		{ "bam_range_insert_pre_curr_align",		(DL_FUNC) &bam_range_insert_pre_curr_align,    	2},
+		{ "bam_range_mv_curr_align",				(DL_FUNC) &bam_range_mv_curr_align,  			2},
+		{ "bam_range_write_fastq",					(DL_FUNC) &bam_range_write_fastq,				3},
 
-			{ "bam_range_pop_front",				(DL_FUNC) &bam_range_pop_front,					1},
-			{ "bam_range_write_current_align",		(DL_FUNC) &bam_range_write_current_align,		2},
-			{ "bam_range_insert_past_curr_align",	(DL_FUNC) &bam_range_insert_past_curr_align,	2},
-			{ "bam_range_insert_pre_curr_align",	(DL_FUNC) &bam_range_insert_pre_curr_align,    	2},
-			{ "bam_range_mv_curr_align",			(DL_FUNC) &bam_range_mv_curr_align,  			2},
-			{ "bam_range_write_fastq",				(DL_FUNC) &bam_range_write_fastq,				3},
+		{ "bam_range_write_fastq_index",			(DL_FUNC) &bam_range_write_fastq_index,			4},
+		{ "bam_range_get_seqlen",					(DL_FUNC) &bam_range_get_seqlen,				1},
+		{ "bam_range_get_qual_df",					(DL_FUNC) &bam_range_get_qual_df,				1},
+		{ "bam_range_get_align_depth",  			(DL_FUNC) &bam_range_get_align_depth,   		2},
+		{ "bam_range_count_nucs",               	(DL_FUNC) &bam_range_count_nucs,                1},
+		{ "bam_range_idx_copy",               		(DL_FUNC) &bam_range_idx_copy,                	2},
 
-			{ "bam_range_write_fastq_index",		(DL_FUNC) &bam_range_write_fastq_index,			4},
-			{ "bam_range_get_seqlen",				(DL_FUNC) &bam_range_get_seqlen,				1},
-			{ "bam_range_get_qual_df",				(DL_FUNC) &bam_range_get_qual_df,				1},
-			{ "bam_range_get_align_depth",  		(DL_FUNC) &bam_range_get_align_depth,   		2},
-			{ "bam_range_count_nucs",               (DL_FUNC) &bam_range_count_nucs,                1},
-			{ "bam_range_idx_copy",               	(DL_FUNC) &bam_range_idx_copy,                	2},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * BamAlignment
+		 */
+		{ "bam_align_get_name",						(DL_FUNC) &bam_align_get_name,					1},
+		{ "bam_align_get_refid",					(DL_FUNC) &bam_align_get_refid,					1},
+		{ "bam_align_get_position",					(DL_FUNC) &bam_align_get_position,				1},
+		{ "bam_align_get_nCigar",   				(DL_FUNC) &bam_align_get_nCigar,    			1},
+		{ "bam_align_get_cigar_df",					(DL_FUNC) &bam_align_get_cigar_df,  			1},
+		{ "bam_align_get_mate_refid",				(DL_FUNC) &bam_align_get_mate_refid,			1},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * BamAlignment
-			 */
-			{ "bam_align_get_name",					(DL_FUNC) &bam_align_get_name,					1},
-			{ "bam_align_get_refid",				(DL_FUNC) &bam_align_get_refid,					1},
-			{ "bam_align_get_position",				(DL_FUNC) &bam_align_get_position,				1},
-			{ "bam_align_get_nCigar",   			(DL_FUNC) &bam_align_get_nCigar,    			1},
-			{ "bam_align_get_cigar_df",				(DL_FUNC) &bam_align_get_cigar_df,  			1},
-			{ "bam_align_get_mate_refid",			(DL_FUNC) &bam_align_get_mate_refid,			1},
-
-			{ "bam_align_get_mate_position",		(DL_FUNC) &bam_align_get_mate_position,			1},
-			{ "bam_align_get_insert_size",			(DL_FUNC) &bam_align_get_insert_size,			1},
-			{ "bam_align_get_map_quality",			(DL_FUNC) &bam_align_get_map_quality,			1},
-			{ "bam_align_get_segment_sequence",  	(DL_FUNC) &bam_align_get_segment_sequence,   	1},
-			{ "bam_align_get_qualities",			(DL_FUNC) &bam_align_get_qualities,  			1},
-			{ "bam_align_get_qual_values",			(DL_FUNC) &bam_align_get_qual_values,			1},
-			{ "bam_align_count_nucs",				(DL_FUNC) &bam_align_count_nucs,                1},
+		{ "bam_align_get_mate_position",			(DL_FUNC) &bam_align_get_mate_position,			1},
+		{ "bam_align_get_insert_size",				(DL_FUNC) &bam_align_get_insert_size,			1},
+		{ "bam_align_get_map_quality",				(DL_FUNC) &bam_align_get_map_quality,			1},
+		{ "bam_align_get_segment_sequence",  		(DL_FUNC) &bam_align_get_segment_sequence,   	1},
+		{ "bam_align_get_qualities",				(DL_FUNC) &bam_align_get_qualities,  			1},
+		{ "bam_align_get_qual_values",				(DL_FUNC) &bam_align_get_qual_values,			1},
+		{ "bam_align_count_nucs",					(DL_FUNC) &bam_align_count_nucs,                1},
 
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * alignment flags
-			 */
-			{ "bam_align_is_paired",				(DL_FUNC) &bam_align_is_paired,					1},
-			{ "bam_align_mapped_in_proper_pair",	(DL_FUNC) &bam_align_mapped_in_proper_pair,		1},
-			{ "bam_align_is_unmapped",				(DL_FUNC) &bam_align_is_unmapped,				1},
-			{ "bam_align_mate_is_unmapped",			(DL_FUNC) &bam_align_mate_is_unmapped,			1},
-			{ "bam_align_strand_reverse",  			(DL_FUNC) &bam_align_strand_reverse,   			1},
-			{ "bam_align_mate_strand_reverse",		(DL_FUNC) &bam_align_mate_strand_reverse,  		1},
-			{ "bam_align_is_first_in_pair",			(DL_FUNC) &bam_align_is_first_in_pair,			1},
-			{ "bam_align_is_second_in_pair",		(DL_FUNC) &bam_align_is_second_in_pair,			1},
-			{ "bam_align_is_secondary_align",		(DL_FUNC) &bam_align_is_secondary_align,		1},
-			{ "bam_align_fail_qc",  				(DL_FUNC) &bam_align_fail_qc,   				1},
-			{ "bam_align_is_pcr_or_optical_dup",	(DL_FUNC) &bam_align_is_pcr_or_optical_dup,  	1},
-			{ "bam_align_get_flag",					(DL_FUNC) &bam_align_get_flag,					1},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * alignment flags
+		 */
+		{ "bam_align_is_paired",					(DL_FUNC) &bam_align_is_paired,					1},
+		{ "bam_align_mapped_in_proper_pair",		(DL_FUNC) &bam_align_mapped_in_proper_pair,		1},
+		{ "bam_align_is_unmapped",					(DL_FUNC) &bam_align_is_unmapped,				1},
+		{ "bam_align_mate_is_unmapped",				(DL_FUNC) &bam_align_mate_is_unmapped,			1},
+		{ "bam_align_strand_reverse",  				(DL_FUNC) &bam_align_strand_reverse,   			1},
+		{ "bam_align_mate_strand_reverse",			(DL_FUNC) &bam_align_mate_strand_reverse,  		1},
+		{ "bam_align_is_first_in_pair",				(DL_FUNC) &bam_align_is_first_in_pair,			1},
+		{ "bam_align_is_second_in_pair",			(DL_FUNC) &bam_align_is_second_in_pair,			1},
+		{ "bam_align_is_secondary_align",			(DL_FUNC) &bam_align_is_secondary_align,		1},
+		{ "bam_align_fail_qc",  					(DL_FUNC) &bam_align_fail_qc,   				1},
+		{ "bam_align_is_pcr_or_optical_dup",		(DL_FUNC) &bam_align_is_pcr_or_optical_dup,  	1},
+		{ "bam_align_is_supplementary_align",		(DL_FUNC) &bam_align_is_supplementary_align,	1},
+		{ "bam_align_get_flag",						(DL_FUNC) &bam_align_get_flag,					1},
 
-			{ "bam_align_set_refid",				(DL_FUNC) &bam_align_set_refid,					2},
-			{ "bam_align_set_is_paired",			(DL_FUNC) &bam_align_set_is_paired,				2},
-			{ "bam_align_set_mapped_in_proper_pair",(DL_FUNC) &bam_align_set_mapped_in_proper_pair,	2},
-			{ "bam_align_set_is_unmapped",   		(DL_FUNC) &bam_align_set_is_unmapped,    		2},
-			{ "bam_align_set_mate_is_unmapped",		(DL_FUNC) &bam_align_set_mate_is_unmapped,  	2},
-			{ "bam_align_set_strand_reverse",		(DL_FUNC) &bam_align_set_strand_reverse,		2},
-			{ "bam_align_set_mate_strand_reverse",	(DL_FUNC) &bam_align_set_mate_strand_reverse,	2},
-			{ "bam_align_set_is_first_in_pair",		(DL_FUNC) &bam_align_set_is_first_in_pair,		2},
-			{ "bam_align_set_is_second_in_pair",	(DL_FUNC) &bam_align_set_is_second_in_pair,		2},
-			{ "bam_align_set_is_secondary_align",  	(DL_FUNC) &bam_align_set_is_secondary_align,   	2},
-			{ "bam_align_set_fail_qc",				(DL_FUNC) &bam_align_set_fail_qc,				2},
-			{ "bam_align_set_is_pcr_or_optical_dup",(DL_FUNC) &bam_align_set_is_pcr_or_optical_dup,	2},
-			{ "bam_align_set_flag",					(DL_FUNC) &bam_align_set_flag,					2},
-			{ "bam_align_create",  					(DL_FUNC) &bam_align_create,   					2},
+		{ "bam_align_set_refid",					(DL_FUNC) &bam_align_set_refid,					2},
+		{ "bam_align_set_is_paired",				(DL_FUNC) &bam_align_set_is_paired,				2},
+		{ "bam_align_set_mapped_in_proper_pair",	(DL_FUNC) &bam_align_set_mapped_in_proper_pair,	2},
+		{ "bam_align_set_is_unmapped",   			(DL_FUNC) &bam_align_set_is_unmapped,    		2},
+		{ "bam_align_set_mate_is_unmapped",			(DL_FUNC) &bam_align_set_mate_is_unmapped,  	2},
+		{ "bam_align_set_strand_reverse",			(DL_FUNC) &bam_align_set_strand_reverse,		2},
+		{ "bam_align_set_mate_strand_reverse",		(DL_FUNC) &bam_align_set_mate_strand_reverse,	2},
+		{ "bam_align_set_is_first_in_pair",			(DL_FUNC) &bam_align_set_is_first_in_pair,		2},
+		{ "bam_align_set_is_second_in_pair",		(DL_FUNC) &bam_align_set_is_second_in_pair,		2},
+		{ "bam_align_set_is_secondary_align",  		(DL_FUNC) &bam_align_set_is_secondary_align,   	2},
+		{ "bam_align_set_fail_qc",					(DL_FUNC) &bam_align_set_fail_qc,				2},
+		{ "bam_align_set_is_pcr_or_optical_dup",	(DL_FUNC) &bam_align_set_is_pcr_or_optical_dup,	2},
+		{ "bam_align_set_is_supplementary_align",	(DL_FUNC) &bam_align_set_is_supplementary_align,2},
+		{ "bam_align_set_flag",						(DL_FUNC) &bam_align_set_flag,					2},
+		{ "bam_align_create",  						(DL_FUNC) &bam_align_create,   					2},
 
-			/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-			 * Miscellaneous functions
-			 */
-			{ "copy_fastq_records",					(DL_FUNC) &copy_fastq_records,					4},
-			{ "count_fastq",						(DL_FUNC) &count_fastq,							2},
-			{ "get_col_quantiles",					(DL_FUNC) &get_col_quantiles,					2},
-			{ "count_text_lines",					(DL_FUNC) &count_text_lines,					1},
+		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+		 * Miscellaneous functions
+		 */
+		{ "copy_fastq_records",						(DL_FUNC) &copy_fastq_records,					4},
+		{ "count_fastq",							(DL_FUNC) &count_fastq,							2},
+		{ "get_col_quantiles",						(DL_FUNC) &get_col_quantiles,					2},
+		{ "count_text_lines",						(DL_FUNC) &count_text_lines,					1},
 
-			{NULL, NULL, 0}
+		{NULL, NULL, 0}
 	};
 	/*
 	 * 			{ "",	(DL_FUNC) &,	}
 	 */
 	R_registerRoutines(info, NULL, cmd, NULL, NULL);
 }
-
 
 #endif
