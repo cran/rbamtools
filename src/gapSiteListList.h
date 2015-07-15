@@ -19,7 +19,7 @@ typedef struct site_ll_element
 
 static R_INLINE site_ll_element * site_ll_element_init(site_list *l)
 {
-	site_ll_element* el=calloc(sizeof(site_ll_element),1);
+	site_ll_element* el=Calloc(1,site_ll_element);
 	el->l=l;
 	return el;
 }
@@ -27,7 +27,7 @@ static R_INLINE site_ll_element * site_ll_element_init(site_list *l)
 static R_INLINE void site_ll_element_destroy(site_ll_element *el)
 {
 	site_list_destroy(el->l);
-	free(el);
+	Free(el);
 }
 
 
@@ -41,7 +41,7 @@ typedef struct site_ll
 
 site_ll * site_ll_init()
 {
-	site_ll * sll=calloc(sizeof(site_ll),1);
+	site_ll * sll = Calloc(1, site_ll);
 	return sll;
 }
 
@@ -77,7 +77,7 @@ void site_ll_destroy(site_ll *l)
 		--(l->size);
 		site_ll_element_destroy(el);
 	}
-	free(l);
+	Free(l);
 }
 
 site_list * site_ll_get_curr_site_list_pp(site_ll *l)
@@ -108,32 +108,33 @@ pos_type sum_ll_sizes(const site_ll *l)
 	return size;
 }
 
-pos_type get_nAligns(const site_ll *l)
+sle_type get_nAligns(const site_ll *l)
 {
-	if(l->size==0)
+	if(l->size == 0)
 		return 0;
-	pos_type nAligns=0;
+
+	sle_type nAligns = 0LLU;
 	unsigned i;
-	site_ll_element *el=l->first;
-	nAligns=el->l->nAligns;
+	site_ll_element *el = l->first;
+	nAligns = el->l->nAligns;
 	for(i=1;i<l->size;++i)
 	{
-		el=el->next;
-		nAligns+=el->l->nAligns;
+		el = el->next;
+		nAligns += el->l->nAligns;
 	}
 	return nAligns;
 }
 
-pos_type get_nAlignGaps(const site_ll *l)
+sle_type get_nAlignGaps(const site_ll *l)
 {
-	pos_type nAlignGaps=0;
+	sle_type nAlignGaps = 0LLU;
 	unsigned i;
-	site_ll_element *el=l->first;
-	nAlignGaps=el->l->nAlignGaps;
-	for(i=1;i<l->size;++i)
+	site_ll_element *el = l->first;
+	nAlignGaps = el->l->nAlignGaps;
+	for(i=1; i<l->size; ++i)
 	{
-		el=el->next;
-		nAlignGaps+=el->l->nAlignGaps;
+		el = el->next;
+		nAlignGaps += el->l->nAlignGaps;
 	}
 	return nAlignGaps;
 }

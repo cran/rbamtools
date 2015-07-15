@@ -1,3 +1,29 @@
+CHANGES IN VERSION 2.12.0
+-------------------------
+
+NEW FEATURES
+
+    o extractBamRegions
+
+    o rangeSegCount class
+
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o The functions reader2fastq and range2fastq will be deprecated soon and
+	replaced by readerToFastq and rangeToFastq
+
+BUG FIXES
+
+    o Corrected bug in gapSiteList.h which caused crashes in multiply repeated merges
+
+    o Changed Variable type from Integer to unsigned long long int in
+	C functions where alignment numbers are carried.
+
+    o Corrected a PROTECT / UNPROTECT imbalance which showed up incidentally.
+
+
+
 CHANGES IN VERSION 2.10.0
 -------------------------
 

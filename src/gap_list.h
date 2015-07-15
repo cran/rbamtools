@@ -15,9 +15,11 @@
 #include "samtools/sam.h"
 #include "samtools/bam.h"
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// basic definitions
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Basic definitions
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
+typedef unsigned long long int ull_i;
 
 // Number of unsigned int's in gap_data
 const unsigned data_size=9;
@@ -47,9 +49,9 @@ typedef struct {
 	gap_element *first_el;
 	gap_element *last_el;
 	gap_element *curr_el;
-	unsigned long size;
-	unsigned long nAligns;
-	unsigned long nAlignGaps;
+	ull_i size;
+	ull_i nAligns;
+	ull_i nAlignGaps;
 } gap_list;
 
 gap_list * init_gap_list()
@@ -59,8 +61,8 @@ gap_list * init_gap_list()
 
 static R_INLINE gap_element* init_gap_elem(const gap_data data)
 {
-	gap_element *e=calloc(1,sizeof(gap_element));
-	e->pos_data=calloc(data_size,sizeof(unsigned));
+	gap_element *e = (gap_element*) calloc(1,sizeof(gap_element));
+	e->pos_data = (unsigned*) calloc(data_size,sizeof(unsigned));
 	(e->pos_data)[0]=data.refid;
 	(e->pos_data)[1]=data.position;
 	(e->pos_data)[2]=data.left_cigar_len;
@@ -88,7 +90,7 @@ void gap_list_push_back_elem(gap_list *l,gap_element *e)
 	{
 		l->first_el=e;
 		l->last_el=e;
-		l->size=1;
+		l->size=1LLU;
 	}
 	else
 	{
@@ -103,7 +105,7 @@ void gap_list_push_back(gap_list *l,const gap_data data) { gap_list_push_back_el
 
 static R_INLINE void gap_list_push_front_elem(gap_list *l,gap_element *e)
 {
-	if(l->size==0)
+	if(l->size==0LLU)
 	{
 		l->first_el=e;
 		l->last_el=e;
@@ -130,7 +132,7 @@ static R_INLINE void pop_back_gap_list(gap_list *l)
 		destroy_gap_elem(e);
 		--(l->size);
 	}
-	else if(l->last_el>0)
+	else if(l->last_el>0LLU)
 	{
 		destroy_gap_elem(l->last_el);
 		l->first_el=0;

@@ -1,6 +1,7 @@
 \name{bamRange}
+%
 \alias{bamRange}
-\title{bamRange(bamReader, coordinates,complex=FALSE): Function for reading
+\title{bamRange(object, coordinates, complex=FALSE): Function for reading
     of alignments in genomic regions.}
 %
 \description{The bamRange function takes a bamReader object,
@@ -10,9 +11,9 @@ and returns an instance of class 'bamRange'.
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Usage
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
-\usage{bamRange(reader=NULL, coords=NULL,complex=FALSE)}
+\usage{bamRange(object=NULL, coords=NULL, complex=FALSE)}
 \arguments{
-    \item{reader}{An instance of bamReader. 
+    \item{object}{An instance of bamReader. 
         Must be opened and contain initialized index}
     %
     \item{coords}{Integer vector of length 3: coords=c(refid, start, stop)}

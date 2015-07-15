@@ -2,7 +2,7 @@
 ### Encoding: UTF-8
 
 ###################################################
-### code chunk number 1: rbamtools.Rnw:61-64
+### code chunk number 1: rbamtools.Rnw:64-67
 ###################################################
 library(rbamtools)
 library(xtable)
@@ -10,7 +10,7 @@ options(width=60)
 
 
 ###################################################
-### code chunk number 2: rbamtools.Rnw:573-577
+### code chunk number 2: rbamtools.Rnw:591-595
 ###################################################
 bam <- system.file("extdata", 
                 "accepted_hits.bam", package="rbamtools")
@@ -19,67 +19,67 @@ reader <- bamReader(bam)
 
 
 ###################################################
-### code chunk number 3: rbamtools.Rnw:588-590 (eval = FALSE)
+### code chunk number 3: rbamtools.Rnw:606-608 (eval = FALSE)
 ###################################################
 ## bamSort(reader, prefix="my_sorted", 
 ##             byName=FALSE, maxmem=1e+9)
 
 
 ###################################################
-### code chunk number 4: rbamtools.Rnw:597-598 (eval = FALSE)
+### code chunk number 4: rbamtools.Rnw:615-616 (eval = FALSE)
 ###################################################
 ## createIndex(reader, idx_filename="index_file_name.bai")
 
 
 ###################################################
-### code chunk number 5: rbamtools.Rnw:605-606 (eval = FALSE)
+### code chunk number 5: rbamtools.Rnw:623-624 (eval = FALSE)
 ###################################################
 ## createIndex(reader)
 
 
 ###################################################
-### code chunk number 6: rbamtools.Rnw:613-615
+### code chunk number 6: rbamtools.Rnw:631-633
 ###################################################
 idx <- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
 loadIndex(reader, idx)
 
 
 ###################################################
-### code chunk number 7: rbamtools.Rnw:618-619
+### code chunk number 7: rbamtools.Rnw:636-637
 ###################################################
 indexInitialized(reader)
 
 
 ###################################################
-### code chunk number 8: rbamtools.Rnw:623-624
+### code chunk number 8: rbamtools.Rnw:641-642
 ###################################################
 reader <- bamReader(bam, idx=TRUE)
 
 
 ###################################################
-### code chunk number 9: rbamtools.Rnw:632-633
+### code chunk number 9: rbamtools.Rnw:650-651
 ###################################################
 getRefData(reader)
 
 
 ###################################################
-### code chunk number 10: rbamtools.Rnw:646-650 (eval = FALSE)
+### code chunk number 10: rbamtools.Rnw:664-668 (eval = FALSE)
 ###################################################
 ## header <- getHeader(reader)
 ## writer <- bamWriter(header,"test.bam")
-## # Write aligns using bamSave
+## # Write alignments using bamSave
 ## bamClose(writer)
 
 
 ###################################################
-### code chunk number 11: rbamtools.Rnw:677-679
+### code chunk number 11: rbamtools.Rnw:695-697
 ###################################################
 header <- getHeader(reader)
 htxt <- getHeaderText(header)
 
 
 ###################################################
-### code chunk number 12: rbamtools.Rnw:702-721
+### code chunk number 12: rbamtools.Rnw:720-739
 ###################################################
 bh <- new("bamHeaderText")
 
@@ -103,13 +103,13 @@ header <- bamHeader(bh)
 
 
 ###################################################
-### code chunk number 13: rbamtools.Rnw:729-730
+### code chunk number 13: rbamtools.Rnw:747-748
 ###################################################
 align <- getNextAlign(reader)
 
 
 ###################################################
-### code chunk number 14: rbamtools.Rnw:759-770 (eval = FALSE)
+### code chunk number 14: rbamtools.Rnw:777-788 (eval = FALSE)
 ###################################################
 ## name(align)
 ## flag(align)
@@ -125,7 +125,7 @@ align <- getNextAlign(reader)
 
 
 ###################################################
-### code chunk number 15: rbamtools.Rnw:797-808 (eval = FALSE)
+### code chunk number 15: rbamtools.Rnw:815-826 (eval = FALSE)
 ###################################################
 ## paired(align)
 ## properPair(align)
@@ -141,13 +141,13 @@ align <- getNextAlign(reader)
 
 
 ###################################################
-### code chunk number 16: rbamtools.Rnw:813-814
+### code chunk number 16: rbamtools.Rnw:831-832
 ###################################################
 unmapped(align) <- TRUE
 
 
 ###################################################
-### code chunk number 17: rbamtools.Rnw:823-832
+### code chunk number 17: rbamtools.Rnw:841-850
 ###################################################
 align <- bamAlign("HWUSI-0001", "ATGTACGTCG", "Qual/Strng",
                 "4M10N6M", refid=0, position=100)
@@ -161,16 +161,16 @@ position(align)
 
 
 ###################################################
-### code chunk number 18: rbamtools.Rnw:867-871
+### code chunk number 18: rbamtools.Rnw:886-890
 ###################################################
-coords <- c(0,899000,900000)
+coords <- c(0, 899000, 900000)
 names(coords) <- c("refid","start","stop")
 range <- bamRange(reader,coords)
 size(range)
 
 
 ###################################################
-### code chunk number 19: rbamtools.Rnw:878-883
+### code chunk number 19: rbamtools.Rnw:897-902
 ###################################################
 getRefData(reader)
 coords <- c(0,0,249250621)
@@ -180,7 +180,7 @@ size(range)
 
 
 ###################################################
-### code chunk number 20: rbamtools.Rnw:888-892
+### code chunk number 20: rbamtools.Rnw:907-911
 ###################################################
 coords <- getRefCoords(reader,"chr1")
 coords
@@ -189,7 +189,7 @@ size(range)
 
 
 ###################################################
-### code chunk number 21: rbamtools.Rnw:902-907
+### code chunk number 21: rbamtools.Rnw:921-926
 ###################################################
 range
 getCoords(range)
@@ -199,19 +199,19 @@ getRefName(range)
 
 
 ###################################################
-### code chunk number 22: rbamtools.Rnw:913-914
+### code chunk number 22: rbamtools.Rnw:932-933
 ###################################################
 getAlignRange(range)
 
 
 ###################################################
-### code chunk number 23: rbamtools.Rnw:932-933
+### code chunk number 23: rbamtools.Rnw:952-953
 ###################################################
 align <- getNextAlign(range)
 
 
 ###################################################
-### code chunk number 24: rbamtools.Rnw:940-946 (eval = FALSE)
+### code chunk number 24: rbamtools.Rnw:960-966 (eval = FALSE)
 ###################################################
 ## rewind(range)
 ## while(!is.null(align))
@@ -222,13 +222,13 @@ align <- getNextAlign(range)
 
 
 ###################################################
-### code chunk number 25: rbamtools.Rnw:952-953
+### code chunk number 25: rbamtools.Rnw:972-973
 ###################################################
 rdf <- as.data.frame(range)
 
 
 ###################################################
-### code chunk number 26: rbamtools.Rnw:974-979
+### code chunk number 26: rbamtools.Rnw:994-999
 ###################################################
 coords <- getRefCoords(reader, "chr1")
 gl <- gapList(reader, coords)
@@ -238,7 +238,7 @@ dfr[1:6, c(1:3, 5:8)]
 
 
 ###################################################
-### code chunk number 27: rbamtools.Rnw:989-992 (eval = FALSE)
+### code chunk number 27: rbamtools.Rnw:1009-1012 (eval = FALSE)
 ###################################################
 ## size(gl)
 ## nAligns(gl)
@@ -246,7 +246,7 @@ dfr[1:6, c(1:3, 5:8)]
 
 
 ###################################################
-### code chunk number 28: rbamtools.Rnw:1036-1044
+### code chunk number 28: rbamtools.Rnw:1055-1063
 ###################################################
 coords <- getRefCoords(reader, "chr1")
 sl <- siteList(reader, coords)
@@ -259,7 +259,7 @@ head(df)
 
 
 ###################################################
-### code chunk number 29: rbamtools.Rnw:1059-1067
+### code chunk number 29: rbamtools.Rnw:1077-1085
 ###################################################
 bsl <- bamGapList(reader)
 bsl
@@ -272,7 +272,120 @@ head(dfr)
 
 
 ###################################################
-### code chunk number 30: rbamtools.Rnw:1093-1096
+### code chunk number 30: rbamtools.Rnw:1099-1102
+###################################################
+bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
+rpb<-readPooledBamGaps(bam)
+rpdf<-readPooledBamGapDf(bam)
+
+
+###################################################
+### code chunk number 31: rbamtools.Rnw:1112-1113
+###################################################
+xtable(head(rpdf)[, c(1:6, 8, 9, 13)])
+
+
+###################################################
+### code chunk number 32: hist_gqs
+###################################################
+plot(table(rpdf$gqs), type="h", las=1, bty="n", lwd=2, 
+        xlab="gqs", ylab="Number of gap sites",
+        main="Distribution of gqs values")
+
+
+###################################################
+### code chunk number 33: rbamtools.Rnw:1147-1233 (eval = FALSE)
+###################################################
+## scanGapSites <- function(bam, yieldSize=1e6, mc.cores=2)
+## {
+##     require(Rsamtools)
+##     require(GenomicAlignments)
+##     
+##     mc.cores <- as.integer(mc.cores)
+##     
+##     # Function will be called by mclapply
+##     doScanBam <- function(bamFile)
+##     {
+##         open(bamFile)
+##         
+##         # Create empty container.
+##         gPos <- GRanges()
+##         
+##         # Fill container by processing 'yieldSize' reads at a time
+##         while(
+##             sum(
+##                 elementLengths(
+##                     records <- scanBam(
+##                                 bamFile,
+##                                 param=ScanBamParam(
+##                                     flag=scanBamFlag(isUnmappedQuery=FALSE),
+##                                     what=scanBamWhat()[c(3, 5, 8)]
+##                                     )
+##                                 )[[1]]
+##                     )
+##             ) > 0
+##         ){
+##             
+##             nOps <- cigarRangesAlongReferenceSpace(records$cigar,ops="N")
+##             sel <- elementLengths(nOps) != 0
+##             gPos <- c(gPos, 
+##                         GRanges(seqnames=rep(records$rname[sel], 
+##                                             elementLengths(nOps)[sel]),
+##                                             ranges=unlist(shift(nOps[sel], 
+##                                             records$pos[sel]))
+##                             )
+##                     )
+##         }
+##         close(bamFile)
+##         # Return all gap positions
+##         return(gPos)
+##     }
+##     
+##     cat("[scanGapSites] Processing", length(bam), "Files.\n")
+##     
+##     
+##     bamFileList <- BamFileList(bam, yieldSize = yieldSize)
+##     gList <- mclapply(bamFileList, doScanBam)
+##     
+##     sz <- object.size(gList)
+##     bm<-Sys.localeconv()[7]
+##     cat("[scanGapSites] Collected object of size", 
+##             format(as.numeric(object.size(gList)), big.mark=bm),
+##             "bytes.\n")
+##     
+##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
+##     # Get all unique positions across all samples
+##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
+##     uPos <- unique(Reduce("c", gList))
+##     
+##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
+##     # Create the count table by 
+##     # transforming the ranges into character strings.
+##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
+##     ref <- paste(seqnames(uPos), start(uPos), end(uPos), sep="-")
+##     
+##     # Will be called by mclapply
+##     doTable <- function(grng, ref)
+##     {
+##         tab <- table(paste(seqnames(grng), start(grng), end(grng),sep="-"))
+##         tab[match(ref,names(tab))]
+##     }
+##     
+##     count.table <- do.call("cbind", 
+##                     mclapply(gList, doTable, ref, mc.cores=mc.cores))
+##     rownames(count.table) <- ref
+##     
+##     cat("[scanGapSites] Number of sites:", 
+##             format(nrow(count.table), big.mark=bm),
+##             ".\n")
+##     
+##     cat("[scanGapSites] Finished.\n")
+##     return(count.table)
+## }
+
+
+###################################################
+### code chunk number 34: rbamtools.Rnw:1301-1304
 ###################################################
 coords <- c(0, 0, 14730)
 count <- bamCount(reader, coords)
@@ -280,19 +393,19 @@ xtable(matrix(count, nrow=1))
 
 
 ###################################################
-### code chunk number 31: rbamtools.Rnw:1100-1101
+### code chunk number 35: rbamtools.Rnw:1308-1309
 ###################################################
 count <- bamCountAll(reader, verbose=TRUE)
 
 
 ###################################################
-### code chunk number 32: rbamtools.Rnw:1104-1105
+### code chunk number 36: rbamtools.Rnw:1312-1313
 ###################################################
 xtable(count, digits=0)
 
 
 ###################################################
-### code chunk number 33: rbamtools.Rnw:1117-1120
+### code chunk number 37: rbamtools.Rnw:1324-1327
 ###################################################
 align <- bamAlign("HWUSI-0001", "ACCGGGTTTT","Qual/Strng",
                             "4M10N6M", refid=0, position=100)
@@ -300,7 +413,7 @@ countNucs(align)
 
 
 ###################################################
-### code chunk number 34: rbamtools.Rnw:1123-1127
+### code chunk number 38: rbamtools.Rnw:1330-1334
 ###################################################
 reader <- bamReader(bam, idx=TRUE)
 coords <- c(0, 0, 14730)
@@ -309,60 +422,60 @@ countNucs(range)
 
 
 ###################################################
-### code chunk number 35: rbamtools.Rnw:1143-1144
+### code chunk number 39: rbamtools.Rnw:1349-1350
 ###################################################
 ncs <- nucStats(reader)
 
 
 ###################################################
-### code chunk number 36: rbamtools.Rnw:1147-1148
+### code chunk number 40: rbamtools.Rnw:1353-1354
 ###################################################
 xtable(ncs, digits=c(0, 0, 0, 0, 0, 0, 0, 2, 2))
 
 
 ###################################################
-### code chunk number 37: rbamtools.Rnw:1156-1157
+### code chunk number 41: rbamtools.Rnw:1362-1363
 ###################################################
 ncs <- nucStats(bam)
 
 
 ###################################################
-### code chunk number 38: rbamtools.Rnw:1160-1161
+### code chunk number 42: rbamtools.Rnw:1366-1367
 ###################################################
 xtable(ncs, digits=c(0, 0, 0, 0, 0, 0, 0, 2, 2))
 
 
 ###################################################
-### code chunk number 39: rbamtools.Rnw:1182-1183 (eval = FALSE)
+### code chunk number 43: rbamtools.Rnw:1387-1388 (eval = FALSE)
 ###################################################
 ## createIdxBatch(bam)
 
 
 ###################################################
-### code chunk number 40: rbamtools.Rnw:1209-1216 (eval = FALSE)
+### code chunk number 44: rbamtools.Rnw:1412-1419 (eval = FALSE)
 ###################################################
 ## reader <- bamReader(bam)
-## reader2fastq(reader, "out.fastq")
+## readerToFastq(reader, "out.fastq")
 ## bamClose(reader)
-## # Reopen in order to point to first align
+## # Reopen in order to point to first alignment
 ## reader <- bamReader(bam)
 ## index <- sample(1:100, 20)
-## reader2fastq(reader, "out_subset.fastq", which=index)
+## readerToFastq(reader, "out_subset.fastq", which=index)
 
 
 ###################################################
-### code chunk number 41: rbamtools.Rnw:1226-1232 (eval = FALSE)
+### code chunk number 45: rbamtools.Rnw:1429-1435 (eval = FALSE)
 ###################################################
-## reader <- bamReader(bam,idx=TRUE)
+## reader <- bamReader(bam, idx=TRUE)
 ## coords <- as.integer(c(0,0,249250621))
 ## range <- bamRange(reader,coords)
-## range2fastq(range,"rg.fq.gz")
+## rangeToFastq(range,"rg.fq.gz")
 ## index <- sample(1:size(range),100)
-## range2fastq(range,"rg_subset.fq.gz",which=index)
+## rangeToFastq(range,"rg_subset.fq.gz",which=index)
 
 
 ###################################################
-### code chunk number 42: rbamtools.Rnw:1248-1253
+### code chunk number 46: rbamtools.Rnw:1451-1456
 ###################################################
 qdf <- getQualDf(range)
 qdf[32:38,1:10]
@@ -372,20 +485,20 @@ qrr[32:38,1:10]
 
 
 ###################################################
-### code chunk number 43: rbamtools.Rnw:1260-1262
+### code chunk number 47: rbamtools.Rnw:1463-1465
 ###################################################
 qt <- getQualQuantiles(range,c(0.25,0.5,0.75))
 qt[,1:10]
 
 
 ###################################################
-### code chunk number 44: rbamtools.Rnw:1268-1269
+### code chunk number 48: rbamtools.Rnw:1471-1472
 ###################################################
 plotQualQuant(range)
 
 
 ###################################################
-### code chunk number 45: rbamtools.Rnw:1288-1305
+### code chunk number 49: rbamtools.Rnw:1492-1509
 ###################################################
 # WASH7P coordinates
 xlim <- c(10000, 30000)
@@ -407,7 +520,7 @@ end <-   c(14502, 15038, 15901, 15947, 16745, 16765, 17055, 17364,
 
 
 ###################################################
-### code chunk number 46: rbamtools.Rnw:1308-1316
+### code chunk number 50: rbamtools.Rnw:1512-1520
 ###################################################
 plotAlignDepth(ad, lwd = 2, xlim = xlim,
             main = paste("Align depth for gene",gene),
@@ -417,5 +530,31 @@ plotAlignDepth(ad, lwd = 2, xlim = xlim,
                 "\tGene ENSG00000227232", ensg_id, 
                 "\tTranscript ",enst_id
 ))
+
+
+###################################################
+### code chunk number 51: rbamtools.Rnw:1550-1561
+###################################################
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# B) Count range segment
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+reader <- bamReader(bam, idx=TRUE)
+coords <- c(0, 0, 2e4)
+segments <- seq(14000, 20000, 20)
+segcount<-rangeSegCount(reader, coords, segments)
+segcount
+dfr<-as.data.frame(segcount)
+sum(dfr$count)
+
+
+
+###################################################
+### code chunk number 52: rbamtools.Rnw:1564-1569
+###################################################
+plot(count~position, dfr, type="l", 
+        las=1, bty="n", lwd=1.5, col="dodgerblue2",
+        xlab="Position on Chromosome 1",
+        ylab="Alignment count",
+        main="Number of alignments in genomic segments of 20 nucleotides size")
 
 

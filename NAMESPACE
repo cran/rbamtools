@@ -1,12 +1,25 @@
 useDynLib(rbamtools)
-import(methods)
+# Used from graphics:
+# arrows layout lcm legend lines mtext par plot polygon rect text
+import(methods,graphics)
 importFrom(utils,head)
 importFrom(utils,tail)
+importFrom(utils,write.table)
+S3method(as.data.frame, bamGapList)
+S3method(as.data.frame, bamRange)
+S3method(as.data.frame, gapList)
+S3method(as.data.frame, gapSiteList)
+S3method(as.data.frame, rangeSegCount)
+S3method(as.data.frame, refSeqDict)
+S3method(merge, bamGapList)
+S3method(merge, gapSiteList)
+S3method(summary, bamGapList)
 export(
         as.data.frame.bamRange,
         as.data.frame.gapList,
         as.data.frame.gapSiteList,
 	as.data.frame.bamGapList,
+	as.data.frame.rangeSegCount,
         as.data.frame.refSeqDict,
         bamAlign,
 	bamHeaderText,
@@ -14,6 +27,8 @@ export(
 	bamRange,
         countTextLines,
         create.idx.batch,
+	createIdxBatch,
+	extractBamRegions,
         merge.gapSiteList,
         merge.bamGapList,
         readPooledBamGaps,
@@ -37,8 +52,10 @@ exportMethods(
 	bamGapList,
 	bamSort,
 	bamWriter,
+	checkPartition,
 	cigarData,
         countNucs,
+	countPartition,
 	create.index,
 	createIndex,
 	dim,
@@ -51,9 +68,13 @@ exportMethods(
 	flag,
 	"flag<-",
 	gapList,
+	genomePartition,
+	getAlignCounts,
         getAlignRange,
         getCoords,
         getDepth,
+	getFileTable,
+	getGridAlignCounts,
 	getHeader,
 	getHeaderText,
 	getNextAlign,
@@ -67,6 +88,7 @@ exportMethods(
 	getRefData,
         getRefName,
         getSeqLen,
+	getSeqNr,
 	getVal,
 	head,
 	headerLine,
@@ -110,7 +132,10 @@ exportMethods(
 	push_back,
 	push_front,
         range2fastq,
+	rangeToFastq,
+	rangeSegCount,
         reader2fastq,
+	readerToFastq,
 	refID,
 	refSeqDict,
 	"refSeqDict<-",
@@ -145,9 +170,11 @@ exportClasses(
 	bamGapList,
 	gapList,
         gapSiteList,
+	GenomePartition,
 	headerLine,
 	headerProgram,
 	headerReadGroup,
+	rangeSegCount,
 	refSeqDict
 )
 		

@@ -52,7 +52,7 @@
 		do																									\
 		{																									\
 				free((b)->cigar);																			\
-				(b)->cigar=calloc((b)->core.n_cigar,sizeof(uint32_t));										\
+				(b)->cigar = (uint32_t*) calloc((b)->core.n_cigar,sizeof(uint32_t));										\
 				memcpy((b)->cigar,((b)->data + (b)->core.l_qname),(b)->core.n_cigar*sizeof(uint32_t));		\
 		}																									\
 		while(0)

@@ -1,15 +1,21 @@
-\name{range2fastq}
+\name{rangeToFastq}
+%
+\alias{rangeToFastq}
+\alias{rangeToFastq-methods}
+\alias{rangeToFastq,bamRange-method}
+%
 \alias{range2fastq}
 \alias{range2fastq-methods}
 \alias{range2fastq,bamRange-method}
-\title{range2fastq: Extract read information from alignments for given
+%
+\title{rangeToFastq: Extract read information from alignments for given
     genomic range as fastq.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
-\description{The function \code{range2fastq} writes all (or selected) aligns
+\description{The function \code{rangeToFastq} writes all (or selected) aligns
     from a \code{bamRange} into a compressed fastq file.}
-\usage{range2fastq(object, filename, which, append=FALSE)}
+\usage{rangeToFastq(object, filename, which, append=FALSE)}
 \arguments{
     \item{object}{bamReader. Must be opened.}
     %
@@ -24,18 +30,19 @@
     \item{append}{(Optional) When TRUE, the routine will append to an
         existing file. Otherwise existing files will be overwritten.}
 }
+\details{range2fastq ist deprecated and will be replaced by rangeToFastq soon.}
 \author{Wolfgang Kaisers}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Examples
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \examples{
-bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
-reader<-bamReader(bam,idx=TRUE)
-coords<-as.integer(c(0,0,249250621))
-range<-bamRange(reader,coords)
-\dontrun{range2fastq(range,"range.fq.gz")}
-index<-sample(1:size(range),100)
-\dontrun{range2fastq(range,"range_subset.fq.gz",which=index)}
+bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+reader <- bamReader(bam, idx=TRUE)
+coords <- as.integer(c(0, 0, 249250621))
+range <- bamRange(reader, coords)
+\dontrun{rangeToFastq(range, "range.fq.gz")}
+index <- sample(1:size(range), 100)
+\dontrun{rangeToFastq(range, "range_subset.fq.gz", which=index)}
 }
-\keyword{range2fastq}
-\keyword{range2fastq}
+\keyword{rangeToFastq}
+\keyword{rangeToFastq}

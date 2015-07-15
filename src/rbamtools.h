@@ -1,47 +1,46 @@
 /*
- *	File:		rbamtools.c
+ * rcpp_test.h
  *
- * 	Created on:	17.06.2011
- * 	Author: 	Wolfgang Kaisers
- *	Content:	C Header File for R package rbamtools
- *
- *	Change log:
- *      29.Okt.12 (nemesis) [gap_list_get_df] Changed cigar_type output to 'factor'.
- *      30.Okt.12 (phoibe)  [gap_list_fetch] Removed gap_list_fetch message.
- *      31.Okt.12 (phoibe)  [bam_reader_save_aligns] function & SAM_TYPE_READ added.
- *		01.Nov.12 (nemesis) [get_const_next_align] added to correct memory leak.
- *		07.Jan.13 (phoibe)  gap_site_list added (contains bitmask functions)
- *		18.Jan.13 (phoibe)  gap_site_list_list added.
- *		01.Feb.13 (phoibe)  [gap_site_ll_add_curr_pp] Testing for empty input list added.
- *		05.Feb.13 (phoibe)  First successful test with reading bamGap objects with transfer to gapProbes
- *		18.Mar.13 (nemesis) Corrected inline declarations; Changed qmm to qsm (mean to sum)
- * 		11.Jun.13 (phoibe)  Added bam_reader_write_fastq, bam_reader_write_fastq_lgl,
- * 									bam_range_write_fastq, bam_range_write_fastq_lgl functions. Valgrind tested.
- *      02.Jul.13 (phoibe)  Added bam_count. Valgrind tested
- *      02.Sep.13 (phoibe)	Added R_init_rbamtools
- *      25.Nov.13 (gaia)
+ *  Created on: 05.01.2015
+ *      Author: kaisers
  */
 
-#ifndef rbamtools_h
-#define rbamtools_h
+#ifndef RCPP_TEST_H_
+#define RCPP_TEST_H_
+
+
+#include "range_partition.h"
+#include "data_frame.h"
+#include "grange.h"
+#include "extptr.h"
+
+
+extern "C" {
 
 #include <string.h>
 #include <ctype.h>
 
 #include <R.h>
 #include <Rinternals.h>
+
 #include <Rdefines.h>
 #include <R_ext/PrtUtil.h>
 #include <R_ext/Rdynload.h> // DllInfo
+
+// Include samtools library
 #include "samtools/bam.h"
 #include "samtools/sam.h"
+
+// Include samtools derived container
 #include "align_list.h"
+#include "align_counts.h"
 #include "gap_list.h"
 
 // Extended gap_list
 #include "gapSiteList.h"
 #include "bitmask.h"
 #include "gapSiteListList.h"
+
 
 const char * const CIGAR_TYPES="MIDNSHP=X";
 #define SAM_TYPE_READ 2
@@ -234,6 +233,14 @@ SEXP bam_align_set_flag(SEXP pAlign, SEXP val);
 SEXP bam_align_create(SEXP pStrVals, SEXP pIntVals);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+// bam_count_segment
+///////////////////////////////////////////////////////////////////////////////////////////////////
+SEXP bam_count_segment_aligns(SEXP pReader,SEXP pIndex,SEXP pCoords,SEXP pSeg, SEXP pComplex);
+SEXP bam_count_segment_melt_down(SEXP pSeg, SEXP pFactor);
+SEXP get_partition_segments(SEXP pId, SEXP pBegin, SEXP pEnd, SEXP pCoords);
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 // Miscellaneous functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 SEXP copy_fastq_records(SEXP pInfile,SEXP pOutfile,SEXP pWhichCopy,SEXP pAppend);
@@ -241,10 +248,18 @@ SEXP count_fastq(SEXP pInfile,SEXP pMaxCol);
 SEXP get_col_quantiles(SEXP pQuant, SEXP pDf);
 SEXP count_text_lines(SEXP pInfile);
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Declarations for R_registerRoutines
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 void R_init_rbamtools(DllInfo *info);
 
-#endif
+
+} // extern "C"
+
+
+
+
+
+#endif /* RCPP_TEST_H_ */

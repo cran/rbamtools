@@ -1,18 +1,17 @@
 Package: rbamtools
 Type: Package
-Title: An R package for reading and writing BAM (Binary alignment)
-        files.
-Version: 2.10.0
-Date: 2013-14-02
+Title: An R Package for Reading and Writing BAM (Binary Alignment)
+        Files
+Version: 2.12.1
+Date: 2013-02-14
 Author: Wolfgang Kaisers
 Maintainer: Wolfgang Kaisers <kaisers@med.uni-duesseldorf.de>
-Description: This package provides an interface to functions of the
-        'SAMtools' C-Library by Heng Li.
+Description: Provides an interface to functions of the 'SAMtools' C-Library by Heng Li.
 License: Artistic-2.0
 LazyLoad: yes
 Depends: methods
 Suggests: xtable
-Packaged: 2014-09-30 13:49:29 UTC; kaisers
+Packaged: 2015-07-15 07:41:01 UTC; kaisers
 Repository: CRAN
-Date/Publication: 2014-09-30 16:42:11
+Date/Publication: 2015-07-15 13:23:58
 NeedsCompilation: yes

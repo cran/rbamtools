@@ -1,16 +1,21 @@
-\name{reader2fastq}
+\name{readerToFastq}
+%
 \alias{reader2fastq}
 \alias{reader2fastq-methods}
 \alias{reader2fastq,bamReader-method}
-\title{reader2fastq: Extraction of a subset of alignments from a BAM files
+%
+\alias{readerToFastq}
+\alias{readerToFastq-methods}
+\alias{readerToFastq,bamReader-method}
+\title{readerToFastq: Extraction of a subset of alignments from a BAM files
     into fastq format.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
-\description{The function \code{reader2fastq} writes (remaining) aligns or
+\description{The function \code{readerToFastq} writes (remaining) aligns or
 some part of the stored aligns in a BAM file as reads into a
 compressed fastq file.}
-\usage{reader2fastq(object,filename,which,append=FALSE)}
+\usage{readerToFastq(object, filename, which, append=FALSE)}
 \arguments{
     \item{object}{bamReader. Must be opened.}
     %
@@ -26,19 +31,21 @@ compressed fastq file.}
         Otherwise existing files will be overwritten.}
 }
 \value{numeric}
+\details{The function 'reader2fastq' is deprecated and will be replaced by
+'readerToFastq' soon.}
 \author{Wolfgang Kaisers}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Examples
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \examples{
-bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
-reader<-bamReader(bam)
-\dontrun{reader2fastq(reader,"out.fq.gz")}
+bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
+reader <- bamReader(bam)
+\dontrun{readerToFastq(reader, "out.fq.gz")}
 bamClose(reader)
 # Reopen in order to point to first align
-reader<-bamReader(bam)
-index<-sample(1:100,20)
-\dontrun{reader2fastq(reader,"out_subset.fq.gz",which=index)}
+reader <- bamReader(bam)
+index <- sample(1:100, 20)
+\dontrun{readerToFastq(reader, "out_subset.fq.gz", which=index)}
 }
-\keyword{reader2fastq}
-\keyword{reader2fastq}
+\keyword{readerToFastq}
+\keyword{readerToFastq}

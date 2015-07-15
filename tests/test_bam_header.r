@@ -1,17 +1,17 @@
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## test_bam_header: General
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# test_bam_header: General
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 header<-getHeader(reader)
 
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Section: headerReadGroup
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Section: headerReadGroup
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 ## Create headerReadGroup by simply parsing text
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 hrg <- c("@RG\tID:rg1\tCN:seqCenter1\tDT:01.01.2011\tSM:sm1",
                     "@RG\tID:rg2\tCN:seqCenter2\tDT:01.01.2012\tSM:sm2")
@@ -21,10 +21,10 @@ if(!identical(object@ID,paste("rg", 1:2, sep="")))
     stop("[test_bam_header.r] Setting ID slot in headerReadGroup failed")
 
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Create headerReadGroup by user interface
-## and check for consistency of returned header text
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Create headerReadGroup by user interface
+# and check for consistency of returned header text
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 hrg <- new("headerReadGroup")
 hrg <- addReadGroup(hrg, list(ID="rg1", CN="sct1", FO="fo1"))
@@ -35,9 +35,9 @@ hrg2 <- new("headerReadGroup", getHeaderText(hrg))
 if(!identical(hrg, hrg2))
     stop("[test_bam_header.r] Adding headerReadGroup's failed")
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## Section: headerProgram
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# Section: headerProgram
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 prog <- new("headerProgram")
 setVal(prog, "ID", "pg.001")
@@ -65,6 +65,6 @@ if(!identical(getVal(headerProgram(getHeaderText(bh)),"DS"),"Description"))
     stop("[test_bam_header.r] Writing Program description to bamHeader failed")
 
 
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
-## END OF FILE
-## + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + ##
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# END OF FILE
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #

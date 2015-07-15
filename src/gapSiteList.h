@@ -9,11 +9,12 @@
 #define GAPSITELIST_H_
 
 #include <stdlib.h>
+#include <Rdefines.h>
 #include "bitmask.h"
 #include "samtools/sam.h"
 #include "samtools/bam.h"
 
-typedef unsigned long pos_type;
+typedef bitmap_type   pos_type;
 typedef index_type    idx_type;
 typedef bitmap_type   sle_type;
 
@@ -33,9 +34,9 @@ typedef struct site_list_element
 	// contains maximum of right-cigar-size
 	index_type r_cigar_size;
 
-	idx_type nAligns;
+	sle_type nAligns;
 	idx_type nProbes;
-	sle_type lcl; 		// left    cigar length
+	sle_type lcl; 			// left    cigar length
 	sle_type mcl;           // minimal cigar length
 
 	// List
@@ -57,7 +58,7 @@ static R_INLINE int site_list_el_compare(site_list_element *lhs,site_list_elemen
 
 static R_INLINE site_list_element* site_list_el_init(pos_type lend, pos_type rstart,index_type gap_len,unsigned char lcl, index_type rcs, unsigned char mcl)
 {
-	site_list_element *sle=calloc(sizeof(site_list_element),1);
+	site_list_element *sle = Calloc(1, site_list_element);
 	sle->lend=lend;
 	sle->rstart=rstart;
 	sle->gap_len=gap_len;
@@ -70,9 +71,11 @@ static R_INLINE site_list_element* site_list_el_init(pos_type lend, pos_type rst
 	return sle;
 }
 
+static R_INLINE void site_list_el_destroy(site_list_element *el) { Free(el); }
+
 static R_INLINE site_list_element* copy_site_list_element(const site_list_element *in)
 {
-	site_list_element *el=calloc(sizeof(site_list_element),1);
+	site_list_element *el = Calloc(1, site_list_element);
 	el->lend=in->lend;
 	el->rstart=in->rstart;
 	el->gap_len=in->gap_len;
@@ -94,7 +97,6 @@ void static R_INLINE site_list_add_cs(struct site_list_element* el,sle_type lcl,
 	r_addVal_f(&(el->mcl),mcl);
 }
 
-// static _inline_ void site_list_el_destroy(site_list_element* el) { free(el); }
 
 // + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 //
@@ -114,11 +116,11 @@ typedef struct site_list
 	pos_type size;
 
 	unsigned refid;
-	unsigned long int nAligns;
-	unsigned long int nAlignGaps;
+	sle_type nAligns;
+	sle_type nAlignGaps;
 } site_list;
 
-site_list* site_list_init(){ return(calloc(sizeof(site_list),1));}
+site_list* site_list_init(){ return(Calloc(1, site_list));}
 
 void site_list_destroy(site_list *l)
 {
@@ -130,13 +132,12 @@ void site_list_destroy(site_list *l)
 	{
 		//printf("[sl_destroy] size %lu\n",l->size);
 		el=l->first;
-		if(l->size>1)
-			l->first=l->first->next;
+		if(l->size > 1)
+			l->first = l->first->next;
 		--(l->size);
-		// Destroy element
-		free(el);
+		site_list_el_destroy(el);
 	}
-	free(l);
+	Free(l);
 }
 
 // + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
@@ -181,6 +182,7 @@ static R_INLINE void site_list_insert_at_last(site_list *l,pos_type lend,pos_typ
 	}
 }
 
+/*
 static R_INLINE void site_list_insert_el_at_last(site_list *l, site_list_element *el)
 {
 	if(l->size==0)
@@ -197,9 +199,13 @@ static R_INLINE void site_list_insert_el_at_last(site_list *l, site_list_element
 		++(l->size);
 	}
 }
+*/
 
 static R_INLINE void site_list_copy_to_last(site_list *l, const site_list_element *in)
 {
+	if(!in)
+		return;
+
 	site_list_element *el=copy_site_list_element(in);
 	if(l->size==0)
 	{
@@ -239,7 +245,7 @@ static R_INLINE void site_list_insert_post_current(site_list *l,pos_type lend,po
 		site_list_insert_at_last(l,lend,rstart,gap_len,lcl,rcs,mcl);
 		return;
 	}
-	site_list_element *el=site_list_el_init(lend,rstart,gap_len,lcl,rcs,mcl);
+	site_list_element *el=site_list_el_init(lend, rstart, gap_len, lcl, rcs, mcl);
 	el->last=l->curr;
 	el->next=l->curr->next;
 	l->curr->next=el;
@@ -247,20 +253,28 @@ static R_INLINE void site_list_insert_post_current(site_list *l,pos_type lend,po
 	++(l->size);
 }
 
+/*
 site_list_element* site_list_get_curr_mm(site_list *l)
 {
 	site_list_element *el=l->curr;
 	if(l->curr!=NULL)
+	{
 		l->curr=l->curr->last;
-	return el;
+		return copy_site_list_element(el);
+	}
+	return NULL;
 }
+*/
 
 site_list_element* site_list_get_curr_pp(site_list *l)
 {
 	site_list_element *el=l->curr;
 	if(l->curr!=NULL)
+	{
 		l->curr=l->curr->next;
-	return el;
+		return copy_site_list_element(el);
+	}
+	return NULL;
 }
 
 // + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
@@ -358,8 +372,8 @@ site_list* site_list_merge(site_list *lhs, site_list *rhs,unsigned refid)
 	lhs->curr=lhs->first;
 	rhs->curr=rhs->first;
 
-	site_list_element *le=site_list_get_curr_pp(lhs);
-	site_list_element *re=site_list_get_curr_pp(rhs);
+	site_list_element* le=site_list_get_curr_pp(lhs);
+	site_list_element* re=site_list_get_curr_pp(rhs);
 
 	site_list *res=site_list_init();
 	res->refid=refid;
@@ -371,6 +385,7 @@ site_list* site_list_merge(site_list *lhs, site_list *rhs,unsigned refid)
 			while(re!=NULL)
 			{
 				site_list_copy_to_last(res,re);
+				site_list_el_destroy(re);
 				re=site_list_get_curr_pp(rhs);
 			}
 		}
@@ -379,31 +394,36 @@ site_list* site_list_merge(site_list *lhs, site_list *rhs,unsigned refid)
 			while(le!=NULL)
 			{
 				site_list_copy_to_last(res,le);
+				site_list_el_destroy(le);
 				le=site_list_get_curr_pp(lhs);
 			}
 		}
-		else
+		else // (le != 0) && (re != 0)
 		{
-			if(le->lend<re->lend)
+			if( le->lend < re->lend)
 			{
 				//printf("[site_list_merge] ++le-le<re-le\n");
 				site_list_copy_to_last(res,le);
+				site_list_el_destroy(le);
 				le=site_list_get_curr_pp(lhs);
 			}
-			else if(re->lend<le->lend)
+			else if(re->lend < le->lend)
 			{
 				site_list_copy_to_last(res,re);
+				site_list_el_destroy(re);
 				re=site_list_get_curr_pp(rhs);
 			}
 			// le->lend==re->lend
-			else if(le->rstart<re->rstart)
+			else if(le->rstart < re->rstart)
 			{
 				site_list_copy_to_last(res,le);
+				site_list_el_destroy(le);
 				le=site_list_get_curr_pp(lhs);
 			}
 			else if(re->rstart<le->rstart)
 			{
 				site_list_copy_to_last(res,re);
+				site_list_el_destroy(re);
 				re=site_list_get_curr_pp(rhs);
 			}
 			else
@@ -412,24 +432,32 @@ site_list* site_list_merge(site_list *lhs, site_list *rhs,unsigned refid)
 				// This is the important part
 				// where the code departs from standard merging:
 				ins=copy_site_list_element(le);
-				r_zip(le->lcl,re->lcl,&(ins->lcl));
-				r_zip_f(le->mcl,re->mcl,&(ins->mcl));
-				ins->nProbes+=re->nProbes;
-				ins->nAligns+=re->nAligns;
-				site_list_insert_el_at_last(res,ins);
+				r_zip(le->lcl, re->lcl, &(ins->lcl));
+				r_zip_f(le->mcl, re->mcl, &(ins->mcl));
+				ins->nProbes += re->nProbes;
+				ins->nAligns += re->nAligns;
+				site_list_copy_to_last(res, ins);
+				site_list_el_destroy(ins);
+				ins=0;
+
+				site_list_el_destroy(le);
+				site_list_el_destroy(re);
 				le=site_list_get_curr_pp(lhs);
 				re=site_list_get_curr_pp(rhs);
 			}
 		}
 	}
-	lhs->curr=lcurr;
-	rhs->curr=rcurr;
+	lhs->curr = lcurr;
+	rhs->curr = rcurr;
+
+	site_list_el_destroy(le);
+	site_list_el_destroy(re);
 	return res;
 }
 
 idx_type* site_list_get_max_match(site_list *l)
 {
-	idx_type *res=calloc(sizeof(idx_type),l->size);
+	idx_type *res = (idx_type*) calloc(sizeof(idx_type), l->size);
 	unsigned i=0;
 	site_list_element *el,*curr;
 
@@ -440,6 +468,7 @@ idx_type* site_list_get_max_match(site_list *l)
 	{
 		el=site_list_get_curr_pp(l);
 		res[i]=(idx_type) ((el->mcl)>>idx[0])&0xFF; //getByte(el->mcl,0);
+		site_list_el_destroy(el);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -448,7 +477,7 @@ idx_type* site_list_get_max_match(site_list *l)
 
 idx_type* site_list_get_n_lpos(site_list *l)
 {
-	idx_type *res=calloc(sizeof(idx_type),l->size);
+	idx_type *res = (idx_type*) calloc(sizeof(idx_type),l->size);
 	unsigned i=0;
 	site_list_element *el,*curr;
 
@@ -459,6 +488,7 @@ idx_type* site_list_get_n_lpos(site_list *l)
 	{
 		el=site_list_get_curr_pp(l);
 		res[i]=bitmask_nPos(el->lcl);
+		site_list_el_destroy(el);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -468,7 +498,7 @@ idx_type* site_list_get_n_lpos(site_list *l)
 
 idx_type* site_list_get_n_match(site_list *l)
 {
-	idx_type *res=calloc(sizeof(idx_type),l->size);
+	idx_type *res= (idx_type*) calloc(sizeof(idx_type),l->size);
 	unsigned i=0;
 	site_list_element *el,*curr;
 
@@ -486,7 +516,7 @@ idx_type* site_list_get_n_match(site_list *l)
 
 idx_type* site_list_get_sum_match(site_list *l)
 {
-	idx_type *res=calloc(sizeof(idx_type),l->size);
+	idx_type *res= (idx_type*) calloc(sizeof(idx_type),l->size);
 	unsigned i=0;
 	site_list_element *el,*curr;
 
@@ -497,6 +527,7 @@ idx_type* site_list_get_sum_match(site_list *l)
 	{
 		el=site_list_get_curr_pp(l);
 		res[i]=bitmask_sumPos(el->mcl);
+		site_list_el_destroy(el);
 	}
 	// Reset curr
 	l->curr=curr;
@@ -513,10 +544,11 @@ site_list* site_list_copy(site_list *l)
 
 	site_list_element *et,*el=l->first;
 	unsigned i;
-	for(i=0;i<l->size;++i)
+	for(i=0; i < l->size; ++i)
 	{
 		et=copy_site_list_element(el);
-		site_list_insert_el_at_last(res,et);
+		site_list_copy_to_last(res, et);
+		site_list_el_destroy(et);
 		el=el->next;
 	}
 	return res;
@@ -535,18 +567,18 @@ void list_gap_sites(site_list *l,const bam1_t* align)
 	++(l->nAligns);
 
 	// Ungapped align -> nothing to do
-	if(align->core.n_cigar==1)
+	if(align->core.n_cigar == 1)
 		return;
 
 	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 	// Assumes that first and last cigar type cannot be N
 	// Assumes that left  and right of a N there's always a M.
 	// + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
-	uint32_t position,n_cigar,lend,rstart,gap_len,i,left_len, right_len, min_mtc;
+	uint32_t position, n_cigar, lend, rstart, gap_len, i, left_len, right_len, min_mtc;
 	uint32_t *cigar;
 	int op;
 
-	cigar    = bam1_cigar(align);
+	cigar = bam1_cigar(align);
 	// Add size of first cigar to position to get 1-based left stop (BAM is 0-based)
 	position = align->core.pos + (cigar[0] >> BAM_CIGAR_SHIFT);
 	n_cigar  = align->core.n_cigar;
@@ -557,7 +589,7 @@ void list_gap_sites(site_list *l,const bam1_t* align)
 	//Rprintf("[list_gap_sites] refid: %i\tposition: %i\tn_cigar: %i\n",align->core.tid,align->core.pos,n_cigar);
 
 
-	if(n_cigar>2)
+	if(n_cigar > 2)
 	{
 		// In this loop there's always a valid left and right cigar
 
@@ -566,7 +598,7 @@ void list_gap_sites(site_list *l,const bam1_t* align)
 		// BAM_CINS		    = 1 = S clip on the read with clipped sequence
 
 		// First cigar item must be M! Otherwise drop align.
-		if((cigar[0] & BAM_CIGAR_MASK)!=BAM_CMATCH)
+		if((cigar[0] & BAM_CIGAR_MASK) != BAM_CMATCH)
 			return;
 
 		// Add size of first cigar to position to get *1-based* left stop

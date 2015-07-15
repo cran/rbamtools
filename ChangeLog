@@ -80,3 +80,9 @@
 			which will be replaced by createIndex, loadIndex and createIdxBatch
 			(2.10.0)
 
+03.Nov.14	Changed nAligns data type to unsigned long long int (2.10.2)
+
+05.Nov.14	Corrected error in gapSiteList.h which caused "free(): invalid next size (fast)" error
+
+25.Nov.14	Added rangeSegCount class.
+

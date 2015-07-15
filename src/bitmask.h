@@ -30,15 +30,15 @@
 // (Also used by gapSiteList)
 typedef unsigned long long  bitmap_type; 							// Size at least 64 bits (C99)
 const unsigned idx[]      ={0,8,16,24,32,40,48,56};
-const unsigned long  pat[]={
+const bitmap_type pat[]={
                            0xFF             , 0xFF00              , 0xFF0000          , 0xFF000000        ,
                            0xFF00000000     , 0xFF0000000000      , 0xFF000000000000  , 0xFF00000000000000
                            };
-const unsigned long lpat[]={
+const bitmap_type lpat[]={
 		                    0xFF            , 0xFFFF              , 0xFFFFFF          , 0xFFFFFFFF        ,
 		                    0xFFFFFFFFFF    , 0xFFFFFFFFFFFF      , 0xFFFFFFFFFFFFFF  , 0xFFFFFFFFFFFFFFFF
                            };
-const unsigned long rpat[]={
+const bitmap_type rpat[]={
 		                    0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFF00, 0xFFFFFFFFFFFF0000, 0xFFFFFFFFFF000000,
 							0xFFFFFFFF00000000, 0xFFFFFF0000000000, 0xFFFF000000000000, 0xFF00000000000000
                            };
@@ -54,13 +54,13 @@ const unsigned max_bitmap_index=7;
 typedef unsigned long       bitmap_type;							// Size at least 32 bits (C99)
 const unsigned idx[]      ={0,8,16,24};
 
-const unsigned long  pat[]={
+const bitmap_type  pat[]={
                            0xFF             , 0xFF00              , 0xFF0000          , 0xFF000000
                            };
-const unsigned long lpat[]={
+const bitmap_type lpat[]={
 		                    0xFF            , 0xFFFF              , 0xFFFFFF          , 0xFFFFFFFF
                            };
-const unsigned long rpat[]={
+const bitmap_type rpat[]={
 		                    0xFFFFFFFF      , 0xFFFFFF00          , 0xFFFF0000        , 0xFF000000
                            };
 

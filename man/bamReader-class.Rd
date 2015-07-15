@@ -45,6 +45,10 @@
 \alias{index.initialized-methods}
 \alias{index.initialized,bamReader-method}
 %
+%\alias{rangeSegCount}  % in rangeSeqCount-class.Rd
+\alias{rangeSegCount-methods}
+\alias{rangeSegCount,bamReader-method}
+%
 \alias{rewind}
 \alias{rewind-methods}
 \alias{rewind,bamReader-method}
@@ -160,6 +164,11 @@
         %
         \item{isOpen}{\code{signature(object = "bamReader")}: 
             Returns TRUE when file connection is open.}
+        % 
+        \item{rangeSegCount}{\code{signature(object = "bamReader",
+           coords="numeric", segments="numeric", complex="logical")}:
+           Counts alignments for specified genomic segment regions
+           (genes, exons, ...)}
         %
         \item{rewind}{\code{signature(object = "bamReader")}: 
             Resets current file position. The subsequent call to 
@@ -172,7 +181,8 @@
 }
 %
 \references{
-\verb{The SAM Format Specification (v1.4-r985). The SAM Format Specification Working Group. September 7, 2011.}
+\verb{The SAM Format Specification (v1.4-r985).
+The SAM Format Specification Working Group. September 7, 2011.}
 \url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \author{Wolfgang Kaisers}

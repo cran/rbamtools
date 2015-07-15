@@ -39,7 +39,7 @@ idx<- system.file("extdata", "accepted_hits.bam.bai", package="rbamtools")
 nucStats(bam,idxInfiles=idx)
 reader<-bamReader(bam,idx=TRUE)
 nucStats(reader)
-range<-bamRange(reader,c(0,0,14000))
+range<-bamRange(reader,c(0,0,100000))
 nucStats(range)
 }
 \keyword{nucStats}
