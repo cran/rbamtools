@@ -8,30 +8,27 @@
 #ifndef RANGE_PARTITION_HPP_
 #define RANGE_PARTITION_HPP_
 
-//============================================================================
-// Name        : range_partition.hpp
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+// Name        : range_partition.h
 // Author      : W. Kaisers
 // Version     : Segmenting schema a genomic range
-// Date        : 12.01.2015
-//============================================================================
-
+// Creation    : 12.01.2015
+//
+// Represents a tiling schema on a (genomic) region
+// (on single seqid's (i.e. chromosomes))
+//
+// General rule (optional ??): No inserts outside segment range.
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
 #include <iostream>
 #include <vector>
 #include <list>
 #include <iomanip>
-using namespace std;
 
 
+namespace range_partition
+{
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
-// Represents a tiling schema on a (genomic) region
-// (on single seqid's (i.e. chromosomes))
-//
-// General rule (optional ??): No inserts outside segment range.
-
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
 typedef unsigned position_type; // position type
 typedef long int cat_type; // category type
@@ -114,18 +111,18 @@ struct range_element
 };
 
 // ToDo: Shift back to partition_stream.hpp
-ostream & operator<< (ostream &os, const range_node &node)
+std::ostream & operator<< (std::ostream &os, const range_node &node)
 {
-	os << "[node] id: " << setw(3) << node.id;
-	os << "\tpos: " << setw(4) << node.position;
-	os << "\tsrc_id: " << setw(3) << node.source_id;
+	os << "[node] id: " << std::setw(3) << node.id;
+	os << "\tpos: " << std::setw(4) << node.position;
+	os << "\tsrc_id: " << std::setw(3) << node.source_id;
 	return os;
 }
-ostream & operator<<(ostream &os, const range_element &obj)
+std::ostream & operator<<(std::ostream &os, const range_element &obj)
 {
-	os << "[range_elem] id: "	<< setw(3) << obj.id;
-	os << "\tbegin: " 			<< setw(4) << obj.begin;
-	os << "\tend: " 			<< setw(4) << obj.end;
+	os << "[range_elem] id: "	<< std::setw(3) << obj.id;
+	os << "\tbegin: " 			<< std::setw(4) << obj.begin;
+	os << "\tend: " 			<< std::setw(4) << obj.end;
 	return os;
 }
 
@@ -185,19 +182,19 @@ public:
 	position_type end() const { return end_; }
 	bool setRange (position_type begin, position_type end);
 
-	friend ostream & operator<< (ostream &os, const partition & s);
+	friend std::ostream & operator<< (std::ostream &os, const partition & s);
 	friend class range_list;
 
 	// ToDo: Remove this DEBUG - only function
-	list<range_node>::iterator begin_iter() { return l_.begin(); }
-	list<range_node>::iterator end_iter() { return l_.end(); }
+	std::list<range_node>::iterator begin_iter() { return l_.begin(); }
+	std::list<range_node>::iterator end_iter() { return l_.end(); }
 
 
 public:
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	// Functions for pushing and popping list elements
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
-	void push_front(range_node & node, list<range_node>::iterator &iter);
+	void push_front(range_node & node, std::list<range_node>::iterator &iter);
 	void push_front(range_node & node);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
@@ -209,7 +206,7 @@ public:
 	// nodes at the beginning of the list
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	bool set_start_node(position_type position);
-	void push_front(list<range_element>::const_iterator &rit, list<range_node>::iterator &wit);
+	void push_front(std::list<range_element>::const_iterator &rit, std::list<range_node>::iterator &wit);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	// Removes all nodes < position
@@ -232,7 +229,7 @@ public:
 	bool set_end_node(position_type position);
 
 	// ToDo: Does not check for back position...
-	void push_back(list<range_element>::const_iterator &iter);
+	void push_back(std::list<range_element>::const_iterator &iter);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	// Removes all nodes > position
@@ -253,8 +250,8 @@ public:
 	// Returns l_.end() when range_element has to be
 	// push_back'ed
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
-	void prepare_inner_insert(const range_element &elem, list<range_node>::iterator &iter);
-	void inner_insert(list<range_element>::const_iterator &rit, list<range_node>::iterator &wit);
+	void prepare_inner_insert(const range_element &elem, std::list<range_node>::iterator &iter);
+	void inner_insert(std::list<range_element>::const_iterator &rit, std::list<range_node>::iterator &wit);
 	void insert(range_list &l);
 
 
@@ -271,7 +268,7 @@ private:
 	position_type source_;
 
 	// List containing position nodes
-	list<range_node> l_;
+	std::list<range_node> l_;
 
 }; // partition
 
@@ -294,7 +291,7 @@ bool partition::setRange (position_type begin, position_type end)
 // Functions for pushing and popping list elements
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 
-void partition::push_front(range_node & node, list<range_node>::iterator &iter)
+void partition::push_front(range_node & node, std::list<range_node>::iterator &iter)
 {
 	iter = l_.begin();
 	if(l_.size())
@@ -311,7 +308,7 @@ void partition::push_front(range_node & node, list<range_node>::iterator &iter)
 
 void partition::push_front(range_node & node)
 {
-	list<range_node>::iterator iter = l_.begin();
+	std::list<range_node>::iterator iter = l_.begin();
 	if(l_.size())
 	{
 		if(node.position >= l_.begin()->position)
@@ -358,7 +355,7 @@ bool partition::set_start_node(position_type position)
 }
 
 
-void partition::push_front(list<range_element>::const_iterator &rit, list<range_node>::iterator &wit)
+void partition::push_front(std::list<range_element>::const_iterator &rit, std::list<range_node>::iterator &wit)
 {
 	//cout << "[push_front] beg: " << setw(5) <<  rit->begin << " end: " << setw(5) << rit->end << "\n";
 
@@ -401,7 +398,7 @@ bool partition::pop_front(position_type position)
 
 	// Do truncate using two iterators:
 	// second points to second element in list
-	list<range_node>::const_iterator second = l_.begin();
+	std::list<range_node>::const_iterator second = l_.begin();
 	++second;
 
 	while( (second->position < position) && (second != l_.end()))
@@ -465,7 +462,7 @@ bool partition::set_end_node(position_type position)
 
 
 // ToDo: Does not check for back position...
-void partition::push_back(list<range_element>::const_iterator &iter)
+void partition::push_back(std::list<range_element>::const_iterator &iter)
 {
 	// Removes or shifts nodes.position > iter->begin
 	pop_back(iter->begin);
@@ -507,7 +504,7 @@ bool partition::pop_back(position_type position)
 
 	// Do truncate using two iterators:
 	// second points to second to last element
-	list<range_node>::const_iterator second = l_.end();
+	std::list<range_node>::const_iterator second = l_.end();
 	--second;
 	--second;
 	while( (second->position > position) && (second != l_.begin()) )
@@ -531,7 +528,7 @@ bool partition::pop_back(position_type position)
 // Returns l_.end() when range_element has to be
 // push_back'ed
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
-void partition::prepare_inner_insert(const range_element &elem, list<range_node>::iterator &iter)
+void partition::prepare_inner_insert(const range_element &elem, std::list<range_node>::iterator &iter)
 {
 	range_node node = *iter;
 
@@ -546,7 +543,7 @@ void partition::prepare_inner_insert(const range_element &elem, list<range_node>
 	// B.1) Remember position			: begin
 	// B.2) Count nodes inside range 	: nnodes
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
-	list<range_node>::iterator begin;
+	std::list<range_node>::iterator begin;
 	begin = iter;
 	// Number of iteration steps between begin and current iter position
 	unsigned nnodes=0;
@@ -598,7 +595,7 @@ void partition::prepare_inner_insert(const range_element &elem, list<range_node>
 	return;
 }
 
-void partition::inner_insert(list<range_element>::const_iterator &rit, list<range_node>::iterator &wit)
+void partition::inner_insert(std::list<range_element>::const_iterator &rit, std::list<range_node>::iterator &wit)
 {
 	//cout << "[in_ins] pre  prep iter: " << *wit << "\n";
 	prepare_inner_insert(*rit, wit);
@@ -669,17 +666,17 @@ public:
 	void setRange(position_type begin, position_type end) { begin_= begin; end_ = end; }
 
 public:
-	list<range_element>::iterator erase(list<range_element>::iterator first, list<range_element>::iterator last)
+	std::list<range_element>::iterator erase(std::list<range_element>::iterator first, std::list<range_element>::iterator last)
 	{ return l_.erase(first, last);	}
 
-	friend ostream & operator<< (ostream &os, const range_list & obj);
+	friend std::ostream & operator<< (std::ostream &os, const range_list & obj);
 	friend class partition;
 
 private:
 	position_type begin_;
 	position_type end_;
 
-	list<range_element> l_;
+	std::list<range_element> l_;
 };
 
 bool range_list::push_back(range_element &elem)
@@ -735,7 +732,7 @@ range_list::operator partition() const
 
 	s.setRange(begin_, end_);
 	// left and right iter:
-	list<range_element>::const_iterator left = l_.begin(), right;
+	std::list<range_element>::const_iterator left = l_.begin(), right;
 	range_start.category = left->category;
 	range_start.position = left->begin;
 	range_start.source = left->source;
@@ -799,8 +796,8 @@ bool range_element::operator < (const partition & scheme) const
 
 void partition::insert(range_list &l)
 {
-	list<range_element>::const_iterator rit = l.l_.begin();
-	list<range_node>::iterator wit;
+	std::list<range_element>::const_iterator rit = l.l_.begin();
+	std::list<range_node>::iterator wit;
 
 	push_front(rit, wit);
 	while(rit != l.l_.end() && wit != l_.end())
@@ -842,7 +839,7 @@ partition::partition(const range_list &rlist, position_type dist, position_type 
 	pnode.source_id = 0;
 	pnode.position = begin_;
 
-	list<range_element>::const_iterator iter = rlist.l_.begin();
+	std::list<range_element>::const_iterator iter = rlist.l_.begin();
 
 
 	while(iter != rlist.l_.end())
@@ -883,5 +880,6 @@ partition::partition(const range_list &rlist, position_type dist, position_type 
 	}
 }
 
+}; // End namespace range_partition
 
 #endif /* RANGE_PARTITION_HPP_ */

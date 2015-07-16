@@ -12,6 +12,7 @@
 #include<Rinternals.h>
 #include<memory>
 
+
 template<typename T>
 static void _finalizer(SEXP ext)
 {
@@ -150,6 +151,7 @@ public:
     int* operator->() const { return p_; }
     int& operator [] (int i) { return p_[i]; }
     int size() const { return length(pRob); }
+    void reset() { memset(p_, 0, sizeof(int) * length(pRob)); }
 
 	operator SEXP() const { return pRob; }
 

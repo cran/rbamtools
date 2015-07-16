@@ -544,28 +544,27 @@ SEXP bam_reader_write_fastq(SEXP pReader,SEXP pFilename,SEXP pAppend)
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 	unsigned char *raw_seq;
-	int32_t seq_len;
-	int buf_size=2048, nuc_val;
+	int nuc_val;
 	char *buf = R_alloc(buf_size, sizeof(char));
 	uint8_t *quals;
-	unsigned i=0,j;
+	unsigned i=0, j, seq_len, buf_size=2048;
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	bam1_t *align=bam_init1();
-	int res=samread(reader,align);
+	samfile_t *reader = (samfile_t*) (R_ExternalPtrAddr(pReader));
+	bam1_t *align = bam_init1();
+	int res = samread(reader,align);
 
 	while(res>=0)
 	{
 		// Read Sequence
-		seq_len = align->core.l_qseq;
+		seq_len = (unsigned) align->core.l_qseq;
 		if(seq_len > buf_size)
 		{
 			buf_size = 2 * seq_len;
 			buf = R_alloc(buf_size, sizeof(char));
 		}
 		raw_seq=bam1_seq(align);
-		for(j=0;j<seq_len;++j)
+		for(j = 0; j < seq_len; ++j)
 		{
 			nuc_val = bam1_seqi(raw_seq, j);
 			if(nuc_val<0 || nuc_val>15)
@@ -581,17 +580,17 @@ SEXP bam_reader_write_fastq(SEXP pReader,SEXP pFilename,SEXP pAppend)
 		gzprintf(gz,"@%s\n%s\n+\n",bam1_qname(align),buf);
 
 		// Print quality string
-		quals=bam1_qual(align);
-		for(j=0;j<seq_len;++j)
+		quals = bam1_qual(align);
+		for(j = 0; j < seq_len; ++j)
 		{
 			// Ensure that printed character is in range
 			quals[j]= (quals[j]<0 ? 0 : quals[j]);
 			quals[j]= (quals[j]>93 ? 93 : quals[j]);
 			buf[j]=(char) (quals[j]+33);
 		}
-		gzprintf(gz,"%s\n",buf);
+		gzprintf(gz, "%s\n", buf);
 		++i;
-		res=samread(reader,align);
+		res=samread(reader, align);
 	}
 	gzclose(gz);
 	bam_destroy1(align);	// checks for >0!
@@ -637,37 +636,35 @@ SEXP bam_reader_write_fastq_index(SEXP pReader,SEXP pFilename,SEXP pWhichCopy,SE
 		error("[bam_reader_write_fastq_index] Cannot open file '%s'!",CHAR(STRING_ELT(pFilename,0)));
 
 
-	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 * char buffer for copying sequence and qualities.
-	 */
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+	// char buffer for copying sequence and qualities.
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	unsigned char *raw_seq;
-	int32_t seq_len;
-	int buf_size=2048,nuc_val;
+	int nuc_val;
 	char *buf = R_alloc(buf_size, sizeof(char));
 	uint8_t *quals;
-	unsigned nWritten=0, j, nChecked=0;
+	unsigned nWritten = 0, j, nChecked = 0, seq_len, buf_size = 2048;
 
-	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 */
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	bam1_t *align=bam_init1();
-	int res=samread(reader,align);
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+	samfile_t *reader = (samfile_t*) (R_ExternalPtrAddr(pReader));
+	bam1_t *align = bam_init1();
+	int res = samread(reader,align);
 
 	while(res>=0 && nChecked < nCheck)
 	{
 		++nChecked;
-		if(nChecked==(INTEGER(pWhichCopy)[nWritten]))
+		if(nChecked == (unsigned) (INTEGER(pWhichCopy)[nWritten]))
 		{
 
 			// read sequence
-			seq_len=align->core.l_qseq;
-			if(seq_len>buf_size)
+			seq_len = (unsigned) align->core.l_qseq;
+			if(seq_len > buf_size)
 			{
 				buf_size = 2 * seq_len;
 				buf = R_alloc(buf_size, sizeof(char));
 			}
 			raw_seq=bam1_seq(align);
-			for(j=0; j<seq_len; ++j)
+			for(j = 0; j < seq_len; ++j)
 			{
 				nuc_val=bam1_seqi(raw_seq,j);
 				if( (nuc_val < 0) || (nuc_val > 15) )
@@ -684,7 +681,7 @@ SEXP bam_reader_write_fastq_index(SEXP pReader,SEXP pFilename,SEXP pWhichCopy,SE
 
 			// Print quality string
 			quals=bam1_qual(align);
-			for(j=0;j<seq_len;++j)
+			for(j = 0; j < seq_len ; ++j)
 			{
 				// Ensure that printed character is in range
 				quals[j]= (quals[j]<0 ? 0 : quals[j]);
@@ -772,7 +769,7 @@ SEXP gap_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 
 	if(refid<0 || refid >=(reader->header->n_targets))
 		error("[gap_list_fetch] refid out of range!\n");
-	if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+	if(begin < 0 || begin >= end || end > (int) (reader->header->target_len[refid]))
 		error("[gap_list_fetch] Begin or end out of range!\n");
 
 
@@ -1043,7 +1040,7 @@ SEXP gap_site_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords)
 	if( (refid < 0) || (refid >= (reader->header->n_targets)) )
 		error("[gap_site_list_fetch] refid out of range!\n");
 
-	if( (begin < 0) || (begin >= end) || (end > (reader->header->target_len[refid])) )
+	if( (begin < 0) || (begin >= end) || (end > (int) (reader->header->target_len[refid])) )
 		error("[gap_site_list_fetch] Begin or end out of range!\n");
 
 	site_list *l = site_list_init();
@@ -1369,11 +1366,13 @@ SEXP gap_site_ll_fetch(SEXP pReader, SEXP pIndex, SEXP pRefid, SEXP pStart, SEXP
 		end  =INTEGER(pEnd)  [i];
 		sl->refid=refid;
 
-		if(refid<0 || refid>=(reader->header->n_targets))
+		if(refid < 0 || refid >= (reader->header->n_targets))
 			error("[gap_site_ll_fetch] refid out of range!");
-		if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+
+		if(begin < 0 || begin >= end || end > (int) (reader->header->target_len[refid]))
 			error("[gap_site_ll_fetch] Begin or end out of range!");
-		bam_fetch(reader->x.bam,index,refid,begin,end,(void*)sl,gap_site_list_fetch_func);
+
+		bam_fetch(reader->x.bam, index, refid, begin, end, (void*)sl, gap_site_list_fetch_func);
 		if(sl->size > 0LLU)
 			site_ll_add_site_list(l, sl);
 	}
@@ -1683,11 +1682,11 @@ SEXP gap_site_ll_get_df(SEXP pGapList,SEXP pRefNames)
 	 */
 
 	SEXP levs;
-	int nLevels = LENGTH(pRefNames);
+	unsigned nLevels = (unsigned) LENGTH(pRefNames);
 	PROTECT(levs = allocVector(STRSXP, nLevels));
 	++nProtected;
 
-	for(i=0; i<nLevels; ++i)
+	for(i=0; i < nLevels; ++i)
 		SET_STRING_ELT(levs, i, STRING_ELT(pRefNames, i));
 	setAttrib(refid_vector,R_LevelsSymbol,levs);
 
@@ -1893,7 +1892,7 @@ SEXP bam_range_fetch(SEXP pReader, SEXP pIndex, SEXP pCoords, SEXP pComplex)
 	if( (refid < 0) || (refid >= (reader->header->n_targets)) )
 		error("[bam_range_fetch] refid out of range!\n");
 
-	if( (begin < 0) || (begin >= end) || (end > (reader->header->target_len[refid])) )
+	if( (begin < 0) || (begin >= end) || (end > (int) (reader->header->target_len[refid])) )
 		error("[bam_range_fetch] Begin or end out of range!\n");
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -1977,14 +1976,15 @@ SEXP bam_count(SEXP pReader,SEXP pIndex,SEXP pCoords)
 	if(index==NULL)
 		error("[bam_count] Index must not be NULL pointer!\n");
 
-	double *pi=REAL(pCoords);
-	int refid=(int) pi[0];
-	int begin=(int) pi[1];
-	int end=(int) pi[2];
+	double *pi	= REAL(pCoords);
+	int refid	= (int) pi[0];
+	int begin	= (int) pi[1];
+	int end		= (int) pi[2];
 
-	if(refid<0 || refid >=(reader->header->n_targets))
+	if(refid < 0 || refid >= (reader->header->n_targets))
 		error("[bam_count] refid out of range!\n");
-	if(begin<0 || begin>=end || end>(reader->header->target_len[refid]))
+
+	if( begin < 0 || begin >= end || end > (int) (reader->header->target_len[refid]))
 		error("[bam_count] Begin or end out of range!\n");
 
 
@@ -2427,30 +2427,30 @@ SEXP bam_range_get_align_range(SEXP pRange)
 
 	align_element *curr_el=l->curr_el;
 	wind_back(l);
-	for(i=0;i<l->size;++i)
+	for(i = 0; i < l->size; ++i)
 	{
-		align=get_const_next_align(l);
-		if(align->core.pos<min_pos)
-			min_pos=align->core.pos;
-		calend=bam_calend(&align->core,bam1_cigar(align));
-		if(calend>max_end)
-			max_end=calend;
+		align = get_const_next_align(l);
+		if(align->core.pos < (int32_t) min_pos)
+			min_pos = align->core.pos;
+
+		calend = bam_calend(&align->core, bam1_cigar(align));
+		if(calend > max_end)
+			max_end = calend;
 	}
-	l->curr_el=curr_el;
+	l->curr_el = curr_el;
 
 	SEXP ans;
-
 	PROTECT(ans=allocVector(INTSXP,2));
 
 	/* Returns minimum of position= 0-based position of leftmost match nucleotide	*/
-	INTEGER(ans)[0]=min_pos;
+	INTEGER(ans)[0] = min_pos;
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 * calend adds cigar shifts to position and thereby returns the
 	 * 0-based position of the first nucleotide after the last match
 	 * Returns the 0-based position of the rightmost match nucleotide
 	 */
-	INTEGER(ans)[1]=max_end-1;
+	INTEGER(ans)[1] = max_end - 1;
 
 	// + + + + + + + + + + + + + + + + + + + + + + + + + +
 	// Names
@@ -2532,28 +2532,26 @@ SEXP bam_range_write_fastq(SEXP pRange,SEXP pFilename,SEXP pAppend)
 	 * create buffer for sequence and qualities
 	 */
 	unsigned char *raw_seq;
-	int32_t seq_len;
-	int buf_size=2048;
 	char *buf=(char*) calloc(buf_size,sizeof(char));
 	uint8_t *quals;
-	unsigned i=0,j;
-	int nRows=(l->size);
+	unsigned i=0, j, seq_len, buf_size=2048;
+	unsigned nRows = (unsigned) (l->size);
 
 
-	for(i=0;i<nRows;++i)
+	for(i = 0; i < nRows; ++i)
 	{
-		align=get_const_next_align(l);
+		align = get_const_next_align(l);
 
 		/* read sequence									*/
-		seq_len=align->core.l_qseq;
-		if(seq_len>buf_size)
+		seq_len = (unsigned) align->core.l_qseq;
+		if(seq_len > buf_size)
 		{
-			buf_size=2*(seq_len+1);
+			buf_size = 2 * (seq_len + 1);
 			free(buf);
-			buf= (char*) calloc(buf_size,sizeof(char));
+			buf= (char*) calloc(buf_size, sizeof(char));
 		}
-		raw_seq=bam1_seq(align);
-		for(j=0;j<seq_len;++j)
+		raw_seq = bam1_seq(align);
+		for(j = 0; j < seq_len; ++j)
 			buf[j]=bam_nt16_rev_table[bam1_seqi(raw_seq,j)];
 		buf[j]=0;
 
@@ -4686,8 +4684,8 @@ SEXP get_partition_segments(SEXP pId, SEXP pBegin, SEXP pEnd, SEXP pCoords)
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	// Build range_list object from incoming positions
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
-	range_element elem;
-	range_list rl;
+	range_partition::range_element elem;
+	range_partition::range_list rl;
 	rl.setRange(coords[0], coords[1]);
 
 	unsigned not_inserted = 0;
@@ -4709,7 +4707,7 @@ SEXP get_partition_segments(SEXP pId, SEXP pBegin, SEXP pEnd, SEXP pCoords)
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	// Build partition from range_list
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
-	partition p(rl, coords[2], coords[0], coords[1]);
+	range_partition::partition p(rl, coords[2], coords[0], coords[1]);
 
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
 	// Return result as data.frame
@@ -4723,7 +4721,7 @@ SEXP get_partition_segments(SEXP pId, SEXP pBegin, SEXP pEnd, SEXP pCoords)
 	rsrc = dfr.addIntColumn("source");
 	rsid = dfr.addIntColumn("source_id");
 
-	list<range_node>::iterator iter = p.begin_iter();
+	std::list<range_partition::range_node>::iterator iter = p.begin_iter();
 
 	for(i = 0; i < n; ++i, ++iter)
 	{
@@ -4735,6 +4733,27 @@ SEXP get_partition_segments(SEXP pId, SEXP pBegin, SEXP pEnd, SEXP pCoords)
 	return dfr;
 }
 
+SEXP count_run_length(SEXP pInt)
+{
+	atmptr<int> p(pInt);
+
+	int n=1000, idx, count=0, last_val, i, len=p.size();
+	atmptr<int> res(n);
+
+	last_val = p[0];
+	for(i = 1; i < len; ++i)
+	{
+		if(p[i] == last_val) { ++count; }
+		else
+		{
+			idx = count > n ? n : count;
+			++res[idx];
+			last_val=p[i];
+			count = 0;
+		}
+	}
+	return res;
+}
 
 
 
