@@ -9,8 +9,7 @@
 #define DATA_FRAME_H_
 
 #include <Rdefines.h>
-#include <math.h>
-#include <cstdlib>
+#include <cstdlib>		// calloc free
 
 class data_frame
 {
@@ -49,6 +48,19 @@ public:
 
 	unsigned nrow() const { return nrow_; }
 	unsigned ncol() const { return ncol_; }
+
+	void addIdColumn(const char * colname = "id", int start_val = 1)
+	{
+		if(next_column < ncol_)
+		{
+			SEXP p = PROTECT(allocVector(INTSXP, nrow_));
+			SET_VECTOR_ELT(dflist, next_column, p);
+			SET_STRING_ELT(col_names, next_column, mkChar(colname));
+			for(int i = 0; i < (int) nrow_; ++i)
+				INTEGER(p)[i] = i + start_val;
+			++next_column;
+		}
+	}
 
 	int * addIntColumn(const char * colname)
 	{
@@ -89,7 +101,9 @@ private:
 	void fill_row_names()
 	{
 		unsigned i;
-		char *buf=(char*) calloc(((unsigned) log10(nrow_) + 2), sizeof(char));
+		// Use array of static size for filling
+		// (log10 based calculation resulted in compiler errors on solaris)
+		char *buf=(char*) calloc(((unsigned) 100), sizeof(char));
 	    for(i=0; i < nrow_; ++i)
 	    {
 	    	sprintf(buf,"%i",i + 1);

@@ -1,5 +1,5 @@
 1237e725bafb03d9675f734de3d61b74 *ChangeLog
-79e759f2c23e78cd6eb3db9cde9ceec1 *DESCRIPTION
+94cd2bf52b6b52c5690fc71affb4a51a *DESCRIPTION
 ff0c6359ded4fca4d6407714b464e493 *NAMESPACE
 dbeb98c50980241139bff7086a0761cc *NEWS
 4c19072b4db2ee519a8d29dbec3d3c50 *R/rbamtools.r
@@ -59,7 +59,7 @@ e6579ecae98750915f5a88a341599675 *src/Makevars
 938c927c11d8db5b8ed6fc5f48efdf78 *src/align_counts.h
 4d91b83a77c36cffad704841f65e75e2 *src/align_list.h
 a083444dcfe1bc04dd7a78f8342b876d *src/bitmask.h
-953a4df7f40eb5327ef516f2bfe9dcc6 *src/data_frame.h
+53c23833e33db39a9eec0f2a0eafdcad *src/data_frame.h
 4083104482995a028af267c52f922cd2 *src/extptr.h
 0fc2bf25a1d398361a99b2c2b1a27be7 *src/gapSiteList.h
 14964b9ca4339434ad612fc7fdd321a6 *src/gapSiteListList.h
