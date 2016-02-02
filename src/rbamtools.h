@@ -5,17 +5,14 @@
  *      Author: kaisers
  */
 
-#ifndef RCPP_TEST_H_
-#define RCPP_TEST_H_
+#ifndef RBAMTOOLS_H_
+#define RBAMTOOLS_H_
 
 
 #include "range_partition.h"
 #include "data_frame.h"
 #include "grange.h"
 #include "extptr.h"
-
-
-extern "C" {
 
 #include <string.h>
 #include <ctype.h>
@@ -27,6 +24,8 @@ extern "C" {
 #include <R_ext/PrtUtil.h>
 #include <R_ext/Rdynload.h> // DllInfo
 
+
+extern "C" {
 // Include samtools library
 #include "samtools/bam.h"
 #include "samtools/sam.h"
@@ -262,4 +261,4 @@ void R_init_rbamtools(DllInfo *info);
 
 
 
-#endif /* RCPP_TEST_H_ */
+#endif /* RBAMTOOLS_H_ */

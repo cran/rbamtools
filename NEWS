@@ -1,3 +1,20 @@
+CHANGES IN VERSION 2.13.0
+-------------------------
+
+NEW FEATURES
+
+    o (none)
+
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o (none)
+
+BUG FIXES
+
+    o Corrected [extern "C" ] position in rbamtools.h
+
+
 CHANGES IN VERSION 2.12.0
 -------------------------
 
