@@ -9,8 +9,8 @@
 #define DATA_FRAME_H_
 
 #include <Rdefines.h>
-#include <math.h>
-#include <cstdlib>
+#include <sstream>
+//#include <cstdlib>
 
 class data_frame
 {
@@ -89,13 +89,14 @@ private:
 	void fill_row_names()
 	{
 		unsigned i;
-		char *buf=(char*) calloc(((unsigned) log10(nrow_) + 2), sizeof(char));
+		std::stringstream sst;
 	    for(i=0; i < nrow_; ++i)
 	    {
-	    	sprintf(buf,"%i",i + 1);
-	    	SET_STRING_ELT(row_names, i, mkChar(buf));
+	    	sst << i + 1;
+	    	SET_STRING_ELT(row_names, i, mkChar(sst.str().c_str()));
+	    	sst.str(std::string());
+	    	sst.clear();
 	    }
-	    free(buf);
 	}
 };
 

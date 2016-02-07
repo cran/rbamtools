@@ -45,8 +45,6 @@ Maintainer: Wolfgang Kaisers <kaisers@med.uni-duesseldorf.de>
 \references{
 \verb{The SAM Format Specification (v1.4-r985). 
 The SAM Format Specification Working Group. September 7, 2011.}
-\url{http://www.samtools.sourceforge.net/SAM1.pdf}
-
 \verb{
 Li H.*, Handsaker B.*, Wysoker A., Fennell T., Ruan J., Homer N., Marth G., Abecasis G., Durbin R. and 1000 Genome Project Data Processing Subgroup (2009)
 The Sequence alignment/map (SAM) format and SAMtools.

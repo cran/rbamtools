@@ -24,6 +24,7 @@ source("test_bam_range.r")
 source("test_bam_header.r")
 source("test_bam_align.r")
 source("test_range_seg_count.r")
+source("test_genome_partition.r")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #

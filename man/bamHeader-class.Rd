@@ -39,7 +39,6 @@ Objects can be created by calls of the form \code{header<-new("bamHeader")}.}
 \references{
 \verb{The SAM Format Specification (v1.4-r985).
 The SAM Format Specification Working Group. September 7, 2011.}
-\url{http://www.samtools.sourceforge.net/SAM1.pdf}
 }
 \author{Wolfgang Kaisers}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %

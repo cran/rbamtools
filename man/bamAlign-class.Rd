@@ -284,7 +284,6 @@ Objects can be created by calls of the form \code{new("bamAlign", alignment)}.
 \references{
 \verb{The SAM Format Specification (16ede77). 
     The SAM Format Specification Working Group. September 12, 2014.}
-\url{http://samtools.github.io/hts-specs/SAMv1.pdf}
 }
 \author{Wolfgang Kaisers}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %

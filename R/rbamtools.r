@@ -4872,7 +4872,8 @@ setMethod("genomePartition", c("bamReader","data.frame"), function(object, genom
         # Calculate Segments
         urc <- genome[genome$seqid==clv[i], ]
         coords <- as.integer(c(1, rfd$LN[i], dist, 1))
-        reflist[[i]] <- .Call("get_partition_segments", urc$id, urc$begin, urc$end, coords)
+        reflist[[i]] <- .Call("get_partition_segments", urc$id,
+                                urc$begin, urc$end, coords, PACKAGE="rbamtools")
     }
     
     res <- .GenomePartition()  
