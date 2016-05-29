@@ -2,7 +2,8 @@
 %
 \alias{getRefCoords}
 \alias{getRefCoords-methods}
-\alias{getRefCoords,bamReader-method}
+\alias{getRefCoords,bamReader,character-method}
+\alias{getRefCoords,bamReader,factor-method}
 %
 \alias{getRefCount}
 \alias{getRefCount-methods}
@@ -11,12 +12,22 @@
 \alias{getRefData}
 \alias{getRefData-methods}
 \alias{getRefData,bamReader-method}
+\alias{getRefData,bamWriter-method}
+%
+\alias{getRefId}
+\alias{getRefId-methods}
+\alias{getRefId,bamReader,character-method}
+\alias{getRefId,bamWriter,character-method}
+\alias{getRefId,bamReader,factor-method}
+\alias{getRefId,bamWriter,factor-method}
 %
 \title{Retrieve reference sequence from a BAM file as data.frame}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
-\description{The three functions: \code{getRefCoords}, \code{getRefCount} and \code{getRefData} provide reading access to data about the present reference sequences in the bamHeader.}
+\description{The four functions: \code{getRefCoords}, \code{getRefCount},
+\code{getRefData} and \code{getRefId} provide reading access to data about
+the present reference sequences in bamReader or bamWriter.}
 \usage{getRefData(object)}
 \arguments{
         \item{object}{\code{bamReader}.
@@ -43,7 +54,8 @@ bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam,idx=TRUE)
 getRefData(reader)
 getRefCount(reader)
-coords<-getRefCoords(reader,"chr1")
+getRefId(reader, "chr1")
+coords<-getRefCoords(reader, "chr1")
 rg<-bamRange(reader,coords)
 bamClose(reader)
 }

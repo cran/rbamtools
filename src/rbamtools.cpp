@@ -1210,6 +1210,18 @@ SEXP gap_site_list_get_ref_id(SEXP pGapList)
 	return ans;
 }
 
+SEXP gap_site_list_set_ref_id(SEXP pGapList, SEXP pRefId)
+{
+	if(TYPEOF(pGapList)!=EXTPTRSXP)
+		error("[gap_site_list_set_ref_id] No external pointer!");
+
+	atmptr<int> refid(pRefId);
+
+	site_list *l=(site_list*)(R_ExternalPtrAddr(pGapList));
+	l->refid = (unsigned) refid[0];
+	return pGapList;
+}
+
 SEXP gap_site_list_get_size(SEXP pGapList)
 {
 	if(TYPEOF(pGapList) != EXTPTRSXP)
@@ -1266,7 +1278,7 @@ SEXP gap_site_list_merge(SEXP pLhs, SEXP pRhs, SEXP pRef)
 	PROTECT(list = R_MakeExternalPtr( (void*)(mrg), R_NilValue, R_NilValue));
 	R_RegisterCFinalizerEx(list, finalize_gap_site_list, TRUE);
 	UNPROTECT(1);
-	Rprintf("[gap_site_list_merge] Merge list of size %lu.\n", mrg->size);
+	//Rprintf("[gap_site_list_merge] Merge list of size %lu.\n", mrg->size);
 	return list;
 }
 
@@ -2920,6 +2932,51 @@ SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap)
 
 	UNPROTECT(nProtected);
 	return alignDepth;
+}
+
+
+
+
+SEXP bam_range_get_gap_site_list(SEXP pRange)
+{
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+	// Read gap-list from bamRange
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+	if(TYPEOF(pRange)!=EXTPTRSXP)
+		error("[bam_range_get_align_depth] No external pointer!");
+
+	align_list *l=(align_list*)(R_ExternalPtrAddr(pRange));
+	if(l->size==0)
+	{
+		Rprintf("[bam_range_get_gap_list] Empty Range!");
+		return R_NilValue;
+	}
+
+	SEXP pGap;
+	PROTECT(pGap = create_gap_site_list());
+	site_list *g= (site_list*) (R_ExternalPtrAddr(pGap));
+
+	g->refid = l->seqid;
+
+	// Wind back
+	align_element *e=l->curr_el;
+	wind_back(l);
+
+
+	// Cycle aligns and add to gap list
+	const bam1_t * align;
+	for(unsigned i=0; i < (l->size); ++i)
+	{
+		align = get_const_next_align(l);
+		list_gap_sites(g, align);
+	}
+
+	// Restore curr_el
+	l->curr_el=e;
+
+
+	UNPROTECT(1);
+	return pGap;
 }
 
 
@@ -4755,6 +4812,49 @@ SEXP count_run_length(SEXP pInt)
 	return res;
 }
 
+SEXP mult_seq(SEXP pBegin, SEXP pEnd)
+{
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+	// mult_seq	:	Create integer vector consisting of multiple
+	// 				sequential increasing (or decreasing) segments
+	//				from integer input vectors
+	//
+	//	Example:	c(a,b,c), c(x,y,z) -> c(a:x, b:y, c:z)
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - //
+
+
+	atmptr<int> begin(pBegin);
+	atmptr<int> end(pEnd);
+
+	if(begin.length() != end.length())
+		error("[mult_seq] pBegin and pEnd must have equal length!");
+
+	unsigned i, k, n, l;
+	int j;
+	l = (unsigned) begin.length();
+
+	// Calculate length of output vector
+	n=0;
+	for(i=0; i < l; ++i)
+		n += abs(end[i] - begin[i] + 1);
+
+	atmptr<int> res(n);
+
+	k= 0;
+	for(i=0; i < l; ++i)
+	{
+		if(begin[i] <= end[i])
+		{
+			for(j = begin[i]; j <= end[i]; ++j, ++k)
+				res[k] = j;
+		}else{
+			for(j = end[i]; j >= begin[i]; --j, ++k)
+				res[k] = j;
+		}
+	}
+	return res;
+}
+
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -4825,6 +4925,7 @@ void R_init_rbamtools(DllInfo *info)
 		{ "gap_site_list_fetch",					(DL_FUNC) &gap_site_list_fetch,					3},
 		{ "gap_site_list_get_df",					(DL_FUNC) &gap_site_list_get_df,				1},
 		{ "gap_site_list_get_ref_id",  				(DL_FUNC) &gap_site_list_get_ref_id,   			1},
+		{ "gap_site_list_set_ref_id",  				(DL_FUNC) &gap_site_list_set_ref_id,   			2},
 		{ "gap_site_list_get_size",					(DL_FUNC) &gap_site_list_get_size,  			1},
 		{ "gap_site_list_get_nAligns",				(DL_FUNC) &gap_site_list_get_nAligns,			1},
 		{ "gap_site_list_get_nAlignGaps",			(DL_FUNC) &gap_site_list_get_nAlignGaps,		1},
@@ -4880,6 +4981,7 @@ void R_init_rbamtools(DllInfo *info)
 		{ "bam_range_get_seqlen",					(DL_FUNC) &bam_range_get_seqlen,				1},
 		{ "bam_range_get_qual_df",					(DL_FUNC) &bam_range_get_qual_df,				1},
 		{ "bam_range_get_align_depth",  			(DL_FUNC) &bam_range_get_align_depth,   		2},
+		{ "bam_range_get_gap_site_list",  		    (DL_FUNC) &bam_range_get_gap_site_list,	    	1},
 		{ "bam_range_count_nucs",               	(DL_FUNC) &bam_range_count_nucs,                1},
 		{ "bam_range_idx_copy",               		(DL_FUNC) &bam_range_idx_copy,                	2},
 
@@ -4950,7 +5052,7 @@ void R_init_rbamtools(DllInfo *info)
 		{ "count_fastq",							(DL_FUNC) &count_fastq,							2},
 		{ "get_col_quantiles",						(DL_FUNC) &get_col_quantiles,					2},
 		{ "count_text_lines",						(DL_FUNC) &count_text_lines,					1},
-
+		{ "mult_seq",						        (DL_FUNC) &mult_seq,   			                2},
 		{NULL, NULL, 0}
 	};
 	/*

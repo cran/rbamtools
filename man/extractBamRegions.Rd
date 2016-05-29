@@ -5,9 +5,9 @@ and BAM files into a set of output BAM files..}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
-\description{The function \code{extractBamRegions} writes (remaining) aligns or
+\description{The function \code{extractBamRegions} writes aligns or
 some part of the stored aligns in a BAM file as reads into a
-compressed fastq file.}
+BAM output file.}
 \usage{extractBamRegions(bamFiles, ranges, idxFiles, outFiles)}
 \arguments{
     \item{bamFiles}{\code{character}: Vector of BAM file names. }

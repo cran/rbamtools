@@ -3,7 +3,7 @@
 \docType{class}
 \alias{as.data.frame.refSeqDict}
 \alias{coerce,refSeqDict,data.frame-method}
-\alias{[,refSeqDict-method}
+\alias{[,refSeqDict,ANY,ANY,ANY-method}
 \alias{[<-,refSeqDict-method}
 \alias{addSeq,refSeqDict-method}
 \alias{addSeq}
@@ -18,7 +18,7 @@
 \alias{removeSeqs}
 \alias{tail,refSeqDict-method}
 \alias{tail}
-\title{Class \code{"refSeqDict"}: Repesentation of data from reference 
+\title{Class \code{"refSeqDict"}: Repesentation of data from reference
     sequence dictionary in BAM file header.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description
@@ -42,10 +42,10 @@ Objects can be created by calls of the form \code{hl<-new("refSeqDict")}.}
         \item{dim}{\code{signature(x="refSeqDict")}:
             Returns dimension of data: number of rows and 6 columns.}
         %
-        \item{as.data.frame}{\code{signature(object="refSeqDict")}: 
+        \item{as.data.frame}{\code{signature(object="refSeqDict")}:
             Combines data of Slots to data.frame.}
         %
-        \item{coerce}{\code{signature(from="bamRange", to="data.frame")}: 
+        \item{coerce}{\code{signature(from="bamRange", to="data.frame")}:
             Coercion of refSeqDice to data.frame.}
         %
         \item{removeSeqs}{\code{signature(object="refSeqDict",rows="numeric")}:
@@ -57,7 +57,7 @@ Objects can be created by calls of the form \code{hl<-new("refSeqDict")}.}
         \item{head}{\code{signature(.Object="refSeqDict",n)}:
             Returns head of data.frame representation.}
         %
-        \item{tail}{\code{signature(.Object="refSeqDict",n)}: 
+        \item{tail}{\code{signature(.Object="refSeqDict",n)}:
             Returns tail of data.frame representation.}
         %
         \item{getHeaderText}{\code{signature(.Object="refSeqDict")}:

@@ -12,7 +12,7 @@ options(width=60)
 ###################################################
 ### code chunk number 2: rbamtools.Rnw:591-595
 ###################################################
-bam <- system.file("extdata", 
+bam <- system.file("extdata",
                 "accepted_hits.bam", package="rbamtools")
 # Open bam file
 reader <- bamReader(bam)
@@ -21,7 +21,7 @@ reader <- bamReader(bam)
 ###################################################
 ### code chunk number 3: rbamtools.Rnw:606-608 (eval = FALSE)
 ###################################################
-## bamSort(reader, prefix="my_sorted", 
+## bamSort(reader, prefix="my_sorted",
 ##             byName=FALSE, maxmem=1e+9)
 
 
@@ -288,7 +288,7 @@ xtable(head(rpdf)[, c(1:6, 8, 9, 13)])
 ###################################################
 ### code chunk number 32: hist_gqs
 ###################################################
-plot(table(rpdf$gqs), type="h", las=1, bty="n", lwd=2, 
+plot(table(rpdf$gqs), type="h", las=1, bty="n", lwd=2,
         xlab="gqs", ylab="Number of gap sites",
         main="Distribution of gqs values")
 
@@ -300,17 +300,17 @@ plot(table(rpdf$gqs), type="h", las=1, bty="n", lwd=2,
 ## {
 ##     require(Rsamtools)
 ##     require(GenomicAlignments)
-##     
+## 
 ##     mc.cores <- as.integer(mc.cores)
-##     
+## 
 ##     # Function will be called by mclapply
 ##     doScanBam <- function(bamFile)
 ##     {
 ##         open(bamFile)
-##         
+## 
 ##         # Create empty container.
 ##         gPos <- GRanges()
-##         
+## 
 ##         # Fill container by processing 'yieldSize' reads at a time
 ##         while(
 ##             sum(
@@ -325,13 +325,13 @@ plot(table(rpdf$gqs), type="h", las=1, bty="n", lwd=2,
 ##                     )
 ##             ) > 0
 ##         ){
-##             
+## 
 ##             nOps <- cigarRangesAlongReferenceSpace(records$cigar,ops="N")
 ##             sel <- elementLengths(nOps) != 0
-##             gPos <- c(gPos, 
-##                         GRanges(seqnames=rep(records$rname[sel], 
+##             gPos <- c(gPos,
+##                         GRanges(seqnames=rep(records$rname[sel],
 ##                                             elementLengths(nOps)[sel]),
-##                                             ranges=unlist(shift(nOps[sel], 
+##                                             ranges=unlist(shift(nOps[sel],
 ##                                             records$pos[sel]))
 ##                             )
 ##                     )
@@ -340,45 +340,45 @@ plot(table(rpdf$gqs), type="h", las=1, bty="n", lwd=2,
 ##         # Return all gap positions
 ##         return(gPos)
 ##     }
-##     
+## 
 ##     cat("[scanGapSites] Processing", length(bam), "Files.\n")
-##     
-##     
+## 
+## 
 ##     bamFileList <- BamFileList(bam, yieldSize = yieldSize)
 ##     gList <- mclapply(bamFileList, doScanBam)
-##     
+## 
 ##     sz <- object.size(gList)
 ##     bm<-Sys.localeconv()[7]
-##     cat("[scanGapSites] Collected object of size", 
+##     cat("[scanGapSites] Collected object of size",
 ##             format(as.numeric(object.size(gList)), big.mark=bm),
 ##             "bytes.\n")
-##     
+## 
 ##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
 ##     # Get all unique positions across all samples
 ##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
 ##     uPos <- unique(Reduce("c", gList))
-##     
+## 
 ##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
-##     # Create the count table by 
+##     # Create the count table by
 ##     # transforming the ranges into character strings.
 ##     # - - - - - - - - - - - - - - - - - - - - - - - - - #
 ##     ref <- paste(seqnames(uPos), start(uPos), end(uPos), sep="-")
-##     
+## 
 ##     # Will be called by mclapply
 ##     doTable <- function(grng, ref)
 ##     {
 ##         tab <- table(paste(seqnames(grng), start(grng), end(grng),sep="-"))
 ##         tab[match(ref,names(tab))]
 ##     }
-##     
-##     count.table <- do.call("cbind", 
+## 
+##     count.table <- do.call("cbind",
 ##                     mclapply(gList, doTable, ref, mc.cores=mc.cores))
 ##     rownames(count.table) <- ref
-##     
-##     cat("[scanGapSites] Number of sites:", 
+## 
+##     cat("[scanGapSites] Number of sites:",
 ##             format(nrow(count.table), big.mark=bm),
 ##             ".\n")
-##     
+## 
 ##     cat("[scanGapSites] Finished.\n")
 ##     return(count.table)
 ## }
@@ -527,7 +527,7 @@ plotAlignDepth(ad, lwd = 2, xlim = xlim,
             ylab = "Align depth", start = start,
             end = end, strand = "-",
             transcript = paste("Chromosome 1",
-                "\tGene ENSG00000227232", ensg_id, 
+                "\tGene ENSG00000227232", ensg_id,
                 "\tTranscript ",enst_id
 ))
 
@@ -551,10 +551,71 @@ sum(dfr$count)
 ###################################################
 ### code chunk number 52: rbamtools.Rnw:1564-1569
 ###################################################
-plot(count~position, dfr, type="l", 
+plot(count~position, dfr, type="l",
         las=1, bty="n", lwd=1.5, col="dodgerblue2",
         xlab="Position on Chromosome 1",
         ylab="Alignment count",
         main="Number of alignments in genomic segments of 20 nucleotides size")
+
+
+###################################################
+### code chunk number 53: rbamtools.Rnw:1588-1593
+###################################################
+bs <- bamSamples(6)
+bamFiles(bs) <- paste("bam",1:6, ".bam", sep="")
+sampleLabels(bs) <- paste(rep(c("wt", "trt"), each=3), 1:6, sep="")
+sampleGroups(bs) <- rep(c("wildtype", "treated"), each=3)
+bs
+
+
+###################################################
+### code chunk number 54: rbamtools.Rnw:1601-1602
+###################################################
+bamIdxFiles(bs)
+
+
+###################################################
+### code chunk number 55: rbamtools.Rnw:1607-1608
+###################################################
+bamIdxFiles(bs)<- paste("index", 1:6, ".bam.bai", sep="")
+
+
+###################################################
+### code chunk number 56: rbamtools.Rnw:1627-1628 (eval = FALSE)
+###################################################
+## nAligns(bs) <- bamCountAll(bs)
+
+
+###################################################
+### code chunk number 57: rbamtools.Rnw:1643-1651
+###################################################
+bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
+bs <-bamSamples(1)
+bamFiles(bs) <- bam
+sampleLabels(bs) <- "s1"
+sampleGroups(bs) <- "g1"
+checkBamFiles(bs)
+nAligns(bs) <- bamCountAll(bs)
+bs
+
+
+###################################################
+### code chunk number 58: rbamtools.Rnw:1667-1675
+###################################################
+## - - - - - - - - - - - - - - - - - - - - - - ##
+# Construct geneModel object
+library(refGenome)
+ucfile<-system.file("extdata", "hs.ucsc.small.RData", package="refGenome")
+uc<-loadGenome(ucfile)
+gt <- getGeneTable(uc)
+gene_id <- as.character(gt$gene_id[1])
+gm <- geneModel(uc, gene_id)
+
+
+###################################################
+### code chunk number 59: rbamtools.Rnw:1686-1688
+###################################################
+sad <- samplesAlignDepth(bs, gm)
+plot(sad, col="gray50")
 
 

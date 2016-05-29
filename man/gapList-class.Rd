@@ -1,20 +1,27 @@
 \name{gapList-class}
 \Rdversion{1.1}
 \docType{class}
+%
 \alias{gapList-class}
+\alias{initialize,gapList-method}
+%
 \alias{as.data.frame.gapList}
 \alias{coerce,gapList,data.frame-method}
-\alias{gapList,bamReader-method}
+%
 \alias{gapList}
-\alias{initialize,gapList-method}
+\alias{gapList,bamReader,numeric-method}
+%
 \alias{nAligns}
 \alias{nAligns-methods}
 \alias{nAligns,gapList-method}
+%
 \alias{nAlignGaps}
 \alias{nAlignGaps-methods}
 \alias{nAlignGaps,gapList-method}
+%
 \alias{show,gapList-method}
 \alias{size,gapList-method}
+%
 \title{Class \code{"gapList"}: Representation of genomic alignment gaps.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description

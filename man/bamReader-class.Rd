@@ -4,14 +4,13 @@
 \alias{bamReader-class}
 %
 \alias{bamClose,bamReader-method}
-\alias{bamSave,bamReader-method}
 \alias{bamSort,bamReader-method}
 \alias{filename,bamReader-method}
 \alias{isOpen,bamReader-method}
 %
 \alias{bamCopy}
 \alias{bamCopy-methods}
-\alias{bamCopy,bamReader-method}
+\alias{bamCopy,bamReader,bamWriter-method}
 %
 % Deprecated:
 \alias{create.index}
@@ -20,7 +19,8 @@
 %
 \alias{createIndex}
 \alias{createIndex-methods}
-\alias{createIndex,bamReader-method}
+\alias{createIndex,bamReader,character-method}
+\alias{createIndex,bamReader,missing-method}
 %
 \alias{getHeader,bamReader-method}
 \alias{getHeaderText,bamReader-method}

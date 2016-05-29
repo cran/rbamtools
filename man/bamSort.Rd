@@ -1,12 +1,18 @@
 \name{bamSort}
+%
 \alias{bamSort}
+\alias{bamSort-methods}
+\alias{bamSort,bamReader,ANY,ANY,ANY-method}
+\alias{bamSort,sampleBamFiles,ANY,ANY,ANY-method}
+\alias{bamSort,sampleBamFiles-method}
+%
 \title{bamSort: Creation of a sorted copy of a BAM file.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \description{The function takes an opened instance of \code{bamReader},
 a prefix for the output file and produces a sorted BAM file which is
-(apart from being sorted) identical to the input file. 
+(apart from being sorted) identical to the input file.
 BAM-files must be sorted before an index can be created.
 During this routine, some content of the source file is copied into the
 working memory, sorted and written into temporary files.
@@ -23,7 +29,7 @@ The minimum maxmem value is 100000000. Smaller maxmem values cause an error.
 \details{
 The function does not take a complete name for the output file but only a
 prefix.
-The prefix is internally completed with a '.bam' suffix. 
+The prefix is internally completed with a '.bam' suffix.
 This is because the samtools function 'bam_sort_core_ext' only takes a prefix.
 samtools in turn produces intermediate files which also use the prefix and
 which are removed again when the 'bam_sort_core_ext' cleans up.
@@ -31,8 +37,8 @@ which are removed again when the 'bam_sort_core_ext' cleans up.
 \usage{bamSort(object, prefix="sorted",
             byName=FALSE, maxmem=1e+9, path=dirname(filename(object)))}
 \arguments{
-    \item{object}{\code{bamReader}. The reader must be opened.}
-    \item{prefix}{The prefix of the output file. 
+    \item{object}{\code{bamReader} (must be opened) or \code{sampleBamFiles}}
+    \item{prefix}{The prefix of the output file.
     When 'sorted' is given as prefix, the routine produces a file named
         'sorted.bam'.}
     \item{byName}{(Optional) Logical. Must have length 1.
@@ -56,6 +62,12 @@ which are removed again when the 'bam_sort_core_ext' cleans up.
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam)
 bamSort(reader)
+## - - - - - - - - - - - - - - - - - ##
+## sampleBamFiles
+## - - - - - - - - - - - - - - - - - ##
+bs <- sampleBamFiles(bam)
+
+
 }
 \keyword{bamSort}
 \keyword{bamReader}

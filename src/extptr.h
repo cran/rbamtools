@@ -150,8 +150,9 @@ public:
     int& operator*() const { return *p_; }
     int* operator->() const { return p_; }
     int& operator [] (int i) { return p_[i]; }
-    int size() const { return length(pRob); }
-    void reset() { memset(p_, 0, sizeof(int) * length(pRob)); }
+    int size() const { return LENGTH(pRob); }
+    int length() const { return LENGTH(pRob); }
+    void reset() { memset(p_, 0, sizeof(int) * LENGTH(pRob)); }
 
 	operator SEXP() const { return pRob; }
 
@@ -161,6 +162,45 @@ private:
 	int * p_;
 };
 
+template<>
+class atmptr<double>
+{
+public:
+	explicit atmptr(unsigned size): protected_(true), pRob(R_NilValue), p_(0)
+	{
+		pRob = PROTECT(allocVector(REALSXP, size));
+		p_ = REAL(pRob);
+	}
+
+	explicit atmptr(SEXP p): protected_(false)
+	{
+		if(TYPEOF(p) != REALSXP)
+			error("atmptr<double> SEXP must be of type REALSXP");
+
+		pRob=p;
+		p_ = REAL(pRob);
+	}
+
+	virtual ~atmptr()
+	{
+		if(protected_)
+			UNPROTECT(1);
+	}
+
+    double& operator*() const { return *p_; }
+    double* operator->() const { return p_; }
+    double& operator [] (int i) { return p_[i]; }
+    int size() const { return LENGTH(pRob); }
+    int length() const { return LENGTH(pRob); }
+    void reset() { memset(p_, 0, sizeof(double) * LENGTH(pRob)); }
+
+	operator SEXP() const { return pRob; }
+
+private:
+	bool protected_;
+	SEXP pRob;
+	double * p_;
+};
 
 template<>
 class atmptr<char>
@@ -181,7 +221,7 @@ public:
 
 	explicit atmptr(const vector<string> &v): protected_(true)
 	{
-		int i, n = v.size();
+		int i, n = (int) v.size();
 		pRob = PROTECT(allocVector(STRSXP, n));
 		for(i = 0; i < n; ++i)
 			SET_STRING_ELT(pRob, i, mkChar(v[i].c_str()));

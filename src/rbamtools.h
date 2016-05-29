@@ -113,6 +113,7 @@ static int gap_site_list_fetch_func(const bam1_t *b, void *data);
 SEXP gap_site_list_fetch(SEXP pReader,SEXP pIndex,SEXP pCoords);
 SEXP gap_site_list_get_df(SEXP pGapList);
 SEXP gap_site_list_get_ref_id(SEXP pGapList);
+SEXP gap_site_list_set_ref_id(SEXP pGapList, SEXP pRefId);
 SEXP gap_site_list_get_size(SEXP pGapList);
 SEXP gap_site_list_get_nAligns(SEXP pGapList);
 SEXP gap_site_list_get_nAlignGaps(SEXP pGapList);
@@ -171,6 +172,7 @@ SEXP bam_range_write_fastq_index(SEXP pRange,SEXP pFilename,SEXP pWhichWrite,SEX
 SEXP bam_range_get_seqlen(SEXP pRange);
 SEXP bam_range_get_qual_df(SEXP pRange);
 SEXP bam_range_get_align_depth(SEXP pRange,SEXP pGap);
+SEXP bam_range_get_gap_site_list(SEXP pRange);
 SEXP bam_range_count_nucs(SEXP pRange);
 SEXP bam_range_idx_copy(SEXP pRange, SEXP pIndex);
 
@@ -246,6 +248,7 @@ SEXP copy_fastq_records(SEXP pInfile,SEXP pOutfile,SEXP pWhichCopy,SEXP pAppend)
 SEXP count_fastq(SEXP pInfile,SEXP pMaxCol);
 SEXP get_col_quantiles(SEXP pQuant, SEXP pDf);
 SEXP count_text_lines(SEXP pInfile);
+SEXP mult_seq(SEXP pBegin, SEXP pEnd);
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,14 +1,17 @@
 \name{bamWriter-class}
 \Rdversion{1.1}
 \docType{class}
+%
 \alias{bamWriter-class}
-\alias{bamClose,bamWriter-method}
-\alias{bamSave}
-\alias{bamSave-methods}
-\alias{bamSave,bamWriter-method}
-\alias{filename,bamWriter-method}
 \alias{initialize,bamWriter-method}
+%
 \alias{isOpen,bamWriter-method}
+\alias{bamClose,bamWriter-method}
+%
+\alias{filename,bamWriter-method}
+%
+\alias{bamSave,bamWriter-method}
+%
 \title{Class \code{"bamWriter"}: Representation of a file connection to
     a BAM file for writing access.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %

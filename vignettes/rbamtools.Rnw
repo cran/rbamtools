@@ -90,8 +90,8 @@ These objectives transform into three implementational layers:
 \end{itemize}
 The samtools library is an adapted version of samtools. Samtools version 0.1.18
 (last modified 02 Sept 2011) had been downloaded on 07 Sept 2011 from the
-samtools homepage.
-%\footnote{\url{http://sourceforge.net/projects/samtools/files/samtools/0.1.18/}}.
+samtools homepage
+\footnote{\url{http://sourceforge.net/projects/samtools/files/samtools/0.1.18/}}.
 The then current version of the samtools file format description was
 (v1.4-r985, 0.1.18).\\
 
@@ -114,7 +114,7 @@ representations of genomic splice-sites in RNA-seq data.
 
 Data in BAM files is compressed and optionally indexed data in SAM file format.
 The current definition of the SAM file format~\cite{sam} can be found on the
-samtools homepage.\\%\footnote{\url{http://samtools.sourceforge.net/SAM1.pdf}}.\\
+samtools homepage\footnote{\url{http://samtools.sourceforge.net/SAM1.pdf}}.\\
 
 BAM files contain sequence alignment data which is the result of potentially
 incomplete matching sequence snippets to a reference sequence. In practice the
@@ -1569,6 +1569,196 @@ plot(count~position, dfr, type="l",
         main="Number of alignments in genomic segments of 20 nucleotides size")
 @
 
+
+%% + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + %%
+%% Experimental data from multiple samples
+%% + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + %%
+%
+\section{Experimental data from multiple samples}
+
+Sequencing is usually done in experimental settings where multiple
+samples are distibuted over several groups.
+Multiple samples in an experimental design can be handled using
+the \rcl{sampleBamFiles} class.\\
+\\
+The central idea is to be able to plot alignment depth for
+genetic regions from a whole experiment, so that different
+alignement depths over genes or exons can be visualized.
+
+<<>>=
+bs <- sampleBamFiles(6)
+bamFiles(bs) <- paste("bam",1:6, ".bam", sep="")
+sampleLabels(bs) <- paste(rep(c("wt", "trt"), each=3), 1:6, sep="")
+sampleGroups(bs) <- rep(c("wildtype", "treated"), each=3)
+bs
+@
+
+Sample labels are intended as short identifiers used for example in
+plots.\\
+\\
+Using this type of instantiation automatically generates BAM index file
+names of type "*.bai":
+<<>>=
+bamIdxFiles(bs)
+@
+
+This default can be overwritten by assignment
+
+<<>>=
+bamIdxFiles(bs)<- paste("index", 1:6, ".bam.bai", sep="")
+@
+
+\subsection{Checking BAM files}
+
+The check routine verifies crucial prerequisites for \rcl{sampleBamFiles} usage:
+
+\begin{itemize}
+    \item Existing BAM and index files
+    \item Congruent Reference sequence (chromosome) names
+\end{itemize}
+
+\subsection{Counting BAM files}
+
+Visualization of alignment depth data on single genes requires
+normalization of alignment count values to a common sequencing depth.
+The total alignment numbers can easily be obtained using
+the \rfc{bamCountAll} function.
+
+<<eval=FALSE>>=
+nAligns(bs) <- bamCountAll(bs)
+@
+
+
+\subsection{geneAlignDepth}
+
+Align depth data from BAM files is read and stored in
+\rcl{geneAlignDepth} objects. They can be created from
+\rcl{sampleBamFiles} and \rcl{geneModel} (located in refGenome)
+objects.\\
+\\
+The construction process is divided in several steps as shown below.
+
+\subsubsection{Construction of bamFiles object}
+
+<<>>=
+bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
+bs <-sampleBamFiles(1)
+bamFiles(bs) <- bam
+sampleLabels(bs) <- "s1"
+sampleGroups(bs) <- "g1"
+checkBamFiles(bs)
+nAligns(bs) <- bamCountAll(bs)
+bs
+@
+
+\subsubsection{Construction of geneModel}
+
+A \rcl{geneModel} object can be constructed using reference
+genome as implemented in package refGenome. A \rcl{geneModel}
+object contains data on single genes for example
+\begin{itemize}
+    \item Gene ID (e.g. Ensembl identifier)
+    \item Gene name (e.g. HGNC symbol)
+    \item Genetic coordinates (chromosome, start, end)
+    \item Transcripts
+    \item Positions of exons and CDS
+\end{itemize}
+
+<<>>=
+## - - - - - - - - - - - - - - - - - - - - - - ##
+# Construct geneModel object
+ucfile<-system.file("extdata", "hs.ucsc.small.RData", package="refGenome")
+uc<-loadGenome(ucfile)
+gt <- getGeneTable(uc)
+gene_id <- as.character(gt$gene_id[1])
+gm <- geneModel(uc, gene_id)
+@
+
+\subsubsection{Read alignment depth for a whole gene}
+
+Sequencing experiments usually include more than one sample.
+\rcl{rbamtools} provides a framework for analysis of
+alingment depth for a single gene on multiple BAM files.\\
+%
+Aside from counting alignment depth, the challenge posed by this task
+arises from the large proportion of introns in the range of a gene
+making a visual inspection of raw data impractical.\\
+%
+What needs to be done is to identify as much intronic region as possible
+while restricting the search algorithm to traceable criterions.\\
+%
+Relying on annotation data quickly emerges as unfeasible because different
+transcripts possibly imply conflictive definitions of exonic regions
+e.g. when exons are skipped.\\
+%
+Additionally, a groupwise measures for alignemnt depth are required for
+interpretation. \rcl{rbamtools} performes groupwies loess derived
+estimates for global align-depth normalized data.\\
+%
+A central idea is, that cutting out intronic regions can be divided
+into multiple consecutive steps allowing the user to direct the
+removal of regions to a sensible level.\\
+%
+The algorithms implemented in \rcl{rbamtools} provide multiple consecutive
+processing steps:
+\begin{itemize}
+    \item \rcl{geneAlignDepth}
+    \item \rcl{exonAlignDepth}
+    \item \rcl{exonLoessModel}
+    \item \rcl{cutFlatAlignDepth}
+\end{itemize}
+
+\paragraph{geneAlignDepth} A \rcl{geneAlignDepth} object
+can be crated from a \rcl{sampleBamFiles} and a \rcl{geneModel} object.\\
+%
+For usage in \rcl{geneAlignDepth} the \rcl{geneModel} can be
+instantiated using 'interior=FALSE' option which omits
+extraction of transcript data.
+During the creation process, the align depth data is extracted from
+the BAM files. The calculated aling depth can be visualized using
+a generic plot function.
+
+<<fig=TRUE>>=
+gm <- geneModel(uc, gene_id, interior=FALSE)
+gad <- geneAlignDepth(bs, gm)
+plot(gad, col="gray50")
+@
+
+The \rfc{exonAlignDepth} function cuts out intronic regions from
+\rcl{geneAlignDepth} data. The intronic regions are identified using
+exon-intron boundaries.
+Exon-intron boundaries are localized by two criterions:
+\begin{enumerate}
+    \item Begin or end of an alignment gap
+    \item A high ratio of alignment depth between adjacent exonic and intronic
+        nucleotide.
+\end{enumerate}
+Using the identified exon-intron, the intronic regions are cut out of the
+using a \rfc{segmentize} function defined in \rcl{rbamtools}.
+As the implementation of \rfc{segmentize} uses a logical vector for
+removal, the removed positions are the union of the defined
+intronic segments which is sensible when intronic regions overlap.
+
+<<fig=TRUE>>=
+ead <- exonAlignDepth(gad, ratioLim=5, infVal=1000)
+plot(ead)
+@
+
+
+<<fig=TRUE>>=
+elm <- exonLoessModel(ead)
+plot(elm)
+@
+
+<<>>=
+celm <- cutFlatAlignDepth(elm, ratio=0.1)
+plot(celm)
+@
+
+<<>>=
+junctionSites(ead)
+groupRatio(celm, lim=1.2, cut=0, order=1)
+@
 
 %% + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + %%
 %% Misalign errors

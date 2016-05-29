@@ -1,10 +1,11 @@
 \name{getQualDf}
 \alias{getQualDf}
 \alias{getQualDf-methods}
-\alias{getQualDf,bamRange-method}
+\alias{getQualDf,bamRange,logical-method}
+\alias{getQualDf,bamRange,missing-method}
 \alias{getQualQuantiles}
 \alias{getQualQuantiles-methods}
-\alias{getQualQuantiles,bamRange-method}
+\alias{getQualQuantiles,bamRange,numeric-method}
 \alias{plotQualQuant}
 \alias{plotQualQuant-methods}
 \alias{plotQualQuant,bamRange-method}
@@ -12,21 +13,21 @@
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Description
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
-\description{\code{getQualDf} takes a \code{bamRange} and returns a data.frame 
+\description{\code{getQualDf} takes a \code{bamRange} and returns a data.frame
 (128 rows, number of columns=length of the longest sequence in range).
 \code{getQualDf} counts occurrences for every sequence position (column) and
 every phred value (row).
 \code{getQualQuantiles} takes a \code{bamReader} and a vector of quantiles
 (must be between 0 and 1) and returns a data.frame.
 The data.frame contains one row for each quantile and also as many columns
-as the maximum sequence length. \code{plotQualQuant} plots the values 
+as the maximum sequence length. \code{plotQualQuant} plots the values
 for quanties 0.1,0.25,0.5,0.75 and 0.9.}
 %
 \usage{getQualDf(object,prob=FALSE,...)}
 \arguments{
     \item{object}{bamRange.}
     %
-    \item{prob}{logical. When TRUE each column is divided by its sum. 
+    \item{prob}{logical. When TRUE each column is divided by its sum.
         The column sums are added as names attribute \code{col.sum}}
     %
     \item{...}{(currently unused)}
@@ -35,8 +36,8 @@ for quanties 0.1,0.25,0.5,0.75 and 0.9.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Details
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
-\details{Phred values are truncated by 127 (the maximum which can be 
-represented by ASCII values). 
+\details{Phred values are truncated by 127 (the maximum which can be
+represented by ASCII values).
 The function runs down each colum (sequence position) and returns the
 row index where the quantile exceeds the cumlated column values.}
 \author{Wolfgang Kaisers}

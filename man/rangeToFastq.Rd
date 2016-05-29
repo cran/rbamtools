@@ -2,7 +2,7 @@
 %
 \alias{rangeToFastq}
 \alias{rangeToFastq-methods}
-\alias{rangeToFastq,bamRange-method}
+\alias{rangeToFastq,bamRange,character-method}
 %
 \alias{range2fastq}
 \alias{range2fastq-methods}

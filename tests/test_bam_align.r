@@ -20,3 +20,7 @@ suppAlign(align) <- FALSE
 if(flag(align)!=f)
     stop("[test_bam_align.r]
             Setting and re-setting suppAlign changed other flags")
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+# END OF FILE
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
