@@ -132,7 +132,7 @@ static R_INLINE void pop_back_gap_list(gap_list *l)
 		destroy_gap_elem(e);
 		--(l->size);
 	}
-	else if(l->last_el>0LLU)
+	else if(l->last_el>NULL)
 	{
 		destroy_gap_elem(l->last_el);
 		l->first_el=0;
@@ -152,7 +152,7 @@ static R_INLINE void pop_front_gap_list(gap_list *l)
 		destroy_gap_elem(e);
 		--(l->size);
 	}
-	else if(l->first_el>0)
+	else if(l->first_el>NULL)
 	{
 		destroy_gap_elem(l->first_el);
 		l->first_el=0;

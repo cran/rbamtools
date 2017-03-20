@@ -1,5 +1,5 @@
 a90d7d2b290183a70614df4a4205ddc8 *ChangeLog
-86438a2796662492c9d3589e8e8ddf64 *DESCRIPTION
+67ce972276f6c5f2daf961e1fce4eb1c *DESCRIPTION
 101d82c3aad2bc45ad10d8ffa0e36d80 *NAMESPACE
 f63c83f98e4e0055ff4b5dbc18a9b81b *NEWS
 c95d4f53b258a6e28f03d847d7192c1f *R/rbamtools.R
@@ -8,7 +8,7 @@ a80de5e269af91d72e06119c411d4a54 *R/segmentize.R
 e71d0e7c2af3aee53b7491b1634fb6b6 *build/vignette.rds
 54a677b499bfa7f910cb17782ad7f603 *inst/doc/rbamtools.R
 5d7cebfadefe0c4c2c62ec1d718f50d7 *inst/doc/rbamtools.Rnw
-30a6d062833fecae97d4025355b5b5c6 *inst/doc/rbamtools.pdf
+75b55ad5b22b4fc31fb8f744470efb93 *inst/doc/rbamtools.pdf
 70636a08b868d8feda7dcb0ad4fd7d7b *inst/extdata/accepted_hits.bam
 e402625fa157476dfcd67273bb0f7384 *inst/extdata/accepted_hits.bam.bai
 6927ec49f8bf9cc7316d95eb131dfda8 *inst/extdata/test.fastq
@@ -75,7 +75,7 @@ b2a32b5aaea10358e8949a9503e93f31 *src/data_frame.h
 fa717743bfb2d7e1c5e54c2babe3036e *src/extptr.h
 0fc2bf25a1d398361a99b2c2b1a27be7 *src/gapSiteList.h
 14964b9ca4339434ad612fc7fdd321a6 *src/gapSiteListList.h
-55d9b2ebdf6a1601ea7f2640f9668f04 *src/gap_list.h
+e0885dddd2b665efea33b1f3a2b7d1f8 *src/gap_list.h
 c0a38b37169806e7728ebce66cf7b4c0 *src/grange.h
 c9956ca58facde6896a6f176cc243996 *src/range_partition.h
 f879dfc3871a61f3be973990fa064110 *src/rbamtools.cpp
