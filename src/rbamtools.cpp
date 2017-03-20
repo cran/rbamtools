@@ -5059,6 +5059,8 @@ void R_init_rbamtools(DllInfo *info)
 	 * 			{ "",	(DL_FUNC) &,	}
 	 */
 	R_registerRoutines(info, NULL, cmd, NULL, NULL);
+	R_useDynamicSymbols(info, TRUE);
+	R_forceSymbols(info, TRUE);
 }
 
 

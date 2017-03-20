@@ -802,7 +802,7 @@ setMethod("rangeSegCount", "bamReader",
         if(!is.logical(complex))
             stop("complex must be logical")
 
-        res <- .Call("bam_count_segment_aligns",
+        res <- .Call(C_bam_count_segment_aligns,
                      object@reader, object@index,
                      coords, segments,
                      complex[1], PACKAGE="rbamtools")
@@ -829,7 +829,7 @@ setMethod("meltDownSegments", "rangeSegCount", function(object, factor=1)
 
     factor <- as.integer(factor)
 
-    res <- .Call("bam_count_segment_melt_down",
+    res <- .Call(C_bam_count_segment_melt_down,
                  object, factor[1], PACKAGE="rbamtools")
     return(res)
 })
@@ -871,10 +871,10 @@ setMethod(f="initialize", signature="bamReader",
             definition=function(.Object, filename)
 {
         .Object@filename <- filename
-        .Object@reader <- .Call("bam_reader_open",
+        .Object@reader <- .Call(C_bam_reader_open,
                                     path.expand(filename), PACKAGE="rbamtools")
 
-        .Object@startpos <- .Call("bam_reader_tell",
+        .Object@startpos <- .Call(C_bam_reader_tell,
                                     .Object@reader, PACKAGE="rbamtools")
         return(.Object)
 })
@@ -932,16 +932,16 @@ setMethod("filename", "bamReader", function(object) return(object@filename))
 
 setMethod("isOpen", signature="bamReader", definition=function(con, rw="")
 {
-    return(!(.Call("is_nil_externalptr", con@reader, PACKAGE="rbamtools")))
+    return(!(.Call(C_is_nil_externalptr, con@reader, PACKAGE="rbamtools")))
 })
 
 setMethod(f="bamClose", signature="bamReader", definition=function(object)
 {
-    if(!.Call("is_nil_externalptr", object@index, PACKAGE="rbamtools"))
+    if(!.Call(C_is_nil_externalptr, object@index, PACKAGE="rbamtools"))
     {
-        .Call("bam_reader_unload_index", object@index, PACKAGE="rbamtools")
+        .Call(C_bam_reader_unload_index, object@index, PACKAGE="rbamtools")
     }
-    invisible(.Call("bam_reader_close", object@reader, PACKAGE="rbamtools"))
+    invisible(.Call(C_bam_reader_close, object@reader, PACKAGE="rbamtools"))
 })
 
 
@@ -984,7 +984,7 @@ setMethod(f="getHeader", signature="bamReader", definition=function(object)
     if(!isOpen(object))
         stop("reader must be opened! Check with 'isOpen(reader)'!")
 
-    return(new("bamHeader", .Call("bam_reader_get_header", object@reader)))
+    return(new("bamHeader", .Call(C_bam_reader_get_header, object@reader)))
 })
 
 
@@ -993,7 +993,7 @@ setMethod(f="getHeaderText", signature="bamReader", definition=function(object)
     if(!isOpen(object))
         stop("reader must be opened! Check 'isOpen(reader)'!")
 
-    return(new("bamHeaderText", .Call("bam_reader_get_header_text",
+    return(new("bamHeaderText", .Call(C_bam_reader_get_header_text,
                                     object@reader, PACKAGE="rbamtools")))
 })
 
@@ -1006,7 +1006,7 @@ setMethod(f="getRefCount", signature="bamReader",
     if(!isOpen(object))
         stop("reader must be opened! Check with 'isOpen(reader)'!")
 
-    return(.Call("bam_reader_get_ref_count",
+    return(.Call(C_bam_reader_get_ref_count,
                                 object@reader, PACKAGE="rbamtools"))
 })
 
@@ -1019,7 +1019,7 @@ setMethod(f="getRefData", signature="bamReader", definition=function(object)
     if(!isOpen(object))
         stop("reader must be opened! Check with 'isOpen(reader)'!")
 
-    return(.Call("bam_reader_get_ref_data",
+    return(.Call(C_bam_reader_get_ref_data,
                                 object@reader, PACKAGE="rbamtools"))
 })
 
@@ -1028,7 +1028,7 @@ setMethod(f="getRefData", signature="bamWriter", definition=function(object)
     if(!isOpen(object))
         stop("writer must be opened! Check with 'isOpen(writer)'!")
 
-    return(.Call("bam_reader_get_ref_data",
+    return(.Call(C_bam_reader_get_ref_data,
                  object@writer, PACKAGE="rbamtools"))
 })
 
@@ -1114,7 +1114,7 @@ setMethod("createIndex",
     c("bamReader", "character"),
     function(object, idx_filename)
     {
-        return(invisible(.Call("bam_reader_create_index",
+        return(invisible(.Call(C_bam_reader_create_index,
             path.expand(object@filename),
             path.expand(idx_filename[1]), PACKAGE="rbamtools")))
     }
@@ -1124,7 +1124,7 @@ setMethod("createIndex",
     c("bamReader", "missing"),
     function(object, idx_filename)
     {
-        return(invisible(.Call("bam_reader_create_index",
+        return(invisible(.Call(C_bam_reader_create_index,
             path.expand(object@filename),
             path.expand(paste(object@filename, ".bai", sep="")),
             PACKAGE="rbamtools")))
@@ -1147,7 +1147,7 @@ setMethod("loadIndex", signature="bamReader",
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     reader <- deparse(substitute(object))
 
-    extxt <- paste(reader,"@index<-.Call(\"bam_reader_load_index\",\"",
+    extxt <- paste(reader,"@index<-.Call(rbamtools:::C_bam_reader_load_index,\"",
                 path.expand(filename), "\",PACKAGE=\"rbamtools\")", sep="")
 
     eval.parent(parse(text=extxt))
@@ -1155,7 +1155,7 @@ setMethod("loadIndex", signature="bamReader",
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     #  Return true if bamReader@index!=NULL (parent frame)
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    extxt <- paste(".Call(\"is_nil_externalptr\",", reader,
+    extxt <- paste(".Call(rbamtools:::C_is_nil_externalptr,", reader,
                                     "@index,PACKAGE=\"rbamtools\")", sep="")
 
     return(invisible(!eval.parent(parse(text=extxt))))
@@ -1163,7 +1163,7 @@ setMethod("loadIndex", signature="bamReader",
 
 
 setMethod("indexInitialized", signature="bamReader", definition=function(object)
-{ return(!(.Call("is_nil_externalptr", object@index, PACKAGE="rbamtools"))) })
+{ return(!(.Call(C_is_nil_externalptr, object@index, PACKAGE="rbamtools"))) })
 
 
 
@@ -1182,41 +1182,42 @@ setMethod("create.index", "bamReader", function(object, idx_filename)
 
 setMethod("load.index", "bamReader", function(object, filename)
 {
-    message("[load.index] Will soon be deprecated. Use loadIndex.")
-    #.Deprecated(new="loadIndex", package="rbamtools")
 
-    if(!is.character(filename))
-        stop("Filename must be character!\n")
+    .Deprecated(new="loadIndex", package="rbamtools")
 
-    if(!file.exists(filename))
-        stop("Index file \"", filename, "\" does not exist!\n")
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    #  Set index Variable in given bamReader object:
-    #  Read object name, create expression string and evaluate in parent frame
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    reader <- deparse(substitute(object))
-
-    extxt <- paste(reader,"@index<-.Call(\"bam_reader_load_index\",\"",
-                   path.expand(filename), "\",PACKAGE=\"rbamtools\")", sep="")
-
-    eval.parent(parse(text=extxt))
-
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    #  Return true if bamReader@index!=NULL (parent frame)
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    extxt <- paste(".Call(\"is_nil_externalptr\",", reader,
-                   "@index,PACKAGE=\"rbamtools\")", sep="")
-
-    return(invisible(!eval.parent(parse(text=extxt))))
+    # message("[load.index] Will soon be deprecated. Use loadIndex.")
+    # if(!is.character(filename))
+    #     stop("Filename must be character!\n")
+    #
+    # if(!file.exists(filename))
+    #     stop("Index file \"", filename, "\" does not exist!\n")
+    #
+    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    # #  Set index Variable in given bamReader object:
+    # #  Read object name, create expression string and evaluate in parent frame
+    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    # reader <- deparse(substitute(object))
+    #
+    # extxt <- paste(reader,"@index<-.Call(\"bam_reader_load_index\",\"",
+    #                path.expand(filename), "\",PACKAGE=\"rbamtools\")", sep="")
+    #
+    # eval.parent(parse(text=extxt))
+    #
+    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    # #  Return true if bamReader@index!=NULL (parent frame)
+    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+    # extxt <- paste(".Call(\"is_nil_externalptr\",", reader,
+    #                "@index,PACKAGE=\"rbamtools\")", sep="")
+    #
+    # return(invisible(!eval.parent(parse(text=extxt))))
 })
 
 
 setMethod("index.initialized", "bamReader", function(object)
 {
-    message("[index.initialized] Will soon be deprecated. Use indexInitialized")
-    #.Deprecated(new="indexInitialized", package="rbamtools")
-    return(indexInitialized(object))
+    .Deprecated(new="indexInitialized", package="rbamtools")
+    # message("[index.initialized] Will soon be deprecated. Use indexInitialized")
+    # return(indexInitialized(object))
 })
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -1241,7 +1242,7 @@ setMethod(f="bamSort",
     message("[bamSort] Maxmem  : ", maxmem)
     message("[bamSort] By Name : ", byName)
 
-    .Call("bam_reader_sort_file",
+    .Call(C_bam_reader_sort_file,
             object@filename,
             path.expand(file.path(path,prefix)),
             maxmem, byName, PACKAGE="rbamtools")
@@ -1258,7 +1259,7 @@ setMethod(f="bamSort",
 # getNextAlign
 setMethod(f="getNextAlign", signature="bamReader", definition=function(object)
 {
-    ans <- .Call("bam_reader_get_next_align",
+    ans <- .Call(C_bam_reader_get_next_align,
                                         object@reader, PACKAGE="rbamtools")
 
     if(is.null(ans))
@@ -1290,13 +1291,13 @@ setMethod("readerToFastq", "bamReader",
 
     if(missing(which))
     {
-        return(invisible(.Call("bam_reader_write_fastq", object@reader,
+        return(invisible(.Call(C_bam_reader_write_fastq, object@reader,
             filename, append, PACKAGE="rbamtools")))
     }else{
         if(!is.numeric(which))
             stop("'which' argument must be numeric!")
 
-        ans <- .Call("bam_reader_write_fastq_index", object@reader, filename,
+        ans <- .Call(C_bam_reader_write_fastq_index, object@reader, filename,
             as.integer(sort(unique(which))), append, PACKAGE="rbamtools")
 
         if(ans < length(which))
@@ -1352,7 +1353,7 @@ setMethod("siteList", c("bamRange", "missing"), function(object, coords)
         return(res)
     }
 
-    res@list <- .Call("bam_range_get_gap_site_list",
+    res@list <- .Call(C_bam_range_get_gap_site_list,
                       object@range, PACKAGE="rbamtools")
     return(res)
 })
@@ -1368,7 +1369,7 @@ setMethod("bamGapList", "bamReader", function(object)
 
 setMethod("rewind", "bamReader", function(object)
 {
-    return(invisible(.Call("bam_reader_seek",
+    return(invisible(.Call(C_bam_reader_seek,
                     object@reader, object@startpos, PACKAGE="rbamtools")))
 })
 
@@ -1613,7 +1614,7 @@ setMethod("bamCount", signature="bamReader", definition=function(object, coords)
     if(!is.numeric(coords))
         stop("[bamCount] coords must be numeric")
 
-    res <- .Call("bam_count", object@reader,
+    res <- .Call(C_bam_count, object@reader,
                                     object@index, coords, PACKAGE="rbamtools")
 
     names(res) <- c("M", "I", "D", "N", "S", "H", "P", "=", "X", "nAligns")
@@ -1687,7 +1688,7 @@ setMethod("nucStats", "bamRange", function(object)
                         at_gc_ratio=at_gc
                     )
 
-    refname <- .Call("bam_range_get_refname",
+    refname <- .Call(C_bam_range_get_refname,
                         object@range, PACKAGE="rbamtools")
 
     if(!is.null(refname))
@@ -1778,12 +1779,12 @@ setMethod("initialize", "bamHeader", function(.Object, extptr)
 
 setMethod(f="getHeaderText", signature="bamHeader", definition=function(object)
 {
-    return(new("bamHeaderText", .Call("bam_header_get_header_text",
+    return(new("bamHeaderText", .Call(C_bam_header_get_header_text,
                                 object@header, PACKAGE="rbamtools"))) })
 
 setMethod("as.character", "bamHeader", function(x, ...)
 {
-    .Call("bam_header_get_header_text", x@header, PACKAGE="rbamtools")
+    .Call(C_bam_header_get_header_text, x@header, PACKAGE="rbamtools")
 })
 
 setMethod("show", "bamHeader", function(object)
@@ -2988,7 +2989,7 @@ setMethod("getHeaderText", signature="bamHeaderText",
 
 setMethod("bamHeader", "bamHeaderText",  function(object)
 {
-    return(new("bamHeader", .Call("init_bam_header", getHeaderText(object))))
+    return(new("bamHeader", .Call(C_init_bam_header, getHeaderText(object))))
 })
 
 
@@ -3010,7 +3011,7 @@ setMethod(f="initialize",  signature="bamWriter",
         stop("[initialize.bamWriter] filename must be character!\n")
 
     .Object@filename <- filename
-    .Object@writer <- .Call("bam_writer_open", header@header,
+    .Object@writer <- .Call(C_bam_writer_open, header@header,
                                 path.expand(filename), PACKAGE="rbamtools")
 
     return(.Object)
@@ -3020,12 +3021,12 @@ setMethod("filename",  "bamWriter",  function(object) return(object@filename))
 
 setMethod("isOpen", signature="bamWriter", definition=function(con, rw="")
 {
-    return(!(.Call("is_nil_externalptr", con@writer, PACKAGE="rbamtools")))
+    return(!(.Call(C_is_nil_externalptr, con@writer, PACKAGE="rbamtools")))
 })
 
 setMethod(f="bamClose", signature="bamWriter", definition=function(object)
 {
-    return(invisible(.Call("bam_writer_close",
+    return(invisible(.Call(C_bam_writer_close,
                                         object@writer, PACKAGE="rbamtools")))
 })
 
@@ -3042,13 +3043,13 @@ setMethod("bamSave", c("bamReader", "bamWriter", "missing"),
             stop("'value' is not open! Check 'isOpen'!")
 
         # Saving old reading position
-        oldpos <- .Call("bam_reader_tell", object@reader, PACKAGE="rbamtools")
+        oldpos <- .Call(C_bam_reader_tell, object@reader, PACKAGE="rbamtools")
 
         # Reset reader to start position
-        .Call("bam_reader_seek",
+        .Call(C_bam_reader_seek,
               object@reader, object@startpos, PACKAGE="rbamtools")
 
-        nAligns <- .Call("bam_reader_save_aligns",
+        nAligns <- .Call(C_bam_reader_save_aligns,
                          object@reader, value@writer, PACKAGE="rbamtools")
 
         bm <- Sys.localeconv()[7]
@@ -3056,7 +3057,7 @@ setMethod("bamSave", c("bamReader", "bamWriter", "missing"),
         message("[bamSave.bamReader] Saving ", format(nAligns, big.mark=bm),
                 " to file '", basename(value@filename), "' finished.\n", sep="")
 
-        .Call("bam_reader_seek", object@reader, oldpos, PACKAGE="rbamtools")
+        .Call(C_bam_reader_seek, object@reader, oldpos, PACKAGE="rbamtools")
 
         return(invisible(nAligns))
     }
@@ -3074,7 +3075,7 @@ setMethod("bamSave", c("bamWriter", "bamAlign", "numeric"),
         if(!isOpen(object))
             stop("bamWriter object must be opened!")
 
-        return(invisible(.Call("bam_writer_save_align", object@writer,
+        return(invisible(.Call(C_bam_writer_save_align, object@writer,
                                value@align, refid, PACKAGE="rbamtools")))
     }
 )
@@ -3089,7 +3090,7 @@ setMethod("bamSave", c("bamWriter", "bamRange", "numeric"),
         if(!isOpen(object))
             stop("bamWriter object must be opened!")
 
-        return(invisible(.Call("bam_range_write", object@writer,
+        return(invisible(.Call(C_bam_range_write, object@writer,
             value@range, refid, PACKAGE="rbamtools")))
     }
 )
@@ -3100,7 +3101,7 @@ setMethod("bamSave", c("bamWriter", "bamRange", "character"),
         if(!isOpen(object))
             stop("bamWriter object must be opened!")
 
-        return(invisible(.Call("bam_range_write", object@writer,
+        return(invisible(.Call(C_bam_range_write, object@writer,
             value@range, getRefId(object, refid[1]), PACKAGE="rbamtools")))
     }
 )
@@ -3109,7 +3110,7 @@ setMethod("bamSave", c("bamWriter", "bamRange", "character"),
 setMethod("bamSave", c("bamWriter", "bamRange", "missing"),
     function(object, value, refid)
     {
-        refname <- .Call("bam_range_get_refname",
+        refname <- .Call(C_bam_range_get_refname,
                          value@range, PACKAGE="rbamtools")
 
         if(is.null(refname))
@@ -3119,7 +3120,7 @@ setMethod("bamSave", c("bamWriter", "bamRange", "missing"),
             stop("bamWriter object must be opened!")
 
 
-        return(invisible(.Call("bam_range_write", object@writer,
+        return(invisible(.Call(C_bam_range_write, object@writer,
             value@range, getRefId(object, refname), PACKAGE="rbamtools")))
     }
 )
@@ -3139,7 +3140,7 @@ setMethod(f="initialize", "gapList",
 {
     if(missing(reader) || missing(coords))
     {
-        .Object@list <- .Call("create_gap_list")
+        .Object@list <- .Call(C_create_gap_list)
         return(.Object)
     }
 
@@ -3155,10 +3156,10 @@ setMethod(f="initialize", "gapList",
     if(is.null(reader@index))
         stop("bamReader must have initialized index!\n")
 
-    .Object@list <- .Call("gap_list_fetch",
+    .Object@list <- .Call(C_gap_list_fetch,
                 reader@reader, reader@index, trunc(coords), PACKAGE="rbamtools")
 
-    glsize <- .Call("gap_list_get_size", .Object@list, PACKAGE="rbamtools")
+    glsize <- .Call(C_gap_list_get_size, .Object@list, PACKAGE="rbamtools")
 
     if(verbose)
     {
@@ -3172,13 +3173,13 @@ setMethod(f="initialize", "gapList",
 # gapList function for retrieving objects in bamReader section
 
 setMethod("size", signature="gapList", definition=function(object)
-    {.Call("gap_list_get_size", object@list, PACKAGE="rbamtools")})
+    {.Call(C_gap_list_get_size, object@list, PACKAGE="rbamtools")})
 
 setMethod("nAligns", signature="gapList", definition=function(object)
-    {.Call("gap_list_get_nAligns", object@list, PACKAGE="rbamtools")})
+    {.Call(C_gap_list_get_nAligns, object@list, PACKAGE="rbamtools")})
 
 setMethod("nAlignGaps", signature="gapList", definition=function(object)
-    {.Call("gap_list_get_nAlignGaps", object@list, PACKAGE="rbamtools")})
+    {.Call(C_gap_list_get_nAlignGaps, object@list, PACKAGE="rbamtools")})
 
 setMethod("show", "gapList", function(object)
 {
@@ -3201,7 +3202,7 @@ setMethod(f="initialize", "gapSiteList",
 {
     if(missing(reader) || missing(coords))
     {
-        .Object@list <- .Call("create_gap_site_list", PACKAGE="rbamtools")
+        .Object@list <- .Call(C_create_gap_site_list, PACKAGE="rbamtools")
         return(.Object)
     }
 
@@ -3214,27 +3215,27 @@ setMethod(f="initialize", "gapSiteList",
     if(is.null(reader@index))
         stop("bamReader must have initialized index!\n")
 
-    .Object@list <- .Call("gap_site_list_fetch",
+    .Object@list <- .Call(C_gap_site_list_fetch,
         reader@reader, reader@index, trunc(coords), PACKAGE="rbamtools")
 
     return(.Object)
 })
 
 setMethod("size", signature="gapSiteList", definition=function(object)
-{.Call("gap_site_list_get_size", object@list, PACKAGE="rbamtools")})
+{.Call(C_gap_site_list_get_size, object@list, PACKAGE="rbamtools")})
 
 setMethod("nAligns", signature="gapSiteList", definition=function(object)
-{.Call("gap_site_list_get_nAligns", object@list, PACKAGE="rbamtools")})
+{.Call(C_gap_site_list_get_nAligns, object@list, PACKAGE="rbamtools")})
 
 setMethod("nAlignGaps", signature="gapSiteList", definition=function(object)
-{.Call("gap_site_list_get_nAlignGaps", object@list, PACKAGE="rbamtools")})
+{.Call(C_gap_site_list_get_nAlignGaps, object@list, PACKAGE="rbamtools")})
 
 setMethod("refID", signature="gapSiteList", definition=function(object)
-{.Call("gap_site_list_get_ref_id", object@list, PACKAGE="rbamtools")})
+{.Call(C_gap_site_list_get_ref_id, object@list, PACKAGE="rbamtools")})
 
 
 setReplaceMethod("refID", c("gapSiteList", "numeric"), function(object, value){
-    .Call("gap_site_list_set_ref_id", object@list,
+    .Call(C_gap_site_list_set_ref_id, object@list,
             as.integer(value), PACKAGE="rbamtools")
     return(object)
 })
@@ -3271,7 +3272,7 @@ merge.gapSiteList <- function(x, y, ...)
     }
 
     res <- .gapSiteList()
-    res@list <- .Call("gap_site_list_merge", x@list, y@list, refid)
+    res@list <- .Call(C_gap_site_list_merge, x@list, y@list, refid)
     return(res)
 }
 
@@ -3287,7 +3288,7 @@ setMethod(f="initialize", "bamGapList", definition=function(.Object, reader)
 {
     if(missing(reader))
     {
-        .Object@list <- .Call("gap_site_ll_init")
+        .Object@list <- .Call(C_gap_site_ll_init)
         return(.Object)
     }
 
@@ -3298,7 +3299,7 @@ setMethod(f="initialize", "bamGapList", definition=function(.Object, reader)
 
     ref <- getRefData(reader)
     ref$start <- 0L
-    .Object@list <- .Call("gap_site_ll_fetch",
+    .Object@list <- .Call(C_gap_site_ll_fetch,
                         reader@reader, reader@index, ref$ID, ref$start,
                         ref$LN, PACKAGE="rbamtools")
 
@@ -3306,14 +3307,14 @@ setMethod(f="initialize", "bamGapList", definition=function(.Object, reader)
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     #  filter refdata for existing lists
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    sm <- .Call("gap_site_ll_get_summary_df", .Object@list, PACKAGE="rbamtools")
+    sm <- .Call(C_gap_site_ll_get_summary_df, .Object@list, PACKAGE="rbamtools")
     mtc <- match(ref$ID, sm$ID)
     .Object@refdata <- ref[!is.na(mtc), ]
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     #  Re-enumerate ID's to 1:n
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    .Object@refdata$ID <- .Call("gap_site_ll_reset_refid",
+    .Object@refdata$ID <- .Call(C_gap_site_ll_reset_refid,
                                         .Object@list, PACKAGE="rbamtools")
 
     # ToDo: merge refdata with summary df?
@@ -3324,13 +3325,13 @@ setMethod(f="initialize", "bamGapList", definition=function(.Object, reader)
 
 
 setMethod("size", signature="bamGapList", definition=function(object)
-    {.Call("gap_site_ll_get_size", object@list, PACKAGE="rbamtools")})
+    {.Call(C_gap_site_ll_get_size, object@list, PACKAGE="rbamtools")})
 
 setMethod("nAligns", signature="bamGapList", definition=function(object)
-    {.Call("gap_site_ll_get_nAligns", object@list, PACKAGE="rbamtools")})
+    {.Call(C_gap_site_ll_get_nAligns, object@list, PACKAGE="rbamtools")})
 
 setMethod("nAlignGaps", signature="bamGapList", definition=function(object)
-    {.Call("gap_site_ll_get_nAlignGaps", object@list, PACKAGE="rbamtools")})
+    {.Call(C_gap_site_ll_get_nAlignGaps, object@list, PACKAGE="rbamtools")})
 
 setMethod("show", "bamGapList", function(object)
 {
@@ -3348,7 +3349,7 @@ setMethod("show", "bamGapList", function(object)
 summary.bamGapList <- function(object, ...)
 {
     return(merge(object@refdata,
-                        .Call("gap_site_ll_get_summary_df", object@list)))
+                        .Call(C_gap_site_ll_get_summary_df, object@list)))
 }
 
 merge.bamGapList <- function(x, y, ...)
@@ -3365,25 +3366,25 @@ merge.bamGapList <- function(x, y, ...)
     mref <- merge(x@refdata, y@refdata, by="SN", all=T)
 
     n <- dim(mref)[1]
-    .Call("gap_site_ll_set_curr_first", x@list)
-    .Call("gap_site_ll_set_curr_first", y@list)
+    .Call(C_gap_site_ll_set_curr_first, x@list)
+    .Call(C_gap_site_ll_set_curr_first, y@list)
 
     res <- .bamGapList()
     for(i in 1:n)
     {
         if(is.na(mref$ID.x[i]))
         {
-            .Call("gap_site_ll_add_curr_pp",
+            .Call(C_gap_site_ll_add_curr_pp,
                         y@list, res@list, as.integer(i-1))
             # copy values from .y to .x side (for later use in ref)
             mref[i, 2:4] <- mref[i, 5:7]
         }
         else if(is.na(mref$ID.y[i]))
         {
-            .Call("gap_site_ll_add_curr_pp",
+            .Call(C_gap_site_ll_add_curr_pp,
                         x@list, res@list, as.integer(i-1))
         }else{
-            .Call("gap_site_ll_add_merge_pp",
+            .Call(C_gap_site_ll_add_merge_pp,
                         x@list, y@list, res@list, as.integer(i-1))
         }
     }
@@ -3496,7 +3497,7 @@ setMethod(f="initialize", signature="bamRange",
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     if(is.null(reader))
     {
-        .Object@range <- .Call("bam_range_init", PACKAGE="rbamtools")
+        .Object@range <- .Call(C_bam_range_init, PACKAGE="rbamtools")
         return(.Object)
     }
 
@@ -3526,7 +3527,7 @@ setMethod(f="initialize", signature="bamRange",
     if(!indexInitialized(reader))
         stop("reader must have initialized index! Use 'loadIndex'!")
 
-    .Object <- .Call("bam_range_fetch", reader@reader,
+    .Object <- .Call(C_bam_range_fetch, reader@reader,
                     reader@index, trunc(coords), complex, PACKAGE="rbamtools")
 
     return(.Object)
@@ -3602,22 +3603,22 @@ setMethod("readRange",
 
 
 setMethod("size", signature="bamRange", definition=function(object)
-    {.Call("bam_range_get_size", object@range, PACKAGE="rbamtools")})
+    {.Call(C_bam_range_get_size, object@range, PACKAGE="rbamtools")})
 
 
 setMethod("getCoords", "bamRange", function(object)
-    { return(.Call("bam_range_get_coords", object@range))})
+    { return(.Call(C_bam_range_get_coords, object@range))})
 
 setMethod("getParams", "bamRange", function(object)
-    { return(.Call("bam_range_get_params", object@range))})
+    { return(.Call(C_bam_range_get_params, object@range))})
 
 setMethod("getSeqLen", "bamRange", function(object){
-  return(.Call("bam_range_get_seqlen", object@range, PACKAGE="rbamtools"))
+  return(.Call(C_bam_range_get_seqlen, object@range, PACKAGE="rbamtools"))
 })
 
 
 setMethod("getRefName", "bamRange", function(object)
-    return(.Call("bam_range_get_refname", object@range, PACKAGE="rbamtools")))
+    return(.Call(C_bam_range_get_refname, object@range, PACKAGE="rbamtools")))
 
 
 setMethod("show", "bamRange", function(object){
@@ -3627,7 +3628,7 @@ setMethod("show", "bamRange", function(object){
   cat("Class       : ", format(class(object), w=w, j=r)                   , "\n", sep="")
   cat("Size        : ", format(format(size(object), big.m=bm), w=w, j=r)   , "\n", sep="")
 
-  params <- .Call("bam_range_get_params", object@range, PACKAGE="rbamtools")
+  params <- .Call(C_bam_range_get_params, object@range, PACKAGE="rbamtools")
   cat("Seqid       : ", format(format(params[1], big.m=bm), w=w, j=r)     , "\n", sep="")
   cat("qrBegin     : ", format(format(params[2], big.m=bm), w=w, j=r)     , "\n", sep="")
   cat("qrEnd       : ", format(format(params[3], big.m=bm), w=w, j=r)     , "\n", sep="")
@@ -3636,7 +3637,7 @@ setMethod("show", "bamRange", function(object){
   cat("qSeqMinLen  : ", format(format(params[6], big.m=bm), w=w, j=r)   , "\n", sep="")
   cat("qSeqMaxLen  : ", format(format(params[7], big.m=bm), w=w, j=r)   , "\n", sep="")
 
-  refname <- .Call("bam_range_get_refname", object@range, PACKAGE="rbamtools")
+  refname <- .Call(C_bam_range_get_refname, object@range, PACKAGE="rbamtools")
   if(!is.null(refname))
   cat("Refname     : ", format(refname, w=w, j="right")       , "\n", sep="")
   return(invisible())
@@ -3644,13 +3645,13 @@ setMethod("show", "bamRange", function(object){
 
 
 setMethod("getAlignRange", "bamRange", function(object)
-    return(.Call("bam_range_get_align_range",
+    return(.Call(C_bam_range_get_align_range,
                 object@range, PACKAGE="rbamtools")))
 
 
 setMethod("getNextAlign", signature="bamRange", definition=function(object)
 {
-    ans <- .Call("bam_range_get_next_align", object@range, PACKAGE="rbamtools")
+    ans <- .Call(C_bam_range_get_next_align, object@range, PACKAGE="rbamtools")
     # Must be checked because align list returns NULL when end is reached
     if(is.null(ans))
         return(ans)
@@ -3661,21 +3662,21 @@ setMethod("getNextAlign", signature="bamRange", definition=function(object)
 
 setMethod("getPrevAlign", signature="bamRange", definition=function(object)
 {
-    return(new("bamAlign", .Call("bam_range_get_prev_align",
+    return(new("bamAlign", .Call(C_bam_range_get_prev_align,
                         object@range, PACKAGE="rbamtools")))
 })
 
 
 setMethod("stepNextAlign", signature("bamRange"), definition=function(object)
 {
-    .Call("bam_range_step_next_align", object@range)
+    .Call(C_bam_range_step_next_align, object@range)
     return(invisible())
 })
 
 
 setMethod("stepPrevAlign", signature("bamRange"), definition=function(object)
 {
-    .Call("bam_range_step_prev_align", object@range)
+    .Call(C_bam_range_step_prev_align, object@range)
     return(invisible())
 })
 
@@ -3684,7 +3685,7 @@ setMethod("stepPrevAlign", signature("bamRange"), definition=function(object)
 # The next call to getNextAlign then returns the first element of list
 setMethod("rewind", signature="bamRange", definition=function(object)
 {
-    invisible(.Call("bam_range_wind_back", object@range, PACKAGE="rbamtools"))
+    invisible(.Call(C_bam_range_wind_back, object@range, PACKAGE="rbamtools"))
 })
 
 
@@ -3693,13 +3694,13 @@ setMethod("push_back", signature="bamRange", definition=function(object, value)
     if(!is(value, "bamAlign"))
         stop("pushed object must be of class \"bamAlign\"\n")
 
-    .Call("bam_range_push_back", object@range, value@align, PACKAGE="rbamtools")
+    .Call(C_bam_range_push_back, object@range, value@align, PACKAGE="rbamtools")
 })
 
 
 setMethod("pop_back", signature="bamRange", definition=function(object)
 {
-    .Call("bam_range_pop_back", object@range, PACKAGE="rbamtools")
+    .Call(C_bam_range_pop_back, object@range, PACKAGE="rbamtools")
 })
 
 
@@ -3708,13 +3709,13 @@ setMethod("push_front", signature="bamRange", definition=function(object, value)
     if(!is(value, "bamAlign"))
         stop("pushed object must be of class \"bamAlign\"\n")
 
-    .Call("bam_range_push_front", object@range, value@align, PACKAGE="rbamtools")
+    .Call(C_bam_range_push_front, object@range, value@align, PACKAGE="rbamtools")
 })
 
 
 setMethod("pop_front", signature="bamRange", definition=function(object)
 {
-    .Call("bam_range_pop_front", object@range, PACKAGE="rbamtools")
+    .Call(C_bam_range_pop_front, object@range, PACKAGE="rbamtools")
 })
 
 
@@ -3723,7 +3724,7 @@ setMethod("writeCurrentAlign", signature="bamRange", definition=function(object,
     if(!is(value, "bamAlign"))
         stop("written object must be of class \"bamAlign\"\n")
 
-    .Call("bam_range_write_current_align",
+    .Call(C_bam_range_write_current_align,
                         object@range, value@align, PACKAGE="rbamtools")
 })
 
@@ -3734,7 +3735,7 @@ setMethod("insertPastCurrent", signature="bamRange",
     if(!is(value, "bamAlign"))
         stop("written object must be of class \"bamAlign\"\n")
 
-    .Call("bam_range_insert_past_curr_align",
+    .Call(C_bam_range_insert_past_curr_align,
                                 object@range, value@align, PACKAGE="rbamtools")
 })
 
@@ -3745,7 +3746,7 @@ setMethod("insertPreCurrent", signature="bamRange",
     if(!is(value, "bamAlign"))
         stop("written object must be of class \"bamAlign\"\n")
 
-    .Call("bam_range_insert_pre_curr_align",
+    .Call(C_bam_range_insert_pre_curr_align,
                         object@range, value@align, PACKAGE="rbamtools")
 })
 
@@ -3756,7 +3757,7 @@ setMethod("moveCurrentAlign", signature="bamRange",
     if(!is(target, "bamRange"))
         stop("target must be bamRange!\n")
 
-    .Call("bam_range_mv_curr_align", object@range, target@range)
+    .Call(C_bam_range_mv_curr_align, object@range, target@range)
     return(invisible())
 })
 
@@ -3776,7 +3777,7 @@ setMethod("[", signature="bamRange", function(x, i)
     if(i[length(i)] > size(x))
         stop("Out of bounds index (> size(x))!")
 
-    return(.Call("bam_range_idx_copy", x@range, i, PACKAGE="rbamtools"))
+    return(.Call(C_bam_range_idx_copy, x@range, i, PACKAGE="rbamtools"))
 })
 
 
@@ -3798,7 +3799,7 @@ setMethod("rangeToFastq", signature=c("bamRange","character"),
 
     if(missing(which))
     {
-        .Call("bam_range_write_fastq", object@range, filename,
+        .Call(C_bam_range_write_fastq, object@range, filename,
                             append, PACKAGE="rbamtools")
     }else{
         if(!is.numeric(which))
@@ -3813,7 +3814,7 @@ setMethod("rangeToFastq", signature=c("bamRange","character"),
                     size(object), ")!\n", sep="")
         }
 
-        written <- .Call("bam_range_write_fastq_index",
+        written <- .Call(C_bam_range_write_fastq_index,
             object@range, filename, as.integer(sort(unique(which))),
             append, PACKAGE="rbamtools")
 
@@ -3832,7 +3833,7 @@ setMethod("getQualDf", c("bamRange","logical"), function(object, prob=FALSE, ...
         stop("[getQualDf.bamRange] ")
     if(prob)
     {
-        qdf <- .Call("bam_range_get_qual_df",
+        qdf <- .Call(C_bam_range_get_qual_df,
                                         object@range, PACKAGE="rbamtools")
 
         rel <- function(x)
@@ -3848,7 +3849,7 @@ setMethod("getQualDf", c("bamRange","logical"), function(object, prob=FALSE, ...
         attributes(res)$col.sums <- unlist(lapply(qdf, sum))
         return(res)
     }
-    return(.Call("bam_range_get_qual_df", object@range, PACKAGE="rbamtools"))
+    return(.Call(C_bam_range_get_qual_df, object@range, PACKAGE="rbamtools"))
 })
 
 setMethod("getQualDf", c("bamRange","missing"), function(object, prob=FALSE, ...)
@@ -3870,7 +3871,7 @@ setMethod("getQualQuantiles", c("bamRange","numeric"), function(object, quantile
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     #  Count qual values for each sequence position
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    qdf <- .Call("bam_range_get_qual_df", object@range, PACKAGE="rbamtools")
+    qdf <- .Call(C_bam_range_get_qual_df, object@range, PACKAGE="rbamtools")
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
     #  Convert integer counts into column-wise relative values
@@ -3890,7 +3891,7 @@ setMethod("getQualQuantiles", c("bamRange","numeric"), function(object, quantile
     #  Walk through each column and extract row number
     #  for given quantile values
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    res <- .Call("get_col_quantiles", quantiles, qrel, PACKAGE="rbamtools")
+    res <- .Call(C_get_col_quantiles, quantiles, qrel, PACKAGE="rbamtools")
     return(res)
 })
 
@@ -3953,7 +3954,7 @@ setMethod("alignDepth", "bamRange", function(object, gap=FALSE)
     if(!is.logical(gap))
         stop("gap must be logical!")
 
-    return(.Call("bam_range_get_align_depth",
+    return(.Call(C_bam_range_get_align_depth,
                         object@range, gap, PACKAGE="rbamtools"))
 })
 
@@ -4122,7 +4123,7 @@ setMethod("plotAlignDepth", "alignDepth",
 #  Count nucleotides
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("countNucs", "bamRange", function(object)
-                { return(.Call("bam_range_count_nucs",
+                { return(.Call(C_bam_range_count_nucs,
                             object@range, PACKAGE="rbamtools"))})
 
 
@@ -4239,7 +4240,7 @@ bamAlign <- function(qname, qseq, qqual, cigar, refid, position,
     intval[6] <- mpos
     intval[7] <- insertsize
 
-    ans <- .Call("bam_align_create", strval, intval)
+    ans <- .Call(C_bam_align_create, strval, intval)
 
     # Must be checked because align list returns NULL when end is reached
     if(is.null(ans))
@@ -4258,62 +4259,62 @@ bamAlign <- function(qname, qseq, qqual, cigar, refid, position,
 
 setMethod(f="name", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_name", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_name, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="refID", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_refid", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_refid, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="position", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_position", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_position, object@align, PACKAGE="rbamtools")
 })
 
 setMethod("nCigar", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_nCigar", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_nCigar, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="cigarData", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_cigar_df", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_cigar_df, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="mateRefID", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_mate_refid", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_mate_refid, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="matePosition", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_mate_position", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_mate_position, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="insertSize", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_insert_size", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_insert_size, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="mapQuality", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_map_quality", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_map_quality, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="alignSeq", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_segment_sequence", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_segment_sequence, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="alignQual", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_qualities", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_qualities, object@align, PACKAGE="rbamtools")
 })
 
 setMethod(f="alignQualVal", signature="bamAlign", definition=function(object)
 {
-    .Call("bam_align_get_qual_values", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_get_qual_values, object@align, PACKAGE="rbamtools")
 })
 
 
@@ -4331,7 +4332,7 @@ setMethod(f="alignQualVal", signature="bamAlign", definition=function(object)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("paired", "bamAlign", function(object)
 {
-    .Call("bam_align_is_paired", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_is_paired, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="paired",
@@ -4340,7 +4341,7 @@ setReplaceMethod(f="paired",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_is_paired",
+    .Call(C_bam_align_set_is_paired,
                     object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4351,7 +4352,7 @@ setReplaceMethod(f="paired",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("properPair", "bamAlign", function(object)
 {
-    .Call("bam_align_mapped_in_proper_pair", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_mapped_in_proper_pair, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="properPair",
@@ -4360,7 +4361,7 @@ setReplaceMethod(f="properPair",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_mapped_in_proper_pair",
+    .Call(C_bam_align_set_mapped_in_proper_pair,
                     object@align, value, PACKAGE="rbamtools")
 
     return(object)
@@ -4372,7 +4373,7 @@ setReplaceMethod(f="properPair",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("unmapped", "bamAlign", function(object)
 {
-    .Call("bam_align_is_unmapped", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_is_unmapped, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="unmapped",
@@ -4381,7 +4382,7 @@ setReplaceMethod(f="unmapped",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_is_unmapped",
+    .Call(C_bam_align_set_is_unmapped,
                     object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4392,7 +4393,7 @@ setReplaceMethod(f="unmapped",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("mateUnmapped", "bamAlign", function(object)
 {
-    .Call("bam_align_mate_is_unmapped", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_mate_is_unmapped, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="mateUnmapped",
@@ -4401,7 +4402,7 @@ setReplaceMethod(f="mateUnmapped",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_mate_is_unmapped",
+    .Call(C_bam_align_set_mate_is_unmapped,
         object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4412,7 +4413,7 @@ setReplaceMethod(f="mateUnmapped",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("reverseStrand", "bamAlign", function(object)
 {
-    .Call("bam_align_strand_reverse", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_strand_reverse, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="reverseStrand",
@@ -4421,7 +4422,7 @@ setReplaceMethod(f="reverseStrand",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_strand_reverse",
+    .Call(C_bam_align_set_strand_reverse,
         object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4432,7 +4433,7 @@ setReplaceMethod(f="reverseStrand",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("mateReverseStrand", "bamAlign", function(object)
 {
-    .Call("bam_align_mate_strand_reverse", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_mate_strand_reverse, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="mateReverseStrand",
@@ -4441,7 +4442,7 @@ setReplaceMethod(f="mateReverseStrand",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_mate_strand_reverse",
+    .Call(C_bam_align_set_mate_strand_reverse,
         object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4452,7 +4453,7 @@ setReplaceMethod(f="mateReverseStrand",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("firstInPair",  "bamAlign",  function(object)
 {
-    .Call("bam_align_is_first_in_pair", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_is_first_in_pair, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="firstInPair",
@@ -4461,7 +4462,7 @@ setReplaceMethod(f="firstInPair",
     if(!is.logical(value))
         stop("class bamReader, FirstInPair setter: value must be boolean")
 
-    .Call("bam_align_set_is_first_in_pair",
+    .Call(C_bam_align_set_is_first_in_pair,
             object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4473,7 +4474,7 @@ setReplaceMethod(f="firstInPair",
 
 setMethod("secondInPair", "bamAlign", function(object)
 {
-    .Call("bam_align_is_second_in_pair", object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_is_second_in_pair, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="secondInPair",
@@ -4482,7 +4483,7 @@ setReplaceMethod(f="secondInPair",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_is_second_in_pair",
+    .Call(C_bam_align_set_is_second_in_pair,
         object@align, value, PACKAGE="rbamtools")
 
     return(object)
@@ -4494,7 +4495,7 @@ setReplaceMethod(f="secondInPair",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("secondaryAlign", "bamAlign", function(object)
 {
-  .Call("bam_align_is_secondary_align",object@align, PACKAGE="rbamtools")
+  .Call(C_bam_align_is_secondary_align,object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="secondaryAlign", signature="bamAlign",
@@ -4503,7 +4504,7 @@ setReplaceMethod(f="secondaryAlign", signature="bamAlign",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_is_secondary_align",
+    .Call(C_bam_align_set_is_secondary_align,
                     object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4514,7 +4515,7 @@ setReplaceMethod(f="secondaryAlign", signature="bamAlign",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("failedQC", "bamAlign", function(object)
 {
-    return(.Call("bam_align_fail_qc", object@align, PACKAGE="rbamtools"))
+    return(.Call(C_bam_align_fail_qc, object@align, PACKAGE="rbamtools"))
 })
 
 setReplaceMethod(f="failedQC",
@@ -4523,7 +4524,7 @@ setReplaceMethod(f="failedQC",
     if(!is.logical(value))
         stop("class bamReader, failedQC setter: value must be boolean")
 
-    .Call("bam_align_set_fail_qc", object@align, value, PACKAGE="rbamtools")
+    .Call(C_bam_align_set_fail_qc, object@align, value, PACKAGE="rbamtools")
     return(object)
 })
 
@@ -4533,7 +4534,7 @@ setReplaceMethod(f="failedQC",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("pcrORopt_duplicate", "bamAlign", function(object)
 {
-    return(.Call("bam_align_is_pcr_or_optical_dup",
+    return(.Call(C_bam_align_is_pcr_or_optical_dup,
                 object@align, PACKAGE="rbamtools"))
 })
 
@@ -4542,7 +4543,7 @@ setReplaceMethod(f="pcrORopt_duplicate",
 {
     if(!is.logical(value))
         stop("class bamReader, Duplicate setter: value must be boolean")
-    .Call("bam_align_set_is_pcr_or_optical_dup",
+    .Call(C_bam_align_set_is_pcr_or_optical_dup,
                             object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4553,7 +4554,7 @@ setReplaceMethod(f="pcrORopt_duplicate",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("suppAlign", "bamAlign", function(object)
 {
-    .Call("bam_align_is_supplementary_align",object@align, PACKAGE="rbamtools")
+    .Call(C_bam_align_is_supplementary_align,object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="suppAlign",
@@ -4562,7 +4563,7 @@ setReplaceMethod(f="suppAlign",
     if(!is.logical(value))
         stop("value must be boolean")
 
-    .Call("bam_align_set_is_supplementary_align",
+    .Call(C_bam_align_set_is_supplementary_align,
         object@align, value, PACKAGE="rbamtools")
     return(object)
 })
@@ -4573,7 +4574,7 @@ setReplaceMethod(f="suppAlign",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("flag", "bamAlign", function(object)
 {
-  .Call("bam_align_get_flag", object@align, PACKAGE="rbamtools")
+  .Call(C_bam_align_get_flag, object@align, PACKAGE="rbamtools")
 })
 
 setReplaceMethod(f="flag", signature="bamAlign",
@@ -4588,7 +4589,7 @@ setReplaceMethod(f="flag", signature="bamAlign",
         message("[flag] Value is coerced to integer.")
     }
 
-    .Call("bam_align_set_flag", object@align, value, PACKAGE="rbamtools")
+    .Call(C_bam_align_set_flag, object@align, value, PACKAGE="rbamtools")
     return(object)
 })
 
@@ -4598,7 +4599,7 @@ setReplaceMethod(f="flag", signature="bamAlign",
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setMethod("countNucs","bamAlign",function(object)
 {
-    return(.Call("bam_align_count_nucs", object@align, PACKAGE="rbamtools"))
+    return(.Call(C_bam_align_count_nucs, object@align, PACKAGE="rbamtools"))
 })
 
 
@@ -4614,22 +4615,22 @@ setMethod("countNucs","bamAlign",function(object)
 
 as.data.frame.bamRange <- function(x, row.names=NULL, optional=FALSE, ...)
 {
-    return(.Call("bam_range_get_align_df", x@range, PACKAGE="rbamtools"))
+    return(.Call(C_bam_range_get_align_df, x@range, PACKAGE="rbamtools"))
 }
 
 as.data.frame.gapList <- function(x, row.names=NULL, optional=FALSE, ...)
 {
-    return(.Call("gap_list_get_df", x@list, PACKAGE="rbamtools"))
+    return(.Call(C_gap_list_get_df, x@list, PACKAGE="rbamtools"))
 }
 
 as.data.frame.gapSiteList <- function(x, row.names=NULL, optional=FALSE, ...)
 {
-    return(.Call("gap_site_list_get_df", x@list, PACKAGE="rbamtools"))
+    return(.Call(C_gap_site_list_get_df, x@list, PACKAGE="rbamtools"))
 }
 
 as.data.frame.bamGapList <- function(x, row.names=NULL, optional=FALSE, ...)
 {
-    return(.Call("gap_site_ll_get_df", x@list,
+    return(.Call(C_gap_site_ll_get_df, x@list,
                                         x@refdata$SN, PACKAGE="rbamtools"))
 }
 
@@ -4654,12 +4655,12 @@ as.data.frame.refSeqDict <- function(x, row.names=NULL, optional=FALSE, ...)
 
 setAs("bamRange","data.frame", function(from)
 {
-    return(.Call("bam_range_get_align_df", from@range, PACKAGE="rbamtools"))
+    return(.Call(C_bam_range_get_align_df, from@range, PACKAGE="rbamtools"))
 })
 
 setAs("gapList", "data.frame", function(from)
 {
-    return(.Call("gap_list_get_df", from@list, PACKAGE="rbamtools"))
+    return(.Call(C_gap_list_get_df, from@list, PACKAGE="rbamtools"))
 })
 
 setAs("refSeqDict", "data.frame", function(from)
@@ -4741,7 +4742,7 @@ countTextLines <- function(filenames)
     for(i in 1:n)
     {
         cat("[countTextLines] Counting '", basename(filenames[i]), "'", sep="")
-        res[i] <- .Call("count_text_lines", filenames[i])
+        res[i] <- .Call(C_count_text_lines, filenames[i])
         cat("\t found:", format(res[i], big.mark=bm), ".\n")
     }
     cat("[countTextLines] Finished. Found",
@@ -4929,7 +4930,7 @@ copy_fastq <- function(infile, outfile, which, append=FALSE)
     if(!file.exists(infile))
         stop("[copy_fastq] infile does not exist!")
 
-    ans <- .Call("copy_fastq_records", infile, outfile, which,
+    ans <- .Call(C_copy_fastq_records, infile, outfile, which,
                                             append, PACKAGE="rbamtools")
 
     bm <- Sys.localeconv()[7]
@@ -5071,7 +5072,7 @@ setMethod("genomePartition", c("bamReader","data.frame"), function(object, genom
         # Calculate Segments
         urc <- genome[genome$seqid==clv[i], ]
         coords <- as.integer(c(1, rfd$LN[i], dist, 1))
-        reflist[[i]] <- .Call("get_partition_segments", urc$id,
+        reflist[[i]] <- .Call(C_get_partition_segments, urc$id,
                                 urc$begin, urc$end, coords, PACKAGE="rbamtools")
     }
 

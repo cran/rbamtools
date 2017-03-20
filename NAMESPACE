@@ -1,4 +1,4 @@
-useDynLib(rbamtools)
+useDynLib(rbamtools, .registration = TRUE, .fixes = "C_")
 # Used from graphics:
 # arrows layout lcm legend lines mtext par plot polygon rect text
 import(methods,graphics)

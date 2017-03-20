@@ -561,7 +561,7 @@ plot(count~position, dfr, type="l",
 ###################################################
 ### code chunk number 53: rbamtools.Rnw:1588-1593
 ###################################################
-bs <- bamSamples(6)
+bs <- sampleBamFiles(6)
 bamFiles(bs) <- paste("bam",1:6, ".bam", sep="")
 sampleLabels(bs) <- paste(rep(c("wt", "trt"), each=3), 1:6, sep="")
 sampleGroups(bs) <- rep(c("wildtype", "treated"), each=3)
@@ -590,7 +590,7 @@ bamIdxFiles(bs)<- paste("index", 1:6, ".bam.bai", sep="")
 ### code chunk number 57: rbamtools.Rnw:1643-1651
 ###################################################
 bam<-system.file("extdata", "accepted_hits.bam", package="rbamtools")
-bs <-bamSamples(1)
+bs <-sampleBamFiles(1)
 bamFiles(bs) <- bam
 sampleLabels(bs) <- "s1"
 sampleGroups(bs) <- "g1"
@@ -600,11 +600,10 @@ bs
 
 
 ###################################################
-### code chunk number 58: rbamtools.Rnw:1667-1675
+### code chunk number 58: rbamtools.Rnw:1667-1674
 ###################################################
 ## - - - - - - - - - - - - - - - - - - - - - - ##
 # Construct geneModel object
-library(refGenome)
 ucfile<-system.file("extdata", "hs.ucsc.small.RData", package="refGenome")
 uc<-loadGenome(ucfile)
 gt <- getGeneTable(uc)
@@ -613,9 +612,38 @@ gm <- geneModel(uc, gene_id)
 
 
 ###################################################
-### code chunk number 59: rbamtools.Rnw:1686-1688
+### code chunk number 59: rbamtools.Rnw:1721-1724
 ###################################################
-sad <- samplesAlignDepth(bs, gm)
-plot(sad, col="gray50")
+gm <- geneModel(uc, gene_id, interior=FALSE)
+gad <- geneAlignDepth(bs, gm)
+plot(gad, col="gray50")
+
+
+###################################################
+### code chunk number 60: rbamtools.Rnw:1742-1744
+###################################################
+ead <- exonAlignDepth(gad, ratioLim=5, infVal=1000)
+plot(ead)
+
+
+###################################################
+### code chunk number 61: rbamtools.Rnw:1748-1750
+###################################################
+elm <- exonLoessModel(ead)
+plot(elm)
+
+
+###################################################
+### code chunk number 62: rbamtools.Rnw:1753-1755
+###################################################
+celm <- cutFlatAlignDepth(elm, ratio=0.1)
+plot(celm)
+
+
+###################################################
+### code chunk number 63: rbamtools.Rnw:1758-1760
+###################################################
+junctionSites(ead)
+groupRatio(celm, lim=1.2, cut=0, order=1)
 
 

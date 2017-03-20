@@ -1515,7 +1515,7 @@ setMethod(f="bamSort",
             cat("\r[bamSort] i:", format(i, w=3) , "/", n, ".")
             reader <- bamReader(bamFiles(object)[i])
 
-            .Call("bam_reader_sort_file",
+            .Call(C_bam_reader_sort_file,
                 reader@filename,
                 path.expand(file.path(path, prefix[i])),
                 maxmem, byName, PACKAGE="rbamtools")
@@ -1542,7 +1542,7 @@ setMethod("createIndex",
         for(i in 1:n)
         {
             cat("\r[createIndex] ", format(i, width=3))
-            .Call("bam_reader_create_index",
+            .Call(C_bam_reader_create_index,
                 path.expand(bamFiles(object)[i]),
                 path.expand(idx_filename[i]), PACKAGE="rbamtools")
         }
@@ -1560,7 +1560,7 @@ setMethod("createIndex",
         for(i in 1:n)
         {
             cat("\r[createIndex] ", format(i, width=3))
-            .Call("bam_reader_create_index",
+            .Call(C_bam_reader_create_index,
                   path.expand(bamFiles(object)[i]),
                   path.expand(bamIdxFiles(object)[i]), PACKAGE="rbamtools")
         }
