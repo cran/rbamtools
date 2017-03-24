@@ -59,7 +59,7 @@ static R_INLINE int kputsn(const char *p, int l, kstring_t *s)
 
 static R_INLINE int kputs(const char *p, kstring_t *s)
 {
-	return kputsn(p, strlen(p), s);
+	return kputsn(p, (int) strlen(p), s);
 }
 
 static R_INLINE int kputc(int c, kstring_t *s)
@@ -69,7 +69,7 @@ static R_INLINE int kputc(int c, kstring_t *s)
 		kroundup32(s->m);
 		s->s = (char*)realloc(s->s, s->m);
 	}
-	s->s[s->l++] = c;
+	s->s[s->l++] = (char) c;
 	s->s[s->l] = 0;
 	return c;
 }

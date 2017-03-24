@@ -215,7 +215,7 @@ bam_header_t *sam_header_read(tamFile fp)
 	bam_header_t *header = bam_header_init();
 	kstring_t *str = fp->str;
 	while ((ret = ks_getuntil(fp->ks, KS_SEP_TAB, str, &dret)) >= 0 && str->s[0] == '@') { // skip header
-		str->s[str->l] = dret; // note that str->s is NOT null terminated!!
+		str->s[str->l] = (char) dret; // note that str->s is NOT null terminated!!
 		append_text(header, str);
 		if (dret != '\n') {
 			ret = ks_getuntil(fp->ks, '\n', str, &dret);
@@ -239,7 +239,7 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 
 	if (fp->is_first) {
 		fp->is_first = 0;
-		ret = str->l;
+		ret = (int) (str->l);
 	} else {
 		do { // special consideration for empty lines
 			ret = ks_getuntil(fp->ks, KS_SEP_TAB, str, &dret);
@@ -251,7 +251,7 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 	doff = 0;
 
 	{ // name
-		c->l_qname = strlen(str->s) + 1;
+		c->l_qname = (uint32_t)(strlen(str->s)) + 1;
 		memcpy(alloc_data(b, doff + c->l_qname) + doff, str->s, c->l_qname);
 		doff += c->l_qname;
 	}
@@ -265,7 +265,7 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 			for (s = str->s; *s; ++s)
 				flag |= bam_char2flag_table[(int)*s];
 		}
-		c->flag = flag;
+		c->flag = (uint32_t) flag;
 	}
 	{ // tid, pos, qual
 		ret = ks_getuntil(ks, KS_SEP_TAB, str, &dret); z += str->l + 1; c->tid = bam_get_tid(header, str->s);
@@ -307,7 +307,7 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 				else if (op == 'X') op = BAM_CDIFF;
 				else parse_error(fp->n_lines, "invalid CIGAR operation");
 				s = t + 1;
-				bam1_cigar(b)[i] = x << BAM_CIGAR_SHIFT | op;
+				bam1_cigar(b)[i] = (uint32_t)(x << BAM_CIGAR_SHIFT | op);
 			}
 			if (*s) parse_error(fp->n_lines, "unmatched CIGAR operation");
 			c->bin = bam_reg2bin(c->pos, bam_calend(c, bam1_cigar(b)));
@@ -335,7 +335,7 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 		if (ks_getuntil(ks, KS_SEP_TAB, str, &dret) < 0) return -5; // seq
 		z += str->l + 1;
 		if (strcmp(str->s, "*")) {
-			c->l_qseq = strlen(str->s);
+			c->l_qseq = (int32_t) strlen(str->s);
 			if (c->n_cigar && c->l_qseq != (int32_t)bam_cigar2qlen(c, bam1_cigar(b))) {
 				Rprintf("Line %ld, sequence length %i vs %i from CIGAR\n",(long)fp->n_lines, c->l_qseq, (int32_t)bam_cigar2qlen(c, bam1_cigar(b)));
 			  parse_error(fp->n_lines, "CIGAR and sequence length are inconsistent");
@@ -411,7 +411,7 @@ int sam_read1(tamFile fp, bam_header_t *header, bam1_t *b)
 				*(float*)s = (float)atof(str->s + 9);
 				s += 8; doff += 9;
 			} else if (type == 'Z' || type == 'H') {
-				int size = 1 + (str->l - 5) + 1;
+				int size = 1 + ( (int)(str->l) - 5) + 1;
 				if (type == 'H') { // check whether the hex string is valid
 					int i;
 					if ((str->l - 5) % 2 == 1) parse_error(fp->n_lines, "length of the hex string not even");

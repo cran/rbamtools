@@ -147,7 +147,7 @@ static const char *nextline(char **lineptr, size_t *n, const char *text)
     if ( !*to ) return NULL;
 
     while ( *to && *to!='\n' && *to!='\r' ) to++;
-    len = to - text + 1;
+    len = ((int)(to - text)) + 1;
 
     if ( *to )
     {
@@ -184,7 +184,7 @@ static const char *nextline(char **lineptr, size_t *n, const char *text)
 static HeaderTag *new_tag(const char *name, const char *value_from, const char *value_to)
 {
     HeaderTag *tag = malloc(sizeof(HeaderTag));
-    int len = value_to-value_from+1;
+    int len = ((int) (value_to - value_from)) + 1;
 
     tag->key[0] = name[0];
     tag->key[1] = name[1];

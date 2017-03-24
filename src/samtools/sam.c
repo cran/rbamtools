@@ -26,8 +26,8 @@ bam_header_t *bam_header_dup(const bam_header_t *h0)
 }
 static void append_header_text(bam_header_t *header, char* text, int len)
 {
-	int x = header->l_text + 1;
-	int y = header->l_text + len + 1; // 1 byte null
+	int x = ((int) (header->l_text)) + 1;
+	int y = ((int) (header->l_text)) + len + 1; // 1 byte null
 	if (text == 0) return;
 	kroundup32(x); 
 	kroundup32(y);
@@ -58,7 +58,7 @@ samfile_t *samopen(const char *fn, const char *mode, const void *aux)
 					bam_header_t *textheader = fp->header;
 					fp->header = sam_header_read2((const char*)aux);
 					if (fp->header == 0) goto open_err_ret;
-					append_header_text(fp->header, textheader->text, textheader->l_text);
+					append_header_text(fp->header, textheader->text, (int) textheader->l_text);
 					bam_header_destroy(textheader);
 				}
 				if (fp->header->n_targets == 0 && bam_verbose >= 1)
@@ -73,7 +73,7 @@ samfile_t *samopen(const char *fn, const char *mode, const void *aux)
 			for (i = 0; mode[i]; ++i) if (mode[i] >= '0' && mode[i] <= '9') break;
 			if (mode[i]) compress_level = mode[i] - '0';
 			if (strchr(mode, 'u')) compress_level = 0;
-			bmode[0] = 'w'; bmode[1] = compress_level < 0? 0 : compress_level + '0'; bmode[2] = 0;
+			bmode[0] = 'w'; bmode[1] = compress_level < 0? 0 : ((char) (compress_level)) + '0'; bmode[2] = 0;
 			fp->type |= TYPE_BAM;
 			fp->x.bam = bam_open(fn, bmode);
 			if (fp->x.bam == 0) goto open_err_ret;
@@ -137,7 +137,7 @@ int samwrite(samfile_t *fp, const bam1_t *b)
 	if (fp->type & TYPE_BAM) return bam_write1(fp->x.bam, b);
 	else {
 		char *s = bam_format1_core(fp->header, b, fp->type>>2&3);
-		int l = strlen(s);
+		int l = (int) strlen(s);
 		fputs(s, fp->x.tamw); fputc('\n', fp->x.tamw);
 		free(s);
 		return l + 1;

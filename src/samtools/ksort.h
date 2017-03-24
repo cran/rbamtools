@@ -258,7 +258,7 @@ typedef struct {
 	{																	\
 		int i, j;														\
 		GetRNGstate();													\
-		for (i = n; i > 1; --i) {										\
+		for (i = (int) n; i > 1; --i) {										\
 			type_t tmp;													\
 			/***** replaced  *******/									\
 			/* j = (int)(((double)rand()/RAND_MAX) * i); */				\

@@ -55,7 +55,7 @@ int ksplit_core(char *s, int delimiter, int *_max, int **_offsets)
 {
 	int i, n, max, last_char, last_start, *offsets, l;
 	n = 0; max = *_max; offsets = *_offsets;
-	l = strlen(s);
+	l = (int) strlen(s);
 	
 #define __ksplit_aux do {												\
 		if (_offsets) {													\
@@ -158,10 +158,10 @@ void *kmemmem(const void *_str, int n, const void *_pat, int m, int **_prep)
 
 char *kstrstr(const char *str, const char *pat, int **_prep)
 {
-	return (char*)kmemmem(str, strlen(str), pat, strlen(pat), _prep);
+	return (char*)kmemmem(str, (int) strlen(str), pat, (int) strlen(pat), _prep);
 }
 
 char *kstrnstr(const char *str, const char *pat, int n, int **_prep)
 {
-	return (char*)kmemmem(str, n, pat, strlen(pat), _prep);
+	return (char*)kmemmem(str, n, pat, (int) strlen(pat), _prep);
 }

@@ -77,7 +77,7 @@ static const int Z_DEFAULT_MEM_LEVEL = 8;
 static R_INLINE void
 packInt16(uint8_t* buffer, uint16_t value)
 {
-    buffer[0] = value;
+    buffer[0] = (uint8_t) value;
     buffer[1] = value >> 8;
 }
 
@@ -92,10 +92,10 @@ static R_INLINE
 void
 packInt32(uint8_t* buffer, uint32_t value)
 {
-    buffer[0] = value;
-    buffer[1] = value >> 8;
-    buffer[2] = value >> 16;
-    buffer[3] = value >> 24;
+    buffer[0] = (uint8_t) value;
+    buffer[1] = (uint8_t) (value >> 8);
+    buffer[2] = (uint8_t) (value >> 16);
+    buffer[3] = (uint8_t) (value >> 24);
 }
 
 static R_INLINE
@@ -126,7 +126,7 @@ int bgzf_check_bgzf(const char *fn)
 #ifdef _USE_KNETFILE
     n = knet_read(fp->x.fpr, buf, 10);
 #else
-    n = fread(buf, 1, 10, fp->file);
+    n = (int) fread(buf, 1, 10, fp->file);
 #endif
     bgzf_close(fp);
 

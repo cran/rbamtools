@@ -386,7 +386,7 @@ bam_index_t *bam_index_load_local(const char *_fn)
 
 	if (strstr(_fn, "ftp://") == _fn || strstr(_fn, "http://") == _fn) {
 		const char *p;
-		int l = strlen(_fn);
+		int l = (int) strlen(_fn);
 		for (p = _fn + l - 1; p >= _fn; --p)
 			if (*p == '/') break;
 		fn = malloc(strlen(p + 1) + 1);
@@ -519,11 +519,11 @@ static R_INLINE int reg2bins(uint32_t beg, uint32_t end, uint16_t list[BAM_MAX_B
 	if (end >= 1u<<29) end = 1u<<29;
 	--end;
 	list[i++] = 0;
-	for (k =    1 + (beg>>26); k <=    1 + (end>>26); ++k) list[i++] = k;
-	for (k =    9 + (beg>>23); k <=    9 + (end>>23); ++k) list[i++] = k;
-	for (k =   73 + (beg>>20); k <=   73 + (end>>20); ++k) list[i++] = k;
-	for (k =  585 + (beg>>17); k <=  585 + (end>>17); ++k) list[i++] = k;
-	for (k = 4681 + (beg>>14); k <= 4681 + (end>>14); ++k) list[i++] = k;
+	for (k =    1 + (beg>>26); k <=    1 + (end>>26); ++k) list[i++] = (uint16_t) k;
+	for (k =    9 + (beg>>23); k <=    9 + (end>>23); ++k) list[i++] = (uint16_t) k;
+	for (k =   73 + (beg>>20); k <=   73 + (end>>20); ++k) list[i++] = (uint16_t) k;
+	for (k =  585 + (beg>>17); k <=  585 + (end>>17); ++k) list[i++] = (uint16_t) k;
+	for (k = 4681 + (beg>>14); k <= 4681 + (end>>14); ++k) list[i++] = (uint16_t) k;
 	return i;
 }
 

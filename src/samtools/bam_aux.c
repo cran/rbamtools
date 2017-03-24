@@ -115,7 +115,7 @@ int bam_parse_region(bam_header_t *header, const char *str, int *ref_id, int *be
 	h = (khash_t(s)*)header->hash;
 
 	*ref_id = *beg = *end = -1;
-	name_end = l = strlen(str);
+	name_end = l = (int) strlen(str);
 	s = (char*)malloc(l+1);
 	// remove space
 	for (i = k = 0; i < l; ++i)

@@ -71,7 +71,7 @@ void swap_header_text(bam_header_t *h1, bam_header_t *h2)
 {
 	int tempi;
 	char *temps;
-	tempi = h1->l_text, h1->l_text = h2->l_text, h2->l_text = tempi;
+	tempi = (int) h1->l_text, h1->l_text = h2->l_text, h2->l_text = tempi;
 	temps = h1->text, h1->text = h2->text, h2->text = temps;
 }
 
@@ -124,7 +124,7 @@ int bam_merge_core(int by_qname, const char *out, const char *headers, int n, ch
 		RG = (char**)calloc(n, sizeof(void*));
 		RG_len = (int*)calloc(n, sizeof(int));
 		for (i = 0; i != n; ++i) {
-			int l = strlen(fn[i]);
+			int l = (int) strlen(fn[i]);
 			const char *s = fn[i];
 			if (l > 4 && strcmp(s + l - 4, ".bam") == 0) l -= 4;
 			for (j = l - 1; j >= 0; --j) if (s[j] == '/') break;

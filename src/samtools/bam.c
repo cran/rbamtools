@@ -93,7 +93,7 @@ bam_header_t *bam_header_read(bamFile fp)
 	bam_read(fp, &header->l_text, 4);
 	if (bam_is_be) bam_swap_endian_4p(&header->l_text);
 	header->text = (char*)calloc(header->l_text + 1, 1);
-	bam_read(fp, header->text, header->l_text);
+	bam_read(fp, header->text, (int) header->l_text);
 	bam_read(fp, &header->n_targets, 4);
 	if (bam_is_be) bam_swap_endian_4p(&header->n_targets);
 	// read reference sequence names and lengths
@@ -119,20 +119,20 @@ int bam_header_write(bamFile fp, const bam_header_t *header)
 	bam_write(fp, buf, 4);
 	// write plain text and the number of reference sequences
 	if (bam_is_be) {
-		x = bam_swap_endian_4(header->l_text);
+		x = bam_swap_endian_4((uint32_t)(header->l_text));
 		bam_write(fp, &x, 4);
-		if (header->l_text) bam_write(fp, header->text, header->l_text);
+		if (header->l_text) bam_write(fp, header->text, (int) (header->l_text));
 		x = bam_swap_endian_4(header->n_targets);
 		bam_write(fp, &x, 4);
 	} else {
 		bam_write(fp, &header->l_text, 4);
-		if (header->l_text) bam_write(fp, header->text, header->l_text);
+		if (header->l_text) bam_write(fp, header->text, (int) (header->l_text));
 		bam_write(fp, &header->n_targets, 4);
 	}
 	// write sequence names and lengths
 	for (i = 0; i != header->n_targets; ++i) {
 		char *p = header->target_name[i];
-		name_len = strlen(p) + 1;
+		name_len = ((int32_t) strlen(p)) + 1;
 		if (bam_is_be) {
 			x = bam_swap_endian_4(name_len);
 			bam_write(fp, &x, 4);
@@ -156,7 +156,7 @@ static void swap_endian_data(const bam1_core_t *c, int data_len, uint8_t *data)
 	while (s < data + data_len) {
 		uint8_t type;
 		s += 2; // skip key
-		type = toupper(*s); ++s; // skip type
+		type = (uint8_t) toupper(*s); ++s; // skip type
 		if (type == 'C' || type == 'A') ++s;
 		else if (type == 'S') { bam_swap_endian_2p(s); s += 2; }
 		else if (type == 'I' || type == 'F') { bam_swap_endian_4p(s); s += 4; }

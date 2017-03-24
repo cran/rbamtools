@@ -1,7 +1,7 @@
 Package: rbamtools
 Type: Package
 Title: Read and Write BAM (Binary Alignment) Files
-Version: 2.16.5
+Version: 2.16.6
 Date: 2017-03-20
 Author: Wolfgang Kaisers
 Maintainer: Wolfgang Kaisers <kaisers@med.uni-duesseldorf.de>
@@ -11,7 +11,7 @@ LazyLoad: yes
 Depends: methods,refGenome (>= 1.6.1)
 Suggests: xtable
 Collate: rbamtools.R segmentize.R sampleBamFiles.R
-Packaged: 2017-03-20 13:40:24 UTC; kaisers
+Packaged: 2017-03-23 20:48:50 UTC; wolfgang
 Repository: CRAN
-Date/Publication: 2017-03-20 17:35:00 UTC
+Date/Publication: 2017-03-24 12:27:20 UTC
 NeedsCompilation: yes

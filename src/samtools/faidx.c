@@ -82,7 +82,7 @@ faidx_t *fai_build_core(RAZF *rz)
 		}
 		if (c == '>') { // fasta header
 			if (len >= 0)
-				fai_insert_index(idx, name, len, line_len, line_blen, offset);
+				fai_insert_index(idx, name, (int) len, line_len, line_blen, offset);
 			l_name = 0;
 			while ((ret = razf_read(rz, &c, 1)) != 0 && !isspace(c)) {
 				if (m_name < l_name + 2) {
@@ -125,7 +125,7 @@ faidx_t *fai_build_core(RAZF *rz)
 			}
 		}
 	}
-	fai_insert_index(idx, name, len, line_len, line_blen, offset);
+	fai_insert_index(idx, name, (int) len, line_len, line_blen, offset);
 	free(name);
 	return idx;
 }
@@ -268,7 +268,7 @@ char *fai_fetch(const faidx_t *fai, const char *str, int *len)
 
 	beg = end = -1;
 	h = fai->hash;
-	name_end = l = strlen(str);
+	name_end = l = (int) strlen(str);
 	s = (char*)malloc(l+1);
 	// remove space
 	for (i = k = 0; i < l; ++i)
@@ -302,11 +302,11 @@ char *fai_fetch(const faidx_t *fai, const char *str, int *len)
 		s[k] = 0;
 		beg = atoi(s + name_end + 1);
 		for (i = name_end + 1; i != k; ++i) if (s[i] == '-') break;
-		end = i < k? atoi(s + i + 1) : val.len;
+		end = i < k? atoi(s + i + 1) : ((int) (val.len));
 		if (beg > 0) --beg;
-	} else beg = 0, end = val.len;
-	if (beg >= val.len) beg = val.len;
-	if (end >= val.len) end = val.len;
+	} else beg = 0, end = (int) (val.len);
+	if (beg >= val.len) beg = (int) (val.len);
+	if (end >= val.len) end = (int) (val.len);
 	if (beg > end) beg = end;
 	free(s);
 
@@ -341,9 +341,9 @@ char *faidx_fetch_seq(const faidx_t *fai, char *c_name, int p_beg_i, int p_end_i
     val = kh_value(fai->hash, iter);
 	if(p_end_i < p_beg_i) p_beg_i = p_end_i;
     if(p_beg_i < 0) p_beg_i = 0;
-    else if(val.len <= p_beg_i) p_beg_i = val.len - 1;
+    else if(val.len <= p_beg_i) p_beg_i = ((int) (val.len)) - 1;
     if(p_end_i < 0) p_end_i = 0;
-    else if(val.len <= p_end_i) p_end_i = val.len - 1;
+    else if(val.len <= p_end_i) p_end_i = ((int) (val.len)) - 1;
 
     // Now retrieve the sequence 
 	l = 0;

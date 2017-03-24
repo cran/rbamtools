@@ -80,12 +80,12 @@ static R_INLINE int is_big_endian(){
 #ifndef _RZ_READONLY
 static void add_zindex(RAZF *rz, int64_t in, int64_t out){
 	if(rz->index->size == rz->index->cap){
-		rz->index->cap = rz->index->cap * 1.5 + 2;
+		rz->index->cap = ((int) (rz->index->cap * 1.5)) + 2;
 		rz->index->cell_offsets = realloc(rz->index->cell_offsets, sizeof(int) * rz->index->cap);
 		rz->index->bin_offsets  = realloc(rz->index->bin_offsets, sizeof(int64_t) * (rz->index->cap/RZ_BIN_SIZE + 1));
 	}
 	if(rz->index->size % RZ_BIN_SIZE == 0) rz->index->bin_offsets[rz->index->size / RZ_BIN_SIZE] = out;
-	rz->index->cell_offsets[rz->index->size] = out - rz->index->bin_offsets[rz->index->size / RZ_BIN_SIZE];
+	rz->index->cell_offsets[rz->index->size] = out - ((uint32_t) rz->index->bin_offsets[rz->index->size / RZ_BIN_SIZE]);
 	rz->index->size ++;
 }
 
@@ -292,7 +292,7 @@ int razf_write(RAZF* rz, const void *data, int size){
 	ori_size = size;
 	next_block = ((rz->in / RZ_BLOCK_SIZE) + 1) * RZ_BLOCK_SIZE;
 	while(rz->in + rz->buf_len + size >= next_block){
-		n = next_block - rz->in - rz->buf_len;
+		n = ((int) (next_block - rz->in)) - rz->buf_len;
 		_razf_buffered_write(rz, data, n);
 		data = (const void *) (((const unsigned char*) data) + n);
 		size -= n;
@@ -372,7 +372,7 @@ static RAZF* razf_open_r(int fd, int _load_index){
 #ifdef _USE_KNETFILE
     n = knet_read(rz->x.fpr, rz->inbuf, RZ_BUFFER_SIZE);
 #else
-	n = read(rz->filedes, rz->inbuf, RZ_BUFFER_SIZE);
+	n = (int) read(rz->filedes, rz->inbuf, RZ_BUFFER_SIZE);
 #endif
 	ret = _read_gz_header(rz->inbuf, n, &ext_off, &ext_len);
 	if(ret == 0){
@@ -433,7 +433,7 @@ static RAZF* razf_open_r(int fd, int _load_index){
 		else rz->end = end;
 		if(n > rz->end){
 			rz->stream->avail_in -= n - rz->end;
-			n = rz->end;
+			n = (int) (rz->end);
 		}
 		if(rz->end > rz->src_end){
 #ifdef _USE_KNETFILE
@@ -569,7 +569,7 @@ static int _razf_read(RAZF* rz, void *data, int size){
 #ifdef _USE_KNETFILE
 		ret = knet_read(rz->x.fpr, data, size);
 #else
-		ret = read(rz->filedes, data, size);
+		ret = (int) read(rz->filedes, data, size);
 #endif        
 		if (ret == 0) rz->z_eof = 1;
 		return ret;
@@ -583,13 +583,13 @@ static int _razf_read(RAZF* rz, void *data, int size){
 #ifdef _USE_KNETFILE
 				rz->stream->avail_in = knet_read(rz->x.fpr, rz->inbuf, rz->end -rz->in);
 #else
-				rz->stream->avail_in = read(rz->filedes, rz->inbuf, rz->end -rz->in);
+				rz->stream->avail_in =  (uInt) read(rz->filedes, rz->inbuf, rz->end -rz->in);
 #endif        
 			} else {
 #ifdef _USE_KNETFILE
 				rz->stream->avail_in = knet_read(rz->x.fpr, rz->inbuf, RZ_BUFFER_SIZE);
 #else
-				rz->stream->avail_in = read(rz->filedes, rz->inbuf, RZ_BUFFER_SIZE);
+				rz->stream->avail_in = (uInt) read(rz->filedes, rz->inbuf, RZ_BUFFER_SIZE);
 #endif        
 			}
 			if(rz->stream->avail_in == 0){
