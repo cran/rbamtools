@@ -1,7 +1,7 @@
 Package: rbamtools
 Type: Package
 Title: Read and Write BAM (Binary Alignment) Files
-Version: 2.16.11
+Version: 2.16.11.1
 Date: 2018-04-14
 Authors@R: c(person("Wolfgang", "Kaisers", role=c("aut", "cre"),
 			email="wolfgang.kaisers@gmail.com"),
@@ -16,11 +16,15 @@ LazyLoad: yes
 Depends: methods,refGenome (>= 1.6.1)
 Suggests: xtable
 Collate: rbamtools.R segmentize.R sampleBamFiles.R
-Packaged: 2018-05-07 11:50:34 UTC; kaisers
+Packaged: 2018-12-30 13:22:23 UTC; ripley
 Repository: CRAN
-Date/Publication: 2018-05-07 12:40:46 UTC
+Date/Publication: 2018-12-30 13:27:41 UTC
 NeedsCompilation: yes
 Author: Wolfgang Kaisers [aut, cre],
   Heng Li [ctb, cph],
   Jue Ruan [ctb, cph]
-Maintainer: Wolfgang Kaisers <wolfgang.kaisers@gmail.com>
+Maintainer: ORPHANED
+X-CRAN-Original-Maintainer: Wolfgang Kaisers
+        <wolfgang.kaisers@gmail.com>
+X-CRAN-Comment: Orphaned and corrected on 2018-12-30 as maintainer's
+        email address bounced.
