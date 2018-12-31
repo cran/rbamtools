@@ -112,10 +112,10 @@ bam_header_t *bam_header_read(bamFile fp)
 
 int bam_header_write(bamFile fp, const bam_header_t *header)
 {
-	char buf[4];
+	char buf[5];
 	int32_t i, name_len, x;
 	// write "BAM1"
-	strncpy(buf, "BAM\001", 4);
+	strncpy(buf, "BAM\001", 5);
 	bam_write(fp, buf, 4);
 	// write plain text and the number of reference sequences
 	if (bam_is_be) {

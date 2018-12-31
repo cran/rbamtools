@@ -175,7 +175,7 @@ static RAZF* razf_open_w(int fd){
 	rz->header->text  = 0;
 	rz->header->time  = 0;
 	rz->header->extra = malloc(7);
-	strncpy((char*)rz->header->extra, "RAZF", 4);
+	strncpy((char*)rz->header->extra, "RAZF", 5); // copy terminator
 	rz->header->extra[4] = 1; // obsolete field
 	// block size = RZ_BLOCK_SIZE, Big-Endian
 	rz->header->extra[5] = RZ_BLOCK_SIZE >> 8;

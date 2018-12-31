@@ -123,7 +123,7 @@ static R_INLINE int cigar2str(char *c, const bam1_t *align)
 	for(i=1;i<len;++i)
 	{
 		sprintf(buf,"%lu",(unsigned long) (cigar[i] >> BAM_CIGAR_SHIFT));
-		strncat(c,buf,strlen(buf) + 1);
+		strcat(c, buf);  // same as strncat(c,buf,strlen(buf) + 1);
 
 		if((cigar[i]&BAM_CIGAR_MASK)>=strlen(CIGAR_TYPES))	// Error
 			return 0;
