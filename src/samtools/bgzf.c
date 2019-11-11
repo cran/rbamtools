@@ -52,7 +52,7 @@ typedef struct {
 } cache_t;
 KHASH_MAP_INIT_INT64(cache, cache_t)
 
-typedef int8_t bgzf_byte_t;
+typedef uint8_t bgzf_byte_t;
 
 static const int DEFAULT_BLOCK_SIZE = 64 * 1024;
 static const int MAX_BLOCK_SIZE = 64 * 1024;
@@ -622,8 +622,18 @@ int bgzf_close(BGZF* fp)
 			int count, block_length = deflate_block(fp, 0);
 #ifdef _USE_KNETFILE
 			count = fwrite(fp->compressed_block, 1, block_length, fp->x.fpw);
+            if(count != block_length){
+                if(ferror(fp->x.fpw)){
+                    Rprintf("[bam_index_load] Reading error.\n");
+                }
+            }
 #else
 			count = fwrite(fp->compressed_block, 1, block_length, fp->file);
+            if(count != block_length){
+                if(ferror(fp->file)){
+                    Rprintf("[bam_index_load] Reading error.\n");
+                }
+            }
 #endif
 		}
 #ifdef _USE_KNETFILE
@@ -662,6 +672,7 @@ int bgzf_check_EOF(BGZF *fp)
 	static uint8_t magic[28] = "\037\213\010\4\0\0\0\0\0\377\6\0\102\103\2\0\033\0\3\0\0\0\0\0\0\0\0\0";
 	uint8_t buf[28];
 	off_t offset;
+    size_t result;
 #ifdef _USE_KNETFILE
 	offset = knet_tell(fp->x.fpr);
 	if (knet_seek(fp->x.fpr, -28, SEEK_END) != 0) return -1;
@@ -670,7 +681,12 @@ int bgzf_check_EOF(BGZF *fp)
 #else
 	offset = ftell(fp->file);
 	if (fseeko(fp->file, -28, SEEK_END) != 0) return -1;
-	fread(buf, 1, 28, fp->file);
+	result = fread(buf, 1, 28, fp->file);
+    if(result != 28){
+        if(ferror(fp->file)){
+            Rprintf("[bgzf_check_EOF] Reading error.\n");
+        }
+    }
 	fseeko(fp->file, offset, SEEK_SET);
 #endif
 	return (memcmp(magic, buf, 28) == 0)? 1 : 0;

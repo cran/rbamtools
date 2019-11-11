@@ -58,7 +58,7 @@ start <- 895967
 end <- 901099
 gene_name <- "HLHL17" # (optional)
 ranges <- data.frame(seqid=seqid, start=start, end=end, gene_name=gene_name)
-\dontrun{saveAldData(reader, ranges=ranges, filename="new_file.bam", f=mean)}
+\donttest{saveAldData(reader, ranges=ranges, filename="new_file.bam", f=mean)}
 }
 \keyword{saveAldData}
 \seealso{bamReader}

@@ -103,7 +103,7 @@ header<-bamHeader(bh)
 
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #  Copy aligns in range into new BAM file
-\dontrun{
+\donttest{
 writer<-bamWriter(header, "chr1_complex.bam")
 bamSave(writer, range, refid=0)
 bamClose(writer)

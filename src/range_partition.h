@@ -880,6 +880,6 @@ partition::partition(const range_list &rlist, position_type dist, position_type 
 	}
 }
 
-}; // End namespace range_partition
+} // End namespace range_partition
 
 #endif /* RANGE_PARTITION_HPP_ */

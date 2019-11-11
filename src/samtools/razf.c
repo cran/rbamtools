@@ -93,18 +93,27 @@ static void save_zindex(RAZF *rz, int fd){
 	int32_t i, v32;
 	int is_be;
 	is_be = is_big_endian();
-	if(is_be) write(fd, &rz->index->size, sizeof(int));
-	else {
+	if(is_be){
+        if(write(fd, &rz->index->size, sizeof(int)) < 0){
+            Rprintf("[save_zindex] Write error.\n");
+        }
+	}else {
 		v32 = byte_swap_4((uint32_t)rz->index->size);
-		write(fd, &v32, sizeof(uint32_t));
+		if(write(fd, &v32, sizeof(uint32_t)) < 0){
+            Rprintf("[save_zindex] Write error.\n");
+        }
 	}
 	v32 = rz->index->size / RZ_BIN_SIZE + 1;
 	if(!is_be){
 		for(i=0;i<v32;i++) rz->index->bin_offsets[i]  = byte_swap_8((uint64_t)rz->index->bin_offsets[i]);
 		for(i=0;i<rz->index->size;i++) rz->index->cell_offsets[i] = byte_swap_4((uint32_t)rz->index->cell_offsets[i]);
 	}
-	write(fd, rz->index->bin_offsets, sizeof(int64_t) * v32);
-	write(fd, rz->index->cell_offsets, sizeof(int32_t) * rz->index->size);
+	if(write(fd, rz->index->bin_offsets, sizeof(int64_t) * v32) < 0){
+        Rprintf("[save_zindex] Write error.\n");
+    }
+	if(write(fd, rz->index->cell_offsets, sizeof(int32_t) * rz->index->size) < 0){
+        Rprintf("[save_zindex] Write error.\n");
+    }
 }
 #endif
 
@@ -121,7 +130,9 @@ static void load_zindex(RAZF *rz, int fd){
 #ifdef _USE_KNETFILE
 	knet_read(fp, &rz->index->size, sizeof(int));
 #else
-	read(fd, &rz->index->size, sizeof(int));
+	if(read(fd, &rz->index->size, sizeof(int)) < 0){
+        Rprintf("[load_zindex] Read error.\n");
+    }
 #endif
 	if(!is_be) rz->index->size = byte_swap_4((uint32_t)rz->index->size);
 	rz->index->cap = rz->index->size;
@@ -130,13 +141,17 @@ static void load_zindex(RAZF *rz, int fd){
 #ifdef _USE_KNETFILE
 	knet_read(fp, rz->index->bin_offsets, sizeof(int64_t) * v32);
 #else
-	read(fd, rz->index->bin_offsets, sizeof(int64_t) * v32);
+	if(read(fd, rz->index->bin_offsets, sizeof(int64_t) * v32) < 0){
+        Rprintf("[load_zindex] Read error.\n");
+    }
 #endif
 	rz->index->cell_offsets = malloc(sizeof(int) * rz->index->size);
 #ifdef _USE_KNETFILE
 	knet_read(fp, rz->index->cell_offsets, sizeof(int) * rz->index->size);
 #else
-	read(fd, rz->index->cell_offsets, sizeof(int) * rz->index->size);
+	if(read(fd, rz->index->cell_offsets, sizeof(int) * rz->index->size) < 0){
+        Rprintf("[load_zindex] Read error.\n");
+    }
 #endif
 	if(!is_be){
 		for(i=0;i<v32;i++) rz->index->bin_offsets[i] = byte_swap_8((uint64_t)rz->index->bin_offsets[i]);
@@ -175,7 +190,7 @@ static RAZF* razf_open_w(int fd){
 	rz->header->text  = 0;
 	rz->header->time  = 0;
 	rz->header->extra = malloc(7);
-	strncpy((char*)rz->header->extra, "RAZF", 5); // copy terminator
+	memcpy((char*)rz->header->extra, "RAZF", 4);
 	rz->header->extra[4] = 1; // obsolete field
 	// block size = RZ_BLOCK_SIZE, Big-Endian
 	rz->header->extra[5] = RZ_BLOCK_SIZE >> 8;
@@ -198,9 +213,13 @@ static void _razf_write(RAZF* rz, const void *data, int size){
 		rz->out += tout - rz->stream->avail_out;
 		if(rz->stream->avail_out) break;
 #ifdef _USE_KNETFILE
-		write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
+		if(write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+            Rprintf("[_razf_write] Write error.\n");
+        }
 #else
-		write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
+		if(write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+            Rprintf("[_razf_write] Write error.\n");
+        }
 #endif
 		rz->stream->avail_out = RZ_BUFFER_SIZE;
 		rz->stream->next_out  = rz->outbuf;
@@ -218,9 +237,13 @@ static void razf_flush(RAZF *rz){
 	}
 	if(rz->stream->avail_out){
 #ifdef _USE_KNETFILE    
-		write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
-#else        
-		write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
+		if(write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+            Rprintf("[razf_flush] Write error.\n");
+        }
+#else
+		if(write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+            Rprintf("[razf_flush] Write error.\n");
+        }
 #endif
 		rz->stream->avail_out = RZ_BUFFER_SIZE;
 		rz->stream->next_out  = rz->outbuf;
@@ -231,9 +254,13 @@ static void razf_flush(RAZF *rz){
 		rz->out += tout - rz->stream->avail_out;
 		if(rz->stream->avail_out == 0){
 #ifdef _USE_KNETFILE    
-			write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
-#else            
-			write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
+			if(write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+                Rprintf("[razf_flush] Write error.\n");
+            }
+#else
+			if(write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+                Rprintf("[razf_flush] Write error.\n");
+            }
 #endif
 			rz->stream->avail_out = RZ_BUFFER_SIZE;
 			rz->stream->next_out  = rz->outbuf;
@@ -255,9 +282,13 @@ static void razf_end_flush(RAZF *rz){
 		rz->out += tout - rz->stream->avail_out;
 		if(rz->stream->avail_out < RZ_BUFFER_SIZE){
 #ifdef _USE_KNETFILE        
-			write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
-#else            
-			write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out);
+			if(write(rz->x.fpw, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+                Rprintf("[razf_end_flush] Write error.\n");
+            }
+#else
+			if(write(rz->filedes, rz->outbuf, RZ_BUFFER_SIZE - rz->stream->avail_out) < 0){
+                Rprintf("[razf_end_flush] Write error.\n");
+            }
 #endif
 			rz->stream->avail_out = RZ_BUFFER_SIZE;
 			rz->stream->next_out  = rz->outbuf;
@@ -419,16 +450,20 @@ static RAZF* razf_open_r(int fd, int _load_index){
 #ifdef _USE_KNETFILE
         knet_read(fp, &end, sizeof(int64_t));
 #else
-		read(fd, &end, sizeof(int64_t));
-#endif        
+		if(read(fd, &end, sizeof(int64_t)) < 0){
+            Rprintf("[_read_gz_header] Read error.\n");
+        }
+#endif
 		if(!is_be) rz->src_end = (int64_t)byte_swap_8((uint64_t)end);
 		else rz->src_end = end;
 
 #ifdef _USE_KNETFILE
 		knet_read(fp, &end, sizeof(int64_t));
 #else
-		read(fd, &end, sizeof(int64_t));
-#endif        
+		if(read(fd, &end, sizeof(int64_t)) < 0){
+            Rprintf("[_read_gz_header] Read error.\n");
+        }
+#endif
 		if(!is_be) rz->end = (int64_t)byte_swap_8((uint64_t)end);
 		else rz->end = end;
 		if(n > rz->end){
@@ -570,7 +605,7 @@ static int _razf_read(RAZF* rz, void *data, int size){
 		ret = knet_read(rz->x.fpr, data, size);
 #else
 		ret = (int) read(rz->filedes, data, size);
-#endif        
+#endif
 		if (ret == 0) rz->z_eof = 1;
 		return ret;
 	}
@@ -584,13 +619,13 @@ static int _razf_read(RAZF* rz, void *data, int size){
 				rz->stream->avail_in = knet_read(rz->x.fpr, rz->inbuf, rz->end -rz->in);
 #else
 				rz->stream->avail_in =  (uInt) read(rz->filedes, rz->inbuf, rz->end -rz->in);
-#endif        
+#endif
 			} else {
 #ifdef _USE_KNETFILE
 				rz->stream->avail_in = knet_read(rz->x.fpr, rz->inbuf, RZ_BUFFER_SIZE);
 #else
 				rz->stream->avail_in = (uInt) read(rz->filedes, rz->inbuf, RZ_BUFFER_SIZE);
-#endif        
+#endif
 			}
 			if(rz->stream->avail_in == 0){
 				rz->z_eof = 1;
@@ -791,24 +826,40 @@ void razf_close(RAZF *rz){
 #ifdef _USE_KNETFILE
 		save_zindex(rz, rz->x.fpw);
 		if(is_big_endian()){
-			write(rz->x.fpw, &rz->in, sizeof(int64_t));
-			write(rz->x.fpw, &rz->out, sizeof(int64_t));
+			if(write(rz->x.fpw, &rz->in, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
+			if(write(rz->x.fpw, &rz->out, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
 		} else {
 			uint64_t v64 = byte_swap_8((uint64_t)rz->in);
-			write(rz->x.fpw, &v64, sizeof(int64_t));
+			if(write(rz->x.fpw, &v64, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
 			v64 = byte_swap_8((uint64_t)rz->out);
-			write(rz->x.fpw, &v64, sizeof(int64_t));
+			if(write(rz->x.fpw, &v64, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
 		}
 #else
 		save_zindex(rz, rz->filedes);
 		if(is_big_endian()){
-			write(rz->filedes, &rz->in, sizeof(int64_t));
-			write(rz->filedes, &rz->out, sizeof(int64_t));
+			if(write(rz->filedes, &rz->in, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
+			if(write(rz->filedes, &rz->out, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
 		} else {
 			uint64_t v64 = byte_swap_8((uint64_t)rz->in);
-			write(rz->filedes, &v64, sizeof(int64_t));
+			if(write(rz->filedes, &v64, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
 			v64 = byte_swap_8((uint64_t)rz->out);
-			write(rz->filedes, &v64, sizeof(int64_t));
+			if(write(rz->filedes, &v64, sizeof(int64_t)) < 0){
+                Rprintf("[razf_close] Write error.\n");
+            }
 		}
 #endif
 #endif

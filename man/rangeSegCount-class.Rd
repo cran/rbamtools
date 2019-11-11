@@ -107,7 +107,7 @@ segments <- seq(14000, 20000, 20)
 segcount<-rangeSegCount(reader, coords, segments)
 segcount
 dfr<-as.data.frame(segcount)
-\dontrun{
+\donttest{
 plot(count~position, dfr, type="l", las=1, bty="n", lwd=1.5)
 }
 }

@@ -320,19 +320,30 @@ bam_index_t *bam_index_load_core(FILE *fp)
 {
 	int i;
 	char magic[4];
+    size_t result;
 	bam_index_t *idx;
 	if (fp == 0) {
 		Rprintf("[bam_index_load_core] fail to load index.\n");
 		return 0;
 	}
-	fread(magic, 1, 4, fp);
+	result = fread(magic, 1, 4, fp);
+    if(result != 1){
+        if(ferror(fp)){
+            Rprintf("[bam_index_load] Reading error.\n");
+        }
+    }
 	if (strncmp(magic, "BAI\1", 4)) {
 		Rprintf("[bam_index_load] wrong magic number.\n");
 		fclose(fp);
 		return 0;
 	}
 	idx = (bam_index_t*)calloc(1, sizeof(bam_index_t));	
-	fread(&idx->n, 4, 1, fp);
+	result = fread(&idx->n, 4, 1, fp);
+    if(result != 1){
+        if(ferror(fp)){
+            Rprintf("[bam_index_load] Reading error.\n");
+        }
+    }
 	if (bam_is_be) bam_swap_endian_4p(&idx->n);
 	idx->index = (khash_t(i)**)calloc(idx->n, sizeof(void*));
 	idx->index2 = (bam_lidx_t*)calloc(idx->n, sizeof(bam_lidx_t));
@@ -345,18 +356,38 @@ bam_index_t *bam_index_load_core(FILE *fp)
 		bam_binlist_t *p;
 		index = idx->index[i] = kh_init(i);
 		// load binning index
-		fread(&size, 4, 1, fp);
+		result = fread(&size, 4, 1, fp);
+        if(result != 1){
+            if(ferror(fp)){
+                Rprintf("[bam_index_load] Reading error.\n");
+            }
+        }
 		if (bam_is_be) bam_swap_endian_4p(&size);
 		for (j = 0; j < (int)size; ++j) {
-			fread(&key, 4, 1, fp);
+			result = fread(&key, 4, 1, fp);
+            if(result != 1){
+                if(ferror(fp)){
+                    Rprintf("[bam_index_load] Reading error.\n");
+                }
+            }
 			if (bam_is_be) bam_swap_endian_4p(&key);
 			k = kh_put(i, index, key, &ret);
 			p = &kh_value(index, k);
-			fread(&p->n, 4, 1, fp);
+			result = fread(&p->n, 4, 1, fp);
+            if(result != 1){
+                if(ferror(fp)){
+                    Rprintf("[bam_index_load] Reading error.\n");
+                }
+            }
 			if (bam_is_be) bam_swap_endian_4p(&p->n);
 			p->m = p->n;
 			p->list = (pair64_t*)malloc(p->m * 16);
-			fread(p->list, 16, p->n, fp);
+			result = fread(p->list, 16, p->n, fp);
+            if(result != p->n){
+                if(ferror(fp)){
+                    Rprintf("[bam_index_load] Reading error.\n");
+                }
+            }
 			if (bam_is_be) {
 				int x;
 				for (x = 0; x < p->n; ++x) {
@@ -366,11 +397,21 @@ bam_index_t *bam_index_load_core(FILE *fp)
 			}
 		}
 		// load linear index
-		fread(&index2->n, 4, 1, fp);
+		result = fread(&index2->n, 4, 1, fp);
+        if(result != 1){
+            if(ferror(fp)){
+                Rprintf("[bam_index_load] Reading error.\n");
+            }
+        }
 		if (bam_is_be) bam_swap_endian_4p(&index2->n);
 		index2->m = index2->n;
 		index2->offset = (uint64_t*)calloc(index2->m, 8);
-		fread(index2->offset, index2->n, 8, fp);
+		result = fread(index2->offset, index2->n, 8, fp);
+        if(result != 8){
+            if(ferror(fp)){
+                Rprintf("[bam_index_load] Reading error.\n");
+            }
+        }
 		if (bam_is_be)
 			for (j = 0; j < index2->n; ++j) bam_swap_endian_8p(&index2->offset[j]);
 	}

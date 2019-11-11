@@ -53,7 +53,7 @@ rfile <- system.file("extdata",
 ucr <- loadGenome(rfile)
 gt <- getGeneTable(ucr)
 gl <- geneList(ucr, gt$gene_id)
-\dontrun{
+\donttest{
 extractGeneRegions(ibs, obs, gl)
 bamFiles(obs) <- file.path(outdir, bamSort(obs, "out"))
 bamIdxFiles(obs) <- paste(bamFiles(obs), "bai", sep=".")

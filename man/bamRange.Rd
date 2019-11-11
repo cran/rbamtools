@@ -5,7 +5,7 @@
     of alignments in genomic regions.}
 %
 \description{The bamRange function takes a bamReader object,
-a set of reference coordinates and the 'complex' argument 
+a set of reference coordinates and the 'complex' argument
 and returns an instance of class 'bamRange'.
 }
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
@@ -13,7 +13,7 @@ and returns an instance of class 'bamRange'.
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \usage{bamRange(object=NULL, coords=NULL, complex=FALSE)}
 \arguments{
-    \item{object}{An instance of bamReader. 
+    \item{object}{An instance of bamReader.
         Must be opened and contain initialized index}
     %
     \item{coords}{Integer vector of length 3: coords=c(refid, start, stop)}
@@ -24,11 +24,11 @@ and returns an instance of class 'bamRange'.
 % Details
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \details{The method returns a list of bamAlign's from which overlap with the
-specified region. 
+specified region.
 When complex is TRUE, the function only retrieves Aligns where nCigar > 1
-('complex' aligns, e.g. 45M329N56M). 
+('complex' aligns, e.g. 45M329N56M).
 When reader is NULL, an empty range-list ist constructed
-(can be filled with push_back). 
+(can be filled with push_back).
 When complex is FALSE, the function retrieves all alignments which fall into
 the given range.}
 %
@@ -54,25 +54,25 @@ for(i in 1:10)
 size(range)
 
 # Eventually:
-\dontrun{create.index(reader,idx)}
+\donttest{createIndex(reader,idx)}
 # Load BAM index file
 loadIndex(reader,idx)
 indexInitialized(reader)   # Should return 'TRUE'
-# +++++++++++++++++++++++++++++++++++++++++++++++
+#----------------------------------------------#
 #  Find appropriate refid (=ID)
 #  Returns a data.frame with three columns:
 #  ID=refid, SN=Sequence Name, LN=Sequence length
-
+#----------------------------------------------#
 rdf<-getRefData(reader)
 head(rdf)
 
-# +++++++++++++++++++++++++++++++++++++++++++++++
+#----------------------------------------------#
 # The sequence length (LN) also determines valid
 # range for start and stop coordinates
 # Invalid refid-, start- or stop-coordinates will
 # release an error.
 # coords: refid=0, start=0, stop=249250621
-# +++++++++++++++++++++++++++++++++++++++++++++++
+#----------------------------------------------#
 
 coords<-as.integer(c(0,0,249250621))
 range<-bamRange(reader,coords)
@@ -84,7 +84,7 @@ size(range)
 align<-getNextAlign(range)
 cigarData(align)
 
-\dontrun{
+\donttest{
 while(!is.null(align))
 {
     print(position(align))

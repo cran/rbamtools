@@ -56,6 +56,10 @@
 #             Replaced rand() by runif() in ksort.h
 #             Enclosed reader2fastq example in \dontrun{}
 #  03.Nov.14  Changed nAligns data type to unsigned long long int
+#  08.Nov.19  Removed index.initialized, load.index, create.index, range2fastq,
+#             create.idx.batch functions (all were deprecated before)
+#             Re-implemented cigar2str in order to avoid strncat.
+#             Replaced strncpy by memcpy in samtools source code.
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 .onUnload <- function(libpath) { library.dynam.unload("rbamtools", libpath) }
@@ -86,9 +90,6 @@ setGeneric("getRefCoords",function(object, sn) standardGeneric("getRefCoords"))
 
 setGeneric("getRefId", function(object, sn) standardGeneric("getRefId"))
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-#  Replacement for (deprecated) functions -> .Defunct
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 setGeneric("createIndex",function(object,idx_filename)
     standardGeneric("createIndex"))
 
@@ -98,27 +99,11 @@ setGeneric("loadIndex", function(object, filename)
 setGeneric("indexInitialized", function(object)
     standardGeneric("indexInitialized"))
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-#  Soon deprecated functions (for consistency reasons)
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-setGeneric("create.index",function(object, idx_filename)
-    standardGeneric("create.index"))
-
-setGeneric("load.index",function(object, filename)
-    standardGeneric("load.index"))
-
-setGeneric("index.initialized",function(object)
-    standardGeneric("index.initialized"))
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
 setGeneric("bamSort",function(object, prefix="sorted",
                               byName=FALSE, maxmem=1e+9,
                               path=dirname(filename(object))) standardGeneric("bamSort"))
-
-setGeneric("reader2fastq",function(object, filename, which, append=FALSE)
-    standardGeneric("reader2fastq"))
 
 setGeneric("readerToFastq", function(object, filename, which, append=FALSE)
     standardGeneric("readerToFastq"))
@@ -271,11 +256,6 @@ setGeneric("insertPreCurrent",
 
 setGeneric("moveCurrentAlign",
            function(object, target) standardGeneric("moveCurrentAlign"))
-
-# Deprecated:
-setGeneric("range2fastq",
-           function(object, filename, which, append=FALSE)
-               standardGeneric("range2fastq"))
 
 setGeneric("rangeToFastq",
            function(object, filename, which, append=FALSE)
@@ -772,7 +752,7 @@ setMethod("rangeSegCount", "bamReader",
     function(object, coords=NULL, segments=NULL, complex=FALSE)
     {
         if(!indexInitialized(object))
-            stop("Reader must have initialized index! Use 'load.index'!")
+            stop("Reader must have initialized index! Use 'loadIndex'!")
 
         if(is.null(coords))
             stop("coords argument is not optional!")
@@ -1167,58 +1147,7 @@ setMethod("indexInitialized", signature="bamReader", definition=function(object)
 
 
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-#  Deprecated functions
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 
-setMethod("create.index", "bamReader", function(object, idx_filename)
-{
-    message("[create.index] Will soon be deprecated. Use createIndex.")
-    return(createIndex(object, idx_filename))
-    .Deprecated(new="createIndex",package="rbamtools")
-})
-
-
-
-setMethod("load.index", "bamReader", function(object, filename)
-{
-
-    .Deprecated(new="loadIndex", package="rbamtools")
-
-    # message("[load.index] Will soon be deprecated. Use loadIndex.")
-    # if(!is.character(filename))
-    #     stop("Filename must be character!\n")
-    #
-    # if(!file.exists(filename))
-    #     stop("Index file \"", filename, "\" does not exist!\n")
-    #
-    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    # #  Set index Variable in given bamReader object:
-    # #  Read object name, create expression string and evaluate in parent frame
-    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    # reader <- deparse(substitute(object))
-    #
-    # extxt <- paste(reader,"@index<-.Call(\"bam_reader_load_index\",\"",
-    #                path.expand(filename), "\",PACKAGE=\"rbamtools\")", sep="")
-    #
-    # eval.parent(parse(text=extxt))
-    #
-    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    # #  Return true if bamReader@index!=NULL (parent frame)
-    # # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
-    # extxt <- paste(".Call(\"is_nil_externalptr\",", reader,
-    #                "@index,PACKAGE=\"rbamtools\")", sep="")
-    #
-    # return(invisible(!eval.parent(parse(text=extxt))))
-})
-
-
-setMethod("index.initialized", "bamReader", function(object)
-{
-    .Deprecated(new="indexInitialized", package="rbamtools")
-    # message("[index.initialized] Will soon be deprecated. Use indexInitialized")
-    # return(indexInitialized(object))
-})
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
 # bamSort (another method in bamSamples)
@@ -1268,14 +1197,6 @@ setMethod(f="getNextAlign", signature="bamReader", definition=function(object)
         return(.bamAlign(ans))
 })
 
-
-
-setMethod("reader2fastq", "bamReader",
-        function(object, filename, which, append=FALSE)
-{
-    message("[reader2fastq] Will soon be deprecated. Use readerToFastq")
-    readerToFastq(object, filename, which, append)
-})
 
 setMethod("readerToFastq", "bamReader",
           function(object, filename, which, append=FALSE)
@@ -3781,13 +3702,6 @@ setMethod("[", signature="bamRange", function(x, i)
 })
 
 
-setMethod("range2fastq", signature="bamRange",
-    definition=function(object, filename, which, append=FALSE)
-{
-    message("[range2fastq] Function is deprecated. Use rangeToFastq.")
-    return(rangeToFastq(object, filename, which, append))
-})
-
 setMethod("rangeToFastq", signature=c("bamRange","character"),
     definition=function(object, filename, which, append=FALSE)
 {
@@ -4721,10 +4635,6 @@ createIdxBatch <- function(bam, idx=paste(bam, ".bai", sep=""), rebuild=FALSE)
     }
     return(invisible())
 }
-
-create.idx.batch <- function(bam, idx=paste(bam, ".bai", sep=""), rebuild=FALSE)
-{ .Deprecated("createIdxBatch",package="rbamtools") }
-
 
 
 countTextLines <- function(filenames)

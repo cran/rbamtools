@@ -13,11 +13,11 @@
 \title{Class \code{"bamHeader"}: Representation of data contained in the
     header section of BAM files.}
 %
-\description{bamHeader represents data contained in the header Section 
+\description{bamHeader represents data contained in the header Section
     of BAM-files.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Creation of objects
-% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %   
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 \section{Objects from the Class}{
 Objects can be created by calls of the form \code{header<-new("bamHeader")}.}
 \section{Slots}{
@@ -32,7 +32,7 @@ Objects can be created by calls of the form \code{header<-new("bamHeader")}.}
 \section{Methods}{
     \describe{
         \item{getHeaderText}{\code{signature(x = "bamHeader")}:
-        Returns textual representation of data stored in this class as 
+        Returns textual representation of data stored in this class as
         desrcribed in SAM Format Specification.}
     }
 }
@@ -61,9 +61,11 @@ hp
 # Re-create binary header structure
 header2<-bamHeader(htxt)
 # Use created structure for new BAM-file
+\donttest{
 writer<-bamWriter(header2,"test.bam")
 bamClose(reader)
 bamClose(writer)
+}
 }
 \keyword{classes}
 \keyword{bamReader}

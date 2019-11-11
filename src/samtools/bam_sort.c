@@ -131,7 +131,7 @@ int bam_merge_core(int by_qname, const char *out, const char *headers, int n, ch
 			++j; l -= j;
 			RG[i] = calloc(l + 1, 1);
 			RG_len[i] = l;
-			strncpy(RG[i], s + j, l);
+			memcpy(RG[i], s + j, l);
 		}
 	}
 	// read the first

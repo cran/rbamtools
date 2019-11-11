@@ -4,10 +4,6 @@
 \alias{rangeToFastq-methods}
 \alias{rangeToFastq,bamRange,character-method}
 %
-\alias{range2fastq}
-\alias{range2fastq-methods}
-\alias{range2fastq,bamRange-method}
-%
 \title{rangeToFastq: Extract read information from alignments for given
     genomic range as fastq.}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
@@ -30,7 +26,6 @@
     \item{append}{(Optional) When TRUE, the routine will append to an
         existing file. Otherwise existing files will be overwritten.}
 }
-\details{range2fastq ist deprecated and will be replaced by rangeToFastq soon.}
 \author{Wolfgang Kaisers}
 % - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - %
 % Examples
@@ -40,9 +35,9 @@ bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
 reader <- bamReader(bam, idx=TRUE)
 coords <- as.integer(c(0, 0, 249250621))
 range <- bamRange(reader, coords)
-\dontrun{rangeToFastq(range, "range.fq.gz")}
+\donttest{rangeToFastq(range, "range.fq.gz")}
 index <- sample(1:size(range), 100)
-\dontrun{rangeToFastq(range, "range_subset.fq.gz", which=index)}
+\donttest{rangeToFastq(range, "range_subset.fq.gz", which=index)}
 }
 \keyword{rangeToFastq}
 \keyword{rangeToFastq}

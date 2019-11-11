@@ -34,7 +34,7 @@ directory.}
 \examples{
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 gene_pos <- data.frame(seqid="chr1", start=15e3, end=20e3)
-\dontrun{extractBamRegions(bam, gene_pos)}
+\donttest{extractBamRegions(bam, gene_pos)}
 }
 \keyword{extractBamRegions}
 \keyword{extractBamRegions}

@@ -103,35 +103,34 @@ static R_INLINE void set_flag(bam1_t *align, _Bool val, unsigned pattern)
 		align->core.flag &= ~pattern;
 }
 
-static R_INLINE int cigar2str(char *c, const bam1_t *align)
+static R_INLINE int cigar2str(char *c, const bam1_t *align, int bufsize)
 {
 	if(align==NULL)
 		return 0;
 
 	uint32_t len=align->core.n_cigar;
 	uint32_t *cigar=bam1_cigar(align);
-	char buf[128];
-
-	sprintf(buf, "%lu", (unsigned long) (cigar[0] >> BAM_CIGAR_SHIFT));
-	strcpy(c,buf);
-	if((cigar[0]&BAM_CIGAR_MASK)>=strlen(CIGAR_TYPES))	// Error
-		return 0;
-	strncat(c,&(CIGAR_TYPES[cigar[0] & BAM_CIGAR_MASK]),1);
-
+	uint32_t pos = 0, slen = 0, rest = bufsize;
 
 	uint32_t i;
-	for(i=1;i<len;++i)
+	for(i=0; i<len; ++i)
 	{
-		sprintf(buf,"%lu",(unsigned long) (cigar[i] >> BAM_CIGAR_SHIFT));
-		strcat(c, buf);  // same as strncat(c,buf,strlen(buf) + 1);
-
 		if((cigar[i]&BAM_CIGAR_MASK)>=strlen(CIGAR_TYPES))	// Error
 			return 0;
 
-		strncat(c,&(CIGAR_TYPES[cigar[i] & BAM_CIGAR_MASK]),1);
+		// Print variable size CIGAR length value
+		slen = snprintf(c + pos, rest, "%lu", (unsigned long) (cigar[i] >> BAM_CIGAR_SHIFT));
+		pos += slen; rest -= slen;
+		if(slen < 0 || rest <=0) return 0;
+
+		// Add one CIGAR - type character
+		slen = snprintf(c + pos, rest, "%c", (CIGAR_TYPES[cigar[i] & BAM_CIGAR_MASK]));
+		pos += slen; rest -= slen;
+		if(slen < 0 || rest <=0) return 0;
 	}
 	return strlen(c);
 }
+
 
 static R_INLINE uint8_t *alloc_align_data(bam1_t *b, int size)
 {
@@ -161,8 +160,8 @@ bam_header_t* clone_bam_header(bam_header_t *h)
 	ans->l_text=h->l_text;
 	ans->n_text=h->n_text;
 
-	ans->text=(char*) calloc(1,(h->l_text)+1);
-	strncpy(ans->text,h->text,h->l_text);
+	ans->text=(char*) calloc(1,(h->l_text) + 1);
+	memcpy(ans->text, h->text, h->l_text);
 	sam_header_parse(ans);
 	bam_init_header_hash(ans);
 	return ans;
@@ -508,19 +507,22 @@ SEXP bam_reader_tell(SEXP pReader)
 
 SEXP bam_reader_seek(SEXP pReader, SEXP pPos)
 {
-	if(TYPEOF(pReader)!=EXTPTRSXP)
-		error("[bam_reader_seek] No external pointer!\n");
-	if(TYPEOF(pPos)!=REALSXP)
-		error("[bam_reader_seek] Position must be numeric!\n");
-	if(LENGTH(pPos)>1)
-		error("[bam_reader_seek] Length of position must be 1!\n");
+    if(TYPEOF(pReader)!=EXTPTRSXP)
+        error("[bam_reader_seek] No external pointer!\n");
+    if(TYPEOF(pPos)!=REALSXP)
+        error("[bam_reader_seek] Position must be numeric!\n");
+    if(LENGTH(pPos)>1)
+        error("[bam_reader_seek] Length of position must be 1!\n");
 
-	samfile_t *reader=(samfile_t*)(R_ExternalPtrAddr(pReader));
-	double *pos=REAL(pPos);
-    int64_t res=bam_seek(reader->x.bam,(int64_t)*pos,SEEK_SET);
-    if(res<0)
-    	Rprintf("[bam_reader_seek] bam_seek fails!\n");
-	return R_NilValue;
+    samfile_t *reader = (samfile_t*)(R_ExternalPtrAddr(pReader));
+    double *pos = REAL(pPos);
+    int64_t res;
+    
+    res = bam_seek(reader->x.bam, (int64_t)*pos, SEEK_SET);
+    if(res < 0){
+        Rprintf("[bam_reader_seek] bam_seek fails!\n");
+    }
+    return R_NilValue;
 }
 
 SEXP bam_reader_write_fastq(SEXP pReader,SEXP pFilename,SEXP pAppend)
@@ -2177,12 +2179,12 @@ SEXP bam_range_get_align_df(SEXP pRange)
 
 	/* seq+cigar											*/
 	unsigned char *raw_seq;
-	int32_t seq_len=l->max_seqlen+1;
-	char *buf=(char*) calloc(buf_size>seq_len ? buf_size : seq_len,sizeof(char));
+	int32_t seq_len = l->max_seqlen + 1;
+	char *buf = (char*) calloc(buf_size > seq_len ? buf_size : seq_len,sizeof(char));
 
 	uint8_t *quals;
 
-	for(i=0;i<nRows;++i)
+	for(i=0; i < nRows; ++i)
 	{
 		align=get_const_next_align(l);
 		INTEGER(ref_vector)[i]=(align->core.tid);
@@ -2192,7 +2194,7 @@ SEXP bam_range_get_align_df(SEXP pRange)
 		/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 		 * Cigar String
 		 */
-		if(cigar2str(buf,align)==0)
+		if(cigar2str(buf, align, buf_size) == 0)
 			error("[bam_range_get_align_df] Cigar error!\n");
 
 		SET_STRING_ELT(cig_vector,i,mkChar(buf));
@@ -3104,7 +3106,7 @@ SEXP init_bam_header(SEXP pHeaderText)
 	const char* header_text=CHAR(STRING_ELT(pHeaderText,0));
 	h->l_text=strlen(header_text);
 	char *txt=(char*) calloc(1,(h->l_text)+1);
-	strncpy(txt,CHAR(STRING_ELT(pHeaderText,0)),h->l_text);
+	memcpy(txt, CHAR(STRING_ELT(pHeaderText,0)), h->l_text);
 	h->text=txt;
 
 	sam_header_parse(h);

@@ -32,7 +32,7 @@ static void append_header_text(bam_header_t *header, char* text, int len)
 	kroundup32(x); 
 	kroundup32(y);
 	if (x < y) header->text = (char*)realloc(header->text, y);
-	strncpy(header->text + header->l_text, text, len); // we cannot use strcpy() here.
+	memcpy(header->text + header->l_text, text, len); // we cannot use strcpy() here.
 	header->l_text += len;
 	header->text[header->l_text] = 0;
 }

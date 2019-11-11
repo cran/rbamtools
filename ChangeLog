@@ -98,7 +98,7 @@
 
 25.Nov.14	Added rangeSegCount class.
 
-01.Feb.16   	Corrected extern "C" problem in rbamtools.h
+01.Feb.16	Corrected extern "C" problem in rbamtools.h
 
 23.May.16	New Framework for counting align depth on multiple BAM 
 				files added:
@@ -111,3 +111,8 @@
 12.Oct.16	Renamed *.r files to *.R
 
 18.Mar.17	Changed test files due to check error on CRAN
+
+08.Nov.19	Removed deprecated functions (index.initialized, load.index,
+		create.index, create.idx.batch, reader2fastq, range2fastq).
+		Re-implemented cigar2str in order to avoid strncat.
+		Replaced strncpy by memcpy in samtools source code.

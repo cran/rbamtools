@@ -49,7 +49,7 @@ the Reference sequence ID in the output file.
 bam<-system.file("extdata","accepted_hits.bam",package="rbamtools")
 reader<-bamReader(bam, idx=TRUE)
 rg <- bamRange(reader, getRefCoords(reader,"chr1"))
-\dontrun{
+\donttest{
 writer <- bamWriter(bamReader, "out.BAM")
 bamSave(writer, rg)
 bamClose(writer)

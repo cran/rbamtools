@@ -218,7 +218,7 @@ bam <- system.file("extdata", "accepted_hits.bam", package="rbamtools")
 idx<-paste(bam,"bai",sep=".")
 # Open BAM file
 reader<-bamReader(bam)
-\dontrun{create.index(reader,idx)}
+\donttest{createIndex(reader,idx)}
 # Load BAM index file
 loadIndex(reader,idx)
 indexInitialized(reader)   # Should return 'TRUE'
@@ -257,7 +257,7 @@ range <- readRange(reader, "chr1", c(0,249250621), complex=TRUE)
 size(range)
 
 # Print align positions
-\dontrun{
+\donttest{
 while(!is.null(align))
 {
     print(position(align))

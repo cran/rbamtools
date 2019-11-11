@@ -48,13 +48,13 @@ setVal(prog,"PN","tophat")
 setVal(prog,"CL","tophat -p8 --library-type fr-unstranded hs_ucsc rna033.fastq")
 setVal(prog,"VN","2.0.0")
 bh<-bamHeaderText(head=headl,dict=dict,prog=prog)
-\dontrun{getHeaderText(bh)}
+\donttest{getHeaderText(bh)}
 header<-bamHeader(bh)
 # +++++++++++++++++++++++++++++++++++++++++++++++
 
 # +++++++++++++++++++++++++++++++++++++++++++++++
 #  Copy aligns in range into new BAM file
-\dontrun{
+\donttest{
 writer<-bamWriter(header,"chr1_complex.bam")
 bamSave(writer,range,refid=0)
 bamClose(writer)

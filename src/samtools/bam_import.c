@@ -168,21 +168,21 @@ static R_INLINE void parse_error(int64_t n_lines, const char * __restrict msg)
 }
 static R_INLINE void append_text(bam_header_t *header, kstring_t *str)
 {
-	size_t x = header->l_text, y = header->l_text + str->l + 2; // 2 = 1 byte dret + 1 byte null
-	kroundup32(x); kroundup32(y);
-	if (x < y) 
+    size_t x = header->l_text, y = header->l_text + str->l + 2; // 2 = 1 byte dret + 1 byte null
+    kroundup32(x); kroundup32(y);
+    if (x < y) 
     {
         header->n_text = y;
         header->text = (char*)realloc(header->text, y);
         if ( !header->text ) 
-        	error("realloc failed to alloc %ld bytes\n", y);
+            error("[bam_import.c] append_text error: realloc failed to alloc %ld bytes\n", y);
     }
     // Sanity check
-    if ( header->l_text+str->l+1 >= header->n_text )
-    	error("append_text FIXME: %ld>=%ld, x=%ld,y=%ld\n",  header->l_text+str->l+1,header->n_text,x,y);
-	strncpy(header->text + header->l_text, str->s, str->l+1); // we cannot use strcpy() here.
-	header->l_text += str->l + 1;
-	header->text[header->l_text] = 0;
+    if (header->l_text + str->l + 1 >= header->n_text )
+        error("[bam_import.c] append_text error: %ld>=%ld, x=%ld,y=%ld\n", header->l_text+str->l + 1, header->n_text, x, y);
+    memcpy(header->text + header->l_text, str->s, str->l+1); // we cannot use strcpy() here.
+    header->l_text += str->l + 1;
+    header->text[header->l_text] = 0;
 }
 
 int sam_header_parse(bam_header_t *h)
